@@ -2,72 +2,117 @@
 
 Guidance for AI assistants (and humans) working in this repository.
 
-> **Repository status: bootstrap / empty.**
-> As of the creation of this file, the `Planner` repository contains no application
-> code — only this document. The sections below establish the conventions and
-> workflow to follow, with clearly marked placeholders for codebase-specific
-> details that should be filled in as the project takes shape. **When you add the
-> first real code, update this file in the same change** so it always reflects the
-> actual state of the repo.
-
 ## Project
 
 - **Name:** Planner
 - **Remote:** `uncleeai/planner`
-- **Purpose:** _TODO — describe what Planner does once the project direction is set
-  (e.g. task/calendar planning, project scheduling, etc.)._
+- **Purpose:** Lekki planer dla grupy znajomych do ustalania wspólnych terminów
+  (wypady, spotkania). Tworzysz wydarzenie, proponujesz terminy, wysyłasz link,
+  a każdy zaznacza kiedy może; wynik aktualizuje się na żywo. Bez kont — dostęp
+  przez link.
+
+## Stack
+
+- **Next.js 16** (App Router) + **React 19** + **TypeScript**.
+- **Supabase** (PostgreSQL + Realtime) jako backend/baza, używane przez przeglądarkę
+  z kluczem `anon`.
+- **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
+- Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka).
+- Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
 
 ## Repository structure
 
-_TODO — document the directory layout once code exists. Suggested format:_
-
 ```
 .
-├── CLAUDE.md          # This file
-└── ...                # (no source yet)
+├── CLAUDE.md                     # Ten plik
+├── README.md                     # Instrukcja uruchomienia i wdrożenia
+├── package.json                  # Skrypty i zależności
+├── next.config.mjs               # Konfiguracja Next.js
+├── tsconfig.json                 # Konfiguracja TypeScript (alias @/* → src/*)
+├── .env.example                  # Wzór zmiennych środowiskowych (skopiuj do .env.local)
+├── supabase/
+│   └── schema.sql                # Schemat bazy + RLS + publikacja Realtime
+├── public/
+│   ├── manifest.webmanifest      # Manifest PWA
+│   └── icon.svg                  # Ikona aplikacji
+└── src/
+    ├── app/
+    │   ├── layout.tsx            # Root layout, metadata, viewport, manifest
+    │   ├── globals.css           # Wszystkie style
+    │   ├── page.tsx              # Strona główna: tworzenie wydarzenia
+    │   └── event/[id]/page.tsx   # Strona wydarzenia: terminy, głosowanie, wynik na żywo
+    ├── components/
+    │   └── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
+    └── lib/
+        ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
+        ├── identity.ts           # Imię uczestnika w localStorage (brak kont)
+        └── types.ts              # Typy: EventRow, Slot, Vote, Availability
 ```
 
-When source is added, list the top-level directories and what each contains, and
-call out where the entry point(s), configuration, and tests live.
+**Punkty wejścia:** `src/app/page.tsx` (`/`) oraz `src/app/event/[id]/page.tsx`
+(`/event/<id>`). Oba to komponenty klienckie (`'use client'`) — całość logiki
+dzieje się w przeglądarce, brak warstwy serwerowej poza renderowaniem stron.
+
+## Model danych
+
+Zdefiniowany w `supabase/schema.sql`:
+
+- **events** — wydarzenie; `id` jest jednocześnie kluczem w linku zapraszającym.
+- **slots** — proponowany termin (`starts_at`) powiązany z wydarzeniem.
+- **votes** — głos uczestnika na termin: `availability` ∈ `yes | maybe | no`,
+  identyfikacja przez `participant_name` (brak kont). Unikalność: `(slot_id, participant_name)`.
+
+Realtime włączony dla `slots` i `votes` (dodane do publikacji `supabase_realtime`).
+RLS jest włączone, ale polityki dają roli `anon` pełny dostęp — świadomy kompromis
+przy dostępie tylko przez link (zob. README → „Świadome kompromisy").
 
 ## Development workflow
 
 ### Branching
 
-- All development happens on a designated feature branch — **do not commit
-  directly to the default branch.**
-- Create the branch locally if it does not exist yet, develop there, then push.
-- Never push to a branch other than the one assigned for the current task without
-  explicit permission.
+- Pracuj na wyznaczonym branchu zadania — **nie commituj bezpośrednio na branch
+  domyślny.** Utwórz branch lokalnie jeśli nie istnieje, pracuj na nim, potem push.
+- Nie pushuj na inny branch niż przypisany do zadania bez wyraźnej zgody.
 
 ### Committing
 
-- Write clear, descriptive commit messages (imperative mood, e.g. "Add task model").
-- Keep commits focused; group related changes together.
+- Czytelne, opisowe komunikaty commitów (tryb rozkazujący, np. „Add vote upsert").
+- Trzymaj commity skupione; grupuj powiązane zmiany.
 
 ### Pushing
 
-- Push with `git push -u origin <branch-name>`.
-- On network errors, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s).
-- **Do not open a pull request unless explicitly asked.**
+- `git push -u origin <branch-name>`.
+- Przy błędach sieci ponów do 4 razy z narastającym odstępem (2s, 4s, 8s, 16s).
+- **Nie otwieraj pull requesta, jeśli nie ma o to wyraźnej prośby.**
 
 ## Build, run, and test
 
-_TODO — fill in once the toolchain is chosen. Capture, at minimum:_
-
-- **Install dependencies:** _e.g._ `npm install` / `pip install -r requirements.txt`
-- **Run the app:** _command to start it locally_
-- **Run tests:** _test command_
-- **Lint / format:** _linter and formatter commands_
-
-Until these exist, there is no build or test step to run.
+- **Instalacja:** `npm install`
+- **Dev:** `npm run dev` → <http://localhost:3000>
+- **Build:** `npm run build`
+- **Start (produkcja):** `npm start`
+- **Konfiguracja:** skopiuj `.env.example` do `.env.local` i uzupełnij
+  `NEXT_PUBLIC_SUPABASE_URL` oraz `NEXT_PUBLIC_SUPABASE_ANON_KEY`; uruchom
+  `supabase/schema.sql` w panelu Supabase. Pełna instrukcja w `README.md`.
+- **Testy/lint:** brak zautomatyzowanych testów i konfiguracji lintera w tym
+  szkielecie. `next build` weryfikuje typy TypeScript. Po zmianach uruchom
+  `npm run build` jako minimalny sanity check.
 
 ## Conventions
 
-_TODO — record language/version, code style, naming conventions, and any
-project-specific patterns once established._
+- **Język/wersje:** TypeScript w trybie `strict`; React 19; Next 16 App Router.
+- **Alias importów:** `@/...` wskazuje na `src/...` (zob. `tsconfig.json`).
+- **`params` jest asynchroniczne** (Next 15+): w stronach odpakowuj przez
+  `use(params)` (zob. `src/app/event/[id]/page.tsx`).
+- **Backend tylko przez `supabase` z `src/lib/supabaseClient.ts`** — nie twórz
+  klienta w wielu miejscach. Sprawdzaj `isSupabaseConfigured` zanim wykonasz
+  zapytania, by uniknąć cichych błędów bez `.env.local`.
+- **Tożsamość uczestnika** wyłącznie przez `src/lib/identity.ts` (localStorage).
+- **Teksty UI po polsku** — to apka dla polskojęzycznych znajomych autora.
+- **Style** dopisuj do `src/app/globals.css`, korzystając z istniejących zmiennych
+  CSS (`--primary`, `--yes`, `--maybe`, `--no` itd.); brak biblioteki UI.
 
 ---
 
-_Keep this file current: whenever the structure, workflow, or tooling changes,
-update the relevant section in the same commit._
+_Aktualizuj ten plik wraz ze zmianami struktury, workflow czy narzędzi — w tym
+samym commicie, w którym je wprowadzasz._
