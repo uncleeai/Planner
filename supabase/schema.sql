@@ -27,6 +27,10 @@ alter table public.events
 alter table public.events
   add column if not exists confirmed_at timestamptz;
 
+-- Organizator wypadu (imię twórcy) — tylko on może ustalić/odznaczyć finalny termin.
+alter table public.events
+  add column if not exists created_by text;
+
 -- Sprzątanie po wcześniejszym (porzuconym) pomyśle z „ekipami" — bezpieczne, jeśli nie istniały.
 alter table public.events drop column if exists group_id;
 drop table if exists public.groups cascade;

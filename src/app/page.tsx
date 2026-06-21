@@ -79,7 +79,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from('events')
-      .insert({ title: title.trim(), location: location.trim() || null })
+      .insert({ title: title.trim(), location: location.trim() || null, created_by: name || null })
       .select('id')
       .single();
 

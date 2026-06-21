@@ -184,11 +184,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
+  // Bez kont „organizator" = imię twórcy wypadu (miękka zasada). Stare wypady bez
+  // twórcy zostają otwarte dla każdego, dla zgodności.
+  const isOrganizer = !!name && (!event?.created_by || event.created_by === name);
+
   return (
     <main>
       <p><Link href="/">← Wszystkie wypady</Link></p>
       <h1>{event?.title}</h1>
       {event?.location && <p className="lead">📍 {event.location}</p>}
+      {event?.created_by && <p className="small muted">Organizuje: {event.created_by}</p>}
 
       {event?.confirmed_at && (
         <div className="confirmed-banner">✅ Ustalono: {formatSlot(event.confirmed_at)}</div>
@@ -230,7 +235,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       <div className="card">
         <h2>Proponowane terminy</h2>
         <p className="small muted" style={{ marginTop: -6 }}>
-          Gdy termin jest jasny, ktokolwiek może go „ustalić" — wskoczy wtedy na oś czasu ekipy.
+          {isOrganizer
+            ? 'Jako organizator możesz „ustalić" finalny termin — wskoczy wtedy na oś czasu.'
+            : event?.created_by
+              ? `Finalny termin ustala organizator (${event.created_by}). Ty zaznacz, kiedy możesz.`
+              : 'Zaznacz przy każdym terminie, kiedy możesz.'}
         </p>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
@@ -285,15 +294,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               </div>
             )}
 
-            <div className="row mt">
-              {isConfirmed ? (
-                <button className="ghost" onClick={unconfirmSlot}>Odznacz ustalony termin</button>
-              ) : (
-                <button className="ghost" onClick={() => confirmSlot(slot.id, slot.starts_at)}>
-                  Ustal ten termin
-                </button>
-              )}
-            </div>
+            {isOrganizer && (
+              <div className="row mt">
+                {isConfirmed ? (
+                  <button className="ghost" onClick={unconfirmSlot}>Odznacz ustalony termin</button>
+                ) : (
+                  <button className="ghost" onClick={() => confirmSlot(slot.id, slot.starts_at)}>
+                    Ustal ten termin
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           );
         })}
