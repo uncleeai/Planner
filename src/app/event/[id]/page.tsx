@@ -91,10 +91,31 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function vote(slotId: string, availability: Availability) {
-    await supabase.from('votes').upsert(
+    // Optymistyczna aktualizacja: pokaż wybór od razu, zanim baza odpowie —
+    // bez tego na komórce tap wygląda jakby nie zadziałał (feedback dopiero po realtime).
+    setVotes((prev) => {
+      const existing = prev.find((v) => v.slot_id === slotId && v.user_id === userId);
+      if (existing) {
+        return prev.map((v) => (v === existing ? { ...v, availability } : v));
+      }
+      const optimistic: Vote = {
+        id: `optimistic-${slotId}-${userId}`,
+        event_id: eventId,
+        slot_id: slotId,
+        user_id: userId,
+        participant_name: displayName,
+        availability,
+        created_at: new Date().toISOString(),
+      };
+      return [...prev, optimistic];
+    });
+
+    const { error } = await supabase.from('votes').upsert(
       { event_id: eventId, slot_id: slotId, user_id: userId, participant_name: displayName, availability },
       { onConflict: 'slot_id,user_id' },
     );
+    // Przy błędzie cofnij optymistyczną zmianę, pobierając prawdziwy stan z bazy.
+    if (error) load();
   }
 
   async function confirmSlot(slotId: string, startsAt: string) {
