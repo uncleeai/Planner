@@ -19,6 +19,10 @@ Guidance for AI assistants (and humans) working in this repository.
 - **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
 - Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka).
 - Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
+- **Analityka:** `@vercel/analytics` i `@vercel/speed-insights` w `layout.tsx`
+  (trzeba je też włączyć przełącznikami w panelu Vercela).
+- **Keepalive:** Vercel Cron (`vercel.json`) odpytuje raz dziennie
+  `/api/keepalive`, by darmowy Supabase nie zapauzował się po ~7 dniach bezczynności.
 
 ## Repository structure
 
@@ -28,6 +32,7 @@ Guidance for AI assistants (and humans) working in this repository.
 ├── README.md                     # Instrukcja uruchomienia i wdrożenia
 ├── package.json                  # Skrypty i zależności
 ├── next.config.mjs               # Konfiguracja Next.js
+├── vercel.json                   # Vercel Cron: codzienny ping keepalive bazy
 ├── tsconfig.json                 # Konfiguracja TypeScript (alias @/* → src/*)
 ├── .env.example                  # Wzór zmiennych środowiskowych (skopiuj do .env.local)
 ├── supabase/
@@ -37,10 +42,11 @@ Guidance for AI assistants (and humans) working in this repository.
 │   └── icon.svg                  # Ikona aplikacji
 └── src/
     ├── app/
-    │   ├── layout.tsx            # Root layout, metadata, viewport, manifest
+    │   ├── layout.tsx            # Root layout, metadata, viewport, manifest, analityka Vercela
     │   ├── globals.css           # Wszystkie style
     │   ├── page.tsx              # Strona główna: tworzenie wydarzenia
-    │   └── event/[id]/page.tsx   # Strona wydarzenia: terminy, głosowanie, wynik na żywo
+    │   ├── event/[id]/page.tsx   # Strona wydarzenia: terminy, głosowanie, wynik na żywo
+    │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     ├── components/
     │   └── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     └── lib/
