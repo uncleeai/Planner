@@ -60,17 +60,21 @@ export async function signOut() {
 
 function LoginForm() {
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  async function sendCode(e: React.FormEvent) {
+  async function sendLink(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || busy) return;
     setBusy(true);
     setError('');
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      },
+    });
     if (error) {
       setError(error.message);
       setBusy(false);
@@ -80,31 +84,13 @@ function LoginForm() {
     setBusy(false);
   }
 
-  async function verify(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code.trim() || busy) return;
-    setBusy(true);
-    setError('');
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: code.trim(),
-      type: 'email',
-    });
-    if (error) {
-      setError(error.message);
-      setBusy(false);
-      return;
-    }
-    // onAuthStateChange ustawi sesję i przełączy widok.
-  }
-
   return (
     <main>
       <h1>Planner</h1>
       <p className="lead">Zaloguj się, żeby głosy i ustalenia były naprawdę Twoje.</p>
 
       {!sent ? (
-        <form className="card" onSubmit={sendCode}>
+        <form className="card" onSubmit={sendLink}>
           <h2>Logowanie</h2>
           <div className="field">
             <label htmlFor="email">E-mail</label>
@@ -121,39 +107,28 @@ function LoginForm() {
           </div>
           {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
           <button type="submit" disabled={!email.trim() || busy}>
-            {busy ? 'Wysyłam…' : 'Wyślij kod'}
+            {busy ? 'Wysyłam…' : 'Wyślij link'}
           </button>
-          <p className="small muted mt">Dostaniesz na maila 6-cyfrowy kod. Logujesz się raz — potem zostajesz zalogowany na tym urządzeniu.</p>
+          <p className="small muted mt">
+            Dostaniesz maila z linkiem. Otwórz go na tym samym urządzeniu — wrócisz tu
+            zalogowany i zostaniesz zalogowany na stałe.
+          </p>
         </form>
       ) : (
-        <form className="card" onSubmit={verify}>
-          <h2>Wpisz kod</h2>
-          <p className="small muted">Wysłaliśmy kod na <strong>{email}</strong>.</p>
-          <div className="field">
-            <label htmlFor="code">Kod z maila</label>
-            <input
-              id="code"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="np. 123456"
-              value={code}
-              onChange={(ev) => setCode(ev.target.value)}
-              autoFocus
-            />
-          </div>
-          {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-          <button type="submit" disabled={!code.trim() || busy}>
-            {busy ? 'Sprawdzam…' : 'Zaloguj'}
-          </button>
+        <div className="card">
+          <h2>Sprawdź maila</h2>
+          <p className="small muted">
+            Wysłaliśmy link logowania na <strong>{email}</strong>. Otwórz wiadomość i kliknij
+            „Sign in" — wrócisz tutaj zalogowany. (Otwórz na tym samym urządzeniu.)
+          </p>
           <button
             type="button"
             className="ghost mt"
-            onClick={() => { setSent(false); setCode(''); setError(''); }}
+            onClick={() => { setSent(false); setError(''); }}
           >
-            Zmień e-mail
+            Zmień e-mail / wyślij ponownie
           </button>
-        </form>
+        </div>
       )}
     </main>
   );
