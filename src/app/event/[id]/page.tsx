@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -40,6 +40,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
 
+  // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
+  // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
+  const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
+
   useEffect(() => {
     setCanShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
   }, []);
@@ -57,11 +61,40 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     } else {
       setEvent(ev as EventRow);
       setSlots((sl ?? []) as Slot[]);
-      setVotes((vo ?? []) as Vote[]);
       setMembers((pr ?? []) as Profile[]);
+
+      // Nałóż oczekujące głosy bieżącego użytkownika na świeży stan z bazy:
+      // jego ostatni wybór wygrywa, dopóki baza go nie potwierdzi (wtedy czyścimy pending).
+      const dbVotes = (vo ?? []) as Vote[];
+      const pending = pendingVotesRef.current;
+      const merged = dbVotes.map((v) => {
+        if (v.user_id === userId && pending.has(v.slot_id)) {
+          const want = pending.get(v.slot_id)!;
+          if (v.availability === want) {
+            pending.delete(v.slot_id);
+            return v;
+          }
+          return { ...v, availability: want };
+        }
+        return v;
+      });
+      for (const [slotId, want] of pending) {
+        if (!merged.some((v) => v.user_id === userId && v.slot_id === slotId)) {
+          merged.push({
+            id: `optimistic-${slotId}-${userId}`,
+            event_id: eventId,
+            slot_id: slotId,
+            user_id: userId,
+            participant_name: displayName,
+            availability: want,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+      setVotes(merged);
     }
     setLoading(false);
-  }, [eventId]);
+  }, [eventId, userId, displayName]);
 
   useEffect(() => {
     load();
@@ -116,6 +149,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function vote(slotId: string, availability: Availability) {
+    // Zapamiętaj zamiar — przeładowania z bazy będą go respektować aż do potwierdzenia.
+    pendingVotesRef.current.set(slotId, availability);
     // Optymistyczna aktualizacja: pokaż wybór od razu, zanim baza odpowie —
     // bez tego na komórce tap wygląda jakby nie zadziałał (feedback dopiero po realtime).
     setVotes((prev) => {
@@ -139,8 +174,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       { event_id: eventId, slot_id: slotId, user_id: userId, participant_name: displayName, availability },
       { onConflict: 'slot_id,user_id' },
     );
-    // Przy błędzie cofnij optymistyczną zmianę, pobierając prawdziwy stan z bazy.
-    if (error) load();
+    // Przy błędzie porzuć zamiar i wróć do prawdziwego stanu z bazy.
+    if (error) {
+      pendingVotesRef.current.delete(slotId);
+      load();
+    }
   }
 
   async function confirmSlot(slotId: string, startsAt: string) {
