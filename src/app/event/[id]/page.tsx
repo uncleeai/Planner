@@ -77,6 +77,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         { event: '*', schema: 'public', table: 'votes', filter: `event_id=eq.${eventId}` },
         () => load(),
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
+        () => load(),
+      )
       .subscribe();
 
     return () => {
@@ -109,6 +114,22 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       { event_id: eventId, slot_id: slotId, participant_name: name, availability },
       { onConflict: 'slot_id,participant_name' },
     );
+  }
+
+  async function confirmSlot(slotId: string, startsAt: string) {
+    await supabase
+      .from('events')
+      .update({ confirmed_slot_id: slotId, confirmed_at: startsAt })
+      .eq('id', eventId);
+    load();
+  }
+
+  async function unconfirmSlot() {
+    await supabase
+      .from('events')
+      .update({ confirmed_slot_id: null, confirmed_at: null })
+      .eq('id', eventId);
+    load();
   }
 
   async function copyLink() {
@@ -165,9 +186,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main>
-      <p><Link href="/">← Planner</Link></p>
+      <p>
+        {event?.group_id ? (
+          <Link href={`/group/${event.group_id}`}>← Wróć do ekipy</Link>
+        ) : (
+          <Link href="/">← Planner</Link>
+        )}
+      </p>
       <h1>{event?.title}</h1>
       {event?.location && <p className="lead">📍 {event.location}</p>}
+
+      {event?.confirmed_at && (
+        <div className="confirmed-banner">✅ Ustalono: {formatSlot(event.confirmed_at)}</div>
+      )}
 
       <div className="row mt">
         <button className="ghost" onClick={copyLink}>
@@ -204,15 +235,28 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <div className="card">
         <h2>Proponowane terminy</h2>
+        <p className="small muted" style={{ marginTop: -6 }}>
+          Gdy termin jest jasny, ktokolwiek może go „ustalić" — wskoczy wtedy na oś czasu ekipy.
+        </p>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
 
-        {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => (
-          <div key={slot.id} className={`slot${yes > 0 && yes === maxYes ? ' winner' : ''}`}>
+        {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
+          const isConfirmed = event?.confirmed_slot_id === slot.id;
+          const isBest = yes > 0 && yes === maxYes;
+          return (
+          <div
+            key={slot.id}
+            className={`slot${isConfirmed ? ' confirmed' : isBest ? ' winner' : ''}`}
+          >
             <div className="slot-head">
               <span className="slot-date">{formatSlot(slot.starts_at)}</span>
-              {yes > 0 && yes === maxYes && <span className="badge">najlepszy</span>}
+              {isConfirmed ? (
+                <span className="badge">ustalony</span>
+              ) : (
+                isBest && <span className="badge badge-open">najlepszy</span>
+              )}
             </div>
 
             <div className="tally">
@@ -246,8 +290,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 ))}
               </div>
             )}
+
+            <div className="row mt">
+              {isConfirmed ? (
+                <button className="ghost" onClick={unconfirmSlot}>Odznacz ustalony termin</button>
+              ) : (
+                <button className="ghost" onClick={() => confirmSlot(slot.id, slot.starts_at)}>
+                  Ustal ten termin
+                </button>
+              )}
+            </div>
           </div>
-        ))}
+          );
+        })}
 
         <form className="row mt" onSubmit={addSlot}>
           <input

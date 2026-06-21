@@ -1,8 +1,10 @@
 # Planner
 
-Prosty planer dla znajomych: tworzysz wypad, proponujesz terminy, wysyłasz link,
-a każdy zaznacza kiedy może. Wynik („kto może i który termin wygrywa") aktualizuje
-się na żywo. Bez zakładania kont — wystarczy link.
+Planer dla ekipy znajomych: zakładasz **ekipę** (jedno wspólne miejsce z linkiem),
+a w niej planujecie **wypady**. Dla każdego wypadu proponujecie terminy, każdy
+zaznacza kiedy może, a organizator może „ustalić" zwycięski termin — wtedy wypad
+ląduje na osi czasu ekipy. Wynik aktualizuje się na żywo. Bez zakładania kont —
+wystarczy link.
 
 ## Stack
 
@@ -16,7 +18,8 @@ Wszystko mieści się w darmowych planach Vercela i Supabase przy skali „grupk
 
 1. **Załóż projekt Supabase** na <https://supabase.com> (darmowy plan).
 2. **Utwórz tabele:** w panelu Supabase otwórz *SQL Editor*, wklej zawartość
-   [`supabase/schema.sql`](supabase/schema.sql) i kliknij *Run*.
+   [`supabase/schema.sql`](supabase/schema.sql) i kliknij *Run*. Skrypt jest
+   idempotentny — po aktualizacji schematu uruchamiasz go po prostu ponownie.
 3. **Skopiuj klucze:** *Project Settings → API* → potrzebujesz `Project URL`
    oraz klucza `anon public`.
 4. **Skonfiguruj zmienne środowiskowe:**
@@ -53,13 +56,17 @@ Bez kroków 1–4 strona się otworzy, ale pokaże baner z prośbą o konfigurac
 
 ## Jak to działa
 
-- Każdy **wypad** ma unikalny identyfikator w adresie (`/event/<id>`). Ten link
-  jest jednocześnie zaproszeniem — kto go ma, ten wchodzi.
-- Uczestnik podaje **imię**, które zapisuje się w przeglądarce (`localStorage`).
-  Brak haseł i kont.
-- Każdy może **dodać termin** i przy każdym terminie zaznaczyć: *Mogę / Może / Nie*.
-- Dzięki **Supabase Realtime** głosy i nowe terminy pojawiają się u wszystkich
-  natychmiast.
+- **Ekipa** (`/group/<id>`) to stałe miejsce grupy — jej link jest zaproszeniem.
+  Otwarcie linku zapamiętuje ekipę w przeglądarce (`localStorage`), więc pojawia
+  się na stronie głównej w „Twoje ekipy". Brak haseł i kont.
+- Na **dashboardzie ekipy** widać oś czasu wypadów (Do ustalenia / Nadchodzące /
+  Minione) i przycisk **„Nowy wypad"**.
+- Każdy **wypad** (`/event/<id>`) ma swój link. Uczestnik podaje **imię**
+  (też w `localStorage`), dodaje terminy i zaznacza: *Mogę / Może / Nie*.
+- Gdy termin jest jasny, ktokolwiek może go **„ustalić"** — wypad dostaje
+  konkretną datę i przechodzi na osi czasu do „Nadchodzące".
+- Dzięki **Supabase Realtime** głosy, nowe wypady i ustalenia pojawiają się
+  u wszystkich natychmiast.
 
 ## Utrzymanie i analityka
 

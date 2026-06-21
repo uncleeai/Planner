@@ -1,7 +1,15 @@
 -- Planner — schemat bazy danych (Supabase / PostgreSQL)
 -- Uruchom w panelu Supabase: SQL Editor → wklej całość → Run.
+-- Skrypt jest idempotentny — można go bezpiecznie uruchomić ponownie po aktualizacji.
 
--- Wydarzenie / wypad. Identyfikator (id) jest jednocześnie kluczem w linku zapraszającym.
+-- Ekipa: stałe miejsce grupy znajomych. Identyfikator (id) jest kluczem w linku ekipy.
+create table if not exists public.groups (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  created_at timestamptz not null default now()
+);
+
+-- Wydarzenie / wypad. Identyfikator (id) jest jednocześnie kluczem w linku do wypadu.
 create table if not exists public.events (
   id          uuid primary key default gen_random_uuid(),
   title       text not null,
@@ -9,6 +17,10 @@ create table if not exists public.events (
   description text,
   created_at  timestamptz not null default now()
 );
+
+-- Wypad należy do ekipy (group_id dodajemy tu; confirmed_* poniżej, po tabeli slots).
+alter table public.events
+  add column if not exists group_id uuid references public.groups(id) on delete cascade;
 
 -- Proponowany termin w ramach wydarzenia.
 create table if not exists public.slots (
@@ -18,6 +30,12 @@ create table if not exists public.slots (
   created_by text,
   created_at timestamptz not null default now()
 );
+
+-- Ustalony (zatwierdzony) termin wypadu — wskazuje wybrany slot i jego datę.
+alter table public.events
+  add column if not exists confirmed_slot_id uuid references public.slots(id) on delete set null;
+alter table public.events
+  add column if not exists confirmed_at timestamptz;
 
 -- Głos uczestnika na dany termin: mogę / może / nie mogę.
 -- Brak kont — uczestnik identyfikuje się imieniem (participant_name).
@@ -31,6 +49,7 @@ create table if not exists public.votes (
   unique (slot_id, participant_name)
 );
 
+create index if not exists events_group_id_idx on public.events(group_id);
 create index if not exists slots_event_id_idx on public.slots(event_id);
 create index if not exists votes_event_id_idx on public.votes(event_id);
 create index if not exists votes_slot_id_idx on public.votes(slot_id);
@@ -38,18 +57,33 @@ create index if not exists votes_slot_id_idx on public.votes(slot_id);
 -- RLS: aplikacja działa bez logowania (dostęp przez link), więc rola anon
 -- ma pełny dostęp. To świadomy kompromis dla prywatnej apki dla znajomych —
 -- kto zna link, ten może czytać i pisać. Zob. uwagi w README / CLAUDE.md.
+alter table public.groups enable row level security;
 alter table public.events enable row level security;
 alter table public.slots  enable row level security;
 alter table public.votes  enable row level security;
 
+drop policy if exists "public access" on public.groups;
 drop policy if exists "public access" on public.events;
 drop policy if exists "public access" on public.slots;
 drop policy if exists "public access" on public.votes;
 
+create policy "public access" on public.groups for all using (true) with check (true);
 create policy "public access" on public.events for all using (true) with check (true);
 create policy "public access" on public.slots  for all using (true) with check (true);
 create policy "public access" on public.votes  for all using (true) with check (true);
 
--- Realtime: aktualizacje terminów i głosów na żywo u wszystkich uczestników.
-alter publication supabase_realtime add table public.slots;
-alter publication supabase_realtime add table public.votes;
+-- Realtime: aktualizacje na żywo (dashboard ekipy, terminy, głosy).
+-- alter publication ... add table nie jest idempotentne, więc dodajemy warunkowo.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['groups', 'events', 'slots', 'votes'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;

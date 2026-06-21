@@ -44,31 +44,37 @@ Guidance for AI assistants (and humans) working in this repository.
     ├── app/
     │   ├── layout.tsx            # Root layout, metadata, viewport, manifest, analityka Vercela
     │   ├── globals.css           # Wszystkie style
-    │   ├── page.tsx              # Strona główna: tworzenie wydarzenia
-    │   ├── event/[id]/page.tsx   # Strona wydarzenia: terminy, głosowanie, wynik na żywo
+    │   ├── page.tsx              # Strona główna: lista „Twoje ekipy" + tworzenie ekipy
+    │   ├── group/[id]/page.tsx   # Dashboard ekipy: oś czasu wypadów + „Nowy wypad"
+    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, wynik na żywo, ustalanie terminu
     │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     ├── components/
     │   └── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── identity.ts           # Imię uczestnika w localStorage (brak kont)
-        └── types.ts              # Typy: EventRow, Slot, Vote, Availability
+        ├── membership.ts         # Ekipy zapamiętane w localStorage (brak kont)
+        └── types.ts              # Typy: Group, EventRow, Slot, Vote, Availability
 ```
 
-**Punkty wejścia:** `src/app/page.tsx` (`/`) oraz `src/app/event/[id]/page.tsx`
-(`/event/<id>`). Oba to komponenty klienckie (`'use client'`) — całość logiki
-dzieje się w przeglądarce, brak warstwy serwerowej poza renderowaniem stron.
+**Punkty wejścia:** `src/app/page.tsx` (`/`, lista ekip),
+`src/app/group/[id]/page.tsx` (`/group/<id>`, dashboard ekipy) oraz
+`src/app/event/[id]/page.tsx` (`/event/<id>`, pojedynczy wypad). Wszystkie to
+komponenty klienckie (`'use client'`) — całość logiki dzieje się w przeglądarce,
+brak warstwy serwerowej poza renderowaniem stron i endpointem keepalive.
 
 ## Model danych
 
-Zdefiniowany w `supabase/schema.sql`:
+Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić ponownie):
 
-- **events** — wydarzenie; `id` jest jednocześnie kluczem w linku zapraszającym.
-- **slots** — proponowany termin (`starts_at`) powiązany z wydarzeniem.
+- **groups** — ekipa (stałe miejsce grupy znajomych); `id` jest kluczem w linku ekipy.
+- **events** — wypad; należy do ekipy (`group_id`), `id` jest kluczem w linku do wypadu.
+  Ustalony termin: `confirmed_slot_id` + `confirmed_at` (data zwycięskiego slotu).
+- **slots** — proponowany termin (`starts_at`) powiązany z wypadem.
 - **votes** — głos uczestnika na termin: `availability` ∈ `yes | maybe | no`,
   identyfikacja przez `participant_name` (brak kont). Unikalność: `(slot_id, participant_name)`.
 
-Realtime włączony dla `slots` i `votes` (dodane do publikacji `supabase_realtime`).
+Realtime włączony dla `groups`, `events`, `slots`, `votes` (publikacja `supabase_realtime`).
 RLS jest włączone, ale polityki dają roli `anon` pełny dostęp — świadomy kompromis
 przy dostępie tylko przez link (zob. README → „Świadome kompromisy").
 
@@ -114,6 +120,8 @@ przy dostępie tylko przez link (zob. README → „Świadome kompromisy").
   klienta w wielu miejscach. Sprawdzaj `isSupabaseConfigured` zanim wykonasz
   zapytania, by uniknąć cichych błędów bez `.env.local`.
 - **Tożsamość uczestnika** wyłącznie przez `src/lib/identity.ts` (localStorage).
+- **Przynależność do ekip** wyłącznie przez `src/lib/membership.ts` (localStorage);
+  współdzielenie odbywa się przez link ekipy, nie przez konta.
 - **Teksty UI po polsku** — to apka dla polskojęzycznych znajomych autora.
 - **Style** dopisuj do `src/app/globals.css`, korzystając z istniejących zmiennych
   CSS (`--primary`, `--yes`, `--maybe`, `--no` itd.); brak biblioteki UI.

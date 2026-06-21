@@ -1,79 +1,87 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { getGroups, rememberGroup, type RememberedGroup } from '@/lib/membership';
 import SetupBanner from '@/components/SetupBanner';
 
 export default function Home() {
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [location, setLocation] = useState('');
+  const [groups, setGroups] = useState<RememberedGroup[]>([]);
+  const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  async function createEvent(e: React.FormEvent) {
+  useEffect(() => {
+    setGroups(getGroups());
+  }, []);
+
+  async function createGroup(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || busy) return;
+    if (!name.trim() || busy) return;
     setBusy(true);
     setError('');
 
     const { data, error } = await supabase
-      .from('events')
-      .insert({ title: title.trim(), location: location.trim() || null })
-      .select('id')
+      .from('groups')
+      .insert({ name: name.trim() })
+      .select('id, name')
       .single();
 
     if (error || !data) {
-      setError(error?.message ?? 'Nie udało się utworzyć wydarzenia.');
+      setError(error?.message ?? 'Nie udało się utworzyć ekipy.');
       setBusy(false);
       return;
     }
-    router.push(`/event/${data.id}`);
+    rememberGroup(data.id, data.name);
+    router.push(`/group/${data.id}`);
   }
 
   return (
     <main>
       <h1>Planner</h1>
       <p className="lead">
-        Zaproponuj terminy wypadu, wyślij link znajomym i zobacz na żywo, kiedy
-        najwięcej osób może. Bez zakładania konta.
+        Wspólne miejsce dla ekipy: planujcie wypady, zbierajcie terminy i ustalajcie
+        kiedy się widzicie. Bez zakładania konta.
       </p>
 
       {!isSupabaseConfigured && <SetupBanner />}
 
-      <form className="card" onSubmit={createEvent}>
-        <h2>Nowy wypad</h2>
+      {groups.length > 0 && (
+        <div className="card">
+          <h2>Twoje ekipy</h2>
+          {groups.map((g) => (
+            <Link key={g.id} href={`/group/${g.id}`} className="list-item">
+              <span className="list-item-title">{g.name}</span>
+              <span className="muted">→</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <form className="card" onSubmit={createGroup}>
+        <h2>Nowa ekipa</h2>
         <div className="field">
-          <label htmlFor="title">Nazwa</label>
+          <label htmlFor="name">Nazwa ekipy</label>
           <input
-            id="title"
+            id="name"
             type="text"
-            placeholder="np. Piwo w piątek, wyjazd w góry…"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            placeholder="np. Ekipa z liceum, Wypady górskie…"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             autoFocus
           />
         </div>
-        <div className="field">
-          <label htmlFor="location">Miejsce (opcjonalnie)</label>
-          <input
-            id="location"
-            type="text"
-            placeholder="np. u Kuby, Zakopane…"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-        </div>
         {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-        <button type="submit" disabled={!title.trim() || busy}>
-          {busy ? 'Tworzę…' : 'Utwórz i dostań link'}
+        <button type="submit" disabled={!name.trim() || busy}>
+          {busy ? 'Tworzę…' : 'Utwórz ekipę'}
         </button>
       </form>
 
       <p className="small muted center">
-        Wskazówka: po utworzeniu skopiuj link i wrzuć go na grupę — każdy otworzy
-        go w telefonie, a stronę można dodać do ekranu głównego.
+        Masz link do ekipy od znajomych? Otwórz go — ekipa sama zapisze się tutaj.
       </p>
     </main>
   );
