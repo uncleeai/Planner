@@ -29,3 +29,10 @@ export type Vote = {
   availability: Availability;
   created_at: string;
 };
+
+export type Profile = {
+  id: string;
+  display_name: string;
+  created_at: string;
+  updated_at: string;
+};

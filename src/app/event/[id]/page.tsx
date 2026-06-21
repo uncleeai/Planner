@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import type { Availability, EventRow, Slot, Vote } from '@/lib/types';
+import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -29,6 +29,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [event, setEvent] = useState<EventRow | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [votes, setVotes] = useState<Vote[]>([]);
+  const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -36,10 +37,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }] = await Promise.all([
+    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
       supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
       supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
       supabase.from('votes').select('*').eq('event_id', eventId),
+      supabase.from('profiles').select('*'),
     ]);
 
     if (evErr || !ev) {
@@ -48,6 +50,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setEvent(ev as EventRow);
       setSlots((sl ?? []) as Slot[]);
       setVotes((vo ?? []) as Vote[]);
+      setMembers((pr ?? []) as Profile[]);
     }
     setLoading(false);
   }, [eventId]);
@@ -165,6 +168,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     [votes],
   );
 
+  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
+  const missingVoters = useMemo(() => {
+    const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
+    return members.filter((m) => !voted.has(m.id)).map((m) => m.display_name);
+  }, [members, votes]);
+
   if (loading) return <main><p className="muted">Wczytuję…</p></main>;
 
   if (notFound) {
@@ -203,6 +212,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       <p className="small muted mt">Głosujesz jako <strong>{displayName}</strong>.</p>
+
+      {slots.length > 0 && members.length > 0 && (
+        missingVoters.length > 0 ? (
+          <p className="small mt" style={{ color: 'var(--maybe)' }}>
+            ⏳ Czekamy jeszcze na: {missingVoters.join(', ')}
+          </p>
+        ) : (
+          <p className="small mt" style={{ color: 'var(--yes)' }}>
+            ✅ Cała paczka już zagłosowała.
+          </p>
+        )
+      )}
 
       <div className="card">
         <h2>Proponowane terminy</h2>

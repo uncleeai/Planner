@@ -34,6 +34,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Zapisz profil do listy paczki, gdy znamy konto i nazwę — dzięki temu inni widzą,
+  // kto jeszcze nie zagłosował (klient nie ma dostępu do auth.users).
+  useEffect(() => {
+    if (!session) return;
+    const name = (session.user.user_metadata?.display_name as string | undefined)?.trim();
+    if (!name) return;
+    supabase
+      .from('profiles')
+      .upsert(
+        { id: session.user.id, display_name: name, updated_at: new Date().toISOString() },
+        { onConflict: 'id' },
+      )
+      .then(() => {});
+  }, [session]);
+
   if (!isSupabaseConfigured) {
     return (
       <main>

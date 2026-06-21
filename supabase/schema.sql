@@ -63,10 +63,21 @@ create index if not exists slots_event_id_idx on public.slots(event_id);
 create index if not exists votes_event_id_idx on public.votes(event_id);
 create index if not exists votes_slot_id_idx on public.votes(slot_id);
 
+-- Profile użytkownika = lista „paczki" (kto kiedykolwiek się zalogował i ustawił nazwę).
+-- Pozwala policzyć „kto jeszcze nie zagłosował", bo klient z kluczem anon nie ma
+-- dostępu do auth.users. Wiersz zapisuje sama aplikacja po zalogowaniu.
+create table if not exists public.profiles (
+  id           uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
 -- RLS: dostęp tylko dla zalogowanych; każdy edytuje wyłącznie swoje rekordy.
-alter table public.events enable row level security;
-alter table public.slots  enable row level security;
-alter table public.votes  enable row level security;
+alter table public.events   enable row level security;
+alter table public.slots    enable row level security;
+alter table public.votes    enable row level security;
+alter table public.profiles enable row level security;
 
 -- Usuń stare, otwarte polityki (i ewentualne wcześniejsze wersje nowych).
 drop policy if exists "public access" on public.events;
@@ -81,6 +92,9 @@ drop policy if exists "votes read"    on public.votes;
 drop policy if exists "votes insert"  on public.votes;
 drop policy if exists "votes update"  on public.votes;
 drop policy if exists "votes delete"  on public.votes;
+drop policy if exists "profiles read"   on public.profiles;
+drop policy if exists "profiles insert" on public.profiles;
+drop policy if exists "profiles update" on public.profiles;
 
 -- events: każdy zalogowany czyta; tworzy jako on sam; ustala termin tylko twórca
 -- (stare wypady bez twórcy zostają edytowalne — zgodność).
@@ -104,13 +118,20 @@ create policy "votes update" on public.votes for update to authenticated
 create policy "votes delete" on public.votes for delete to authenticated
   using (user_id = auth.uid());
 
--- Realtime: aktualizacje na żywo (dashboard wypadów, terminy, głosy).
+-- profiles: każdy zalogowany czyta listę paczki; edytować można tylko własny profil.
+create policy "profiles read"   on public.profiles for select to authenticated using (true);
+create policy "profiles insert" on public.profiles for insert to authenticated
+  with check (id = auth.uid());
+create policy "profiles update" on public.profiles for update to authenticated
+  using (id = auth.uid()) with check (id = auth.uid());
+
+-- Realtime: aktualizacje na żywo (dashboard wypadów, terminy, głosy, paczka).
 -- alter publication ... add table nie jest idempotentne, więc dodajemy warunkowo.
 do $$
 declare
   t text;
 begin
-  foreach t in array array['events', 'slots', 'votes'] loop
+  foreach t in array array['events', 'slots', 'votes', 'profiles'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
