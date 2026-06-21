@@ -37,6 +37,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const [newSlot, setNewSlot] = useState('');
   const [copied, setCopied] = useState(false);
+  const [canShare, setCanShare] = useState(false);
+
+  useEffect(() => {
+    setCanShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+  }, []);
 
   const load = useCallback(async () => {
     const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
@@ -158,9 +163,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     router.push('/');
   }
 
-  async function copyLink() {
+  async function shareLink() {
+    const url = window.location.href;
+    // Na iOS/mobile użyj natywnego Share Sheet (iMessage/WhatsApp…); to gest użytkownika.
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: event?.title ? `Wypad: ${event.title}` : 'Wypad',
+          text: event?.title ? `Ustalmy termin: ${event.title}` : 'Ustalmy termin wypadu',
+          url,
+        });
+      } catch {
+        /* użytkownik anulował udostępnianie — nic nie robimy */
+      }
+      return;
+    }
+    // Fallback (desktop): skopiuj link do schowka.
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -221,8 +241,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
 
       <div className="row mt">
-        <button className="ghost" onClick={copyLink}>
-          {copied ? 'Skopiowano ✓' : 'Skopiuj link dla znajomych'}
+        <button className="ghost" onClick={shareLink}>
+          {copied ? 'Skopiowano ✓' : canShare ? 'Udostępnij link 📤' : 'Skopiuj link dla znajomych'}
         </button>
         <span className="spacer" />
         <span className="small muted">
