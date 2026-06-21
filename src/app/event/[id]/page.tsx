@@ -2,10 +2,9 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { getName, setName as persistName } from '@/lib/identity';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/auth';
 import type { Availability, EventRow, Slot, Vote } from '@/lib/types';
-import SetupBanner from '@/components/SetupBanner';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -25,6 +24,7 @@ function formatSlot(iso: string): string {
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
+  const { userId, displayName } = useAuth();
 
   const [event, setEvent] = useState<EventRow | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -32,14 +32,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [name, setNameState] = useState('');
-  const [nameInput, setNameInput] = useState('');
   const [newSlot, setNewSlot] = useState('');
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    setNameState(getName());
-  }, []);
 
   const load = useCallback(async () => {
     const [{ data: ev, error: evErr }, { data: sl }, { data: vo }] = await Promise.all([
@@ -59,10 +53,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }, [eventId]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setLoading(false);
-      return;
-    }
     load();
 
     const channel = supabase
@@ -89,30 +79,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
   }, [eventId, load]);
 
-  function saveName(e: React.FormEvent) {
-    e.preventDefault();
-    const clean = nameInput.trim();
-    if (!clean) return;
-    persistName(clean);
-    setNameState(clean);
-  }
-
   async function addSlot(e: React.FormEvent) {
     e.preventDefault();
     if (!newSlot) return;
     await supabase.from('slots').insert({
       event_id: eventId,
       starts_at: new Date(newSlot).toISOString(),
-      created_by: name || null,
+      created_by: displayName,
     });
     setNewSlot('');
   }
 
   async function vote(slotId: string, availability: Availability) {
-    if (!name) return;
     await supabase.from('votes').upsert(
-      { event_id: eventId, slot_id: slotId, participant_name: name, availability },
-      { onConflict: 'slot_id,participant_name' },
+      { event_id: eventId, slot_id: slotId, user_id: userId, participant_name: displayName, availability },
+      { onConflict: 'slot_id,user_id' },
     );
   }
 
@@ -151,10 +132,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         yes: slotVotes.filter((v) => v.availability === 'yes').length,
         maybe: slotVotes.filter((v) => v.availability === 'maybe').length,
         no: slotVotes.filter((v) => v.availability === 'no').length,
-        mine: slotVotes.find((v) => v.participant_name === name)?.availability,
+        mine: slotVotes.find((v) => v.user_id === userId)?.availability,
       };
     });
-  }, [slots, votes, name]);
+  }, [slots, votes, userId]);
 
   const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
 
@@ -163,15 +144,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     [votes],
   );
 
-  if (!isSupabaseConfigured) {
-    return (
-      <main>
-        <p><Link href="/">← Planner</Link></p>
-        <SetupBanner />
-      </main>
-    );
-  }
-
   if (loading) return <main><p className="muted">Wczytuję…</p></main>;
 
   if (notFound) {
@@ -179,14 +151,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       <main>
         <h1>Nie znaleziono</h1>
         <p className="lead">Ten wypad nie istnieje albo link jest nieprawidłowy.</p>
-        <Link href="/"><button className="ghost">Utwórz nowy</button></Link>
+        <Link href="/"><button className="ghost">Wróć</button></Link>
       </main>
     );
   }
 
-  // Bez kont „organizator" = imię twórcy wypadu (miękka zasada). Stare wypady bez
-  // twórcy zostają otwarte dla każdego, dla zgodności.
-  const isOrganizer = !!name && (!event?.created_by || event.created_by === name);
+  const isOrganizer = !event?.created_by_user_id || event.created_by_user_id === userId;
 
   return (
     <main>
@@ -211,26 +181,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </span>
       </div>
 
-      {!name ? (
-        <form className="card mt" onSubmit={saveName}>
-          <h2>Jak masz na imię?</h2>
-          <p className="small muted">Twoje imię zobaczą inni przy Twoich głosach.</p>
-          <div className="field">
-            <input
-              type="text"
-              placeholder="np. Kuba"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <button type="submit" disabled={!nameInput.trim()}>Zapisz</button>
-        </form>
-      ) : (
-        <p className="small muted mt">
-          Głosujesz jako <strong>{name}</strong>.
-        </p>
-      )}
+      <p className="small muted mt">Głosujesz jako <strong>{displayName}</strong>.</p>
 
       <div className="card">
         <h2>Proponowane terminy</h2>
@@ -273,7 +224,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <button
                   key={c.value}
                   className={mine === c.value ? c.cls : ''}
-                  disabled={!name}
                   onClick={() => vote(slot.id, c.value)}
                 >
                   {c.label}

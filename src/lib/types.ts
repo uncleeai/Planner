@@ -6,6 +6,7 @@ export type EventRow = {
   location: string | null;
   description: string | null;
   created_by: string | null;
+  created_by_user_id: string | null;
   confirmed_slot_id: string | null;
   confirmed_at: string | null;
   created_at: string;
@@ -23,6 +24,7 @@ export type Vote = {
   id: string;
   event_id: string;
   slot_id: string;
+  user_id: string | null;
   participant_name: string;
   availability: Availability;
   created_at: string;

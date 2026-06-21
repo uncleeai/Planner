@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { getName, setName as persistName } from '@/lib/identity';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth, signOut } from '@/lib/auth';
 import type { EventRow } from '@/lib/types';
-import SetupBanner from '@/components/SetupBanner';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('pl-PL', {
@@ -20,22 +19,16 @@ function formatDate(iso: string): string {
 
 export default function Home() {
   const router = useRouter();
+  const { userId, displayName } = useAuth();
 
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [name, setNameState] = useState('');
-  const [nameInput, setNameInput] = useState('');
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    setNameState(getName());
-  }, []);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -47,29 +40,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setLoading(false);
-      return;
-    }
     load();
-
     const channel = supabase
       .channel('events-dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [load]);
-
-  function saveName(e: React.FormEvent) {
-    e.preventDefault();
-    const clean = nameInput.trim();
-    if (!clean) return;
-    persistName(clean);
-    setNameState(clean);
-  }
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +58,12 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from('events')
-      .insert({ title: title.trim(), location: location.trim() || null, created_by: name || null })
+      .insert({
+        title: title.trim(),
+        location: location.trim() || null,
+        created_by: displayName,
+        created_by_user_id: userId,
+      })
       .select('id')
       .single();
 
@@ -111,49 +95,17 @@ export default function Home() {
     return { open, upcoming, past };
   }, [events]);
 
-  if (!isSupabaseConfigured) {
-    return (
-      <main>
-        <h1>Planner</h1>
-        <SetupBanner />
-      </main>
-    );
-  }
-
-  // Bramka na imię — pytamy raz przy wejściu, potem zapisane w przeglądarce.
-  if (!name) {
-    return (
-      <main>
-        <h1>Planner</h1>
-        <p className="lead">Wspólne planowanie wypadów dla ekipy. Bez zakładania konta.</p>
-        <form className="card" onSubmit={saveName}>
-          <h2>Jak masz na imię?</h2>
-          <p className="small muted">Twoje imię zobaczą inni przy Twoich głosach.</p>
-          <div className="field">
-            <input
-              type="text"
-              placeholder="np. Kuba"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <button type="submit" disabled={!nameInput.trim()}>Wchodzę</button>
-        </form>
-      </main>
-    );
-  }
-
   return (
     <main>
       <div className="row">
         <h1 style={{ marginBottom: 0 }}>Planner</h1>
         <span className="spacer" />
-        <span className="small muted">Cześć, {name}</span>
+        <span className="small muted">Cześć, {displayName}</span>
       </div>
       <p className="lead">Wasze wypady w jednym miejscu — proponujcie terminy i ustalajcie kiedy.</p>
 
       <div className="row mt">
+        <button className="ghost" onClick={() => signOut()}>Wyloguj</button>
         <span className="spacer" />
         <button onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Anuluj' : '+ Nowy wypad'}
