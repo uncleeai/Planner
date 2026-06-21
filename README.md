@@ -61,6 +61,34 @@ Bez kroków 1–4 strona się otworzy, ale pokaże baner z prośbą o konfigurac
 - Dzięki **Supabase Realtime** głosy i nowe terminy pojawiają się u wszystkich
   natychmiast.
 
+## Utrzymanie i analityka
+
+### Keepalive bazy (żeby Supabase nie zasypiało)
+
+Darmowy plan Supabase **pauzuje projekt po ~7 dniach bezczynności**. Żeby tego
+uniknąć, `vercel.json` definiuje **Vercel Cron**, który raz dziennie odpytuje
+endpoint [`/api/keepalive`](src/app/api/keepalive/route.ts) — ten robi lekkie
+zapytanie do bazy i utrzymuje ją aktywną. Działa automatycznie po wdrożeniu na
+Vercela (widoczne w *Settings → Cron Jobs*). Cron na planie Hobby uruchamia się
+raz na dobę — to wystarcza wobec 7-dniowego okna pauzy.
+
+Można też sprawdzić ręcznie: wejście na `https://<twoja-domena>/api/keepalive`
+zwraca `{"ok":true,...}`.
+
+> **Fallback:** gdyby cron z jakiegoś powodu nie działał, ten sam efekt da
+> darmowy zewnętrzny pinger (np. <https://cron-job.org>) ustawiony na codzienne
+> odpytywanie `/api/keepalive`.
+
+### Analityka (Vercel)
+
+W `src/app/layout.tsx` podpięte są `@vercel/analytics` i `@vercel/speed-insights`.
+Żeby zaczęły zbierać dane, włącz je jeszcze w panelu Vercela:
+
+1. Projekt → zakładka **Analytics** → *Enable*.
+2. Projekt → zakładka **Speed Insights** → *Enable*.
+
+Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
+
 ## Świadome kompromisy (skeleton)
 
 - **Brak autoryzacji.** Dostęp przez link, a reguły RLS w Supabase pozwalają roli
