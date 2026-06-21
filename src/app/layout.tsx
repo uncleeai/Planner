@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   title: 'Planner — ustalajcie terminy bez chaosu',
   description: 'Zaproponuj terminy wypadu, zbierz głosy znajomych i zobacz wynik na żywo.',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Planner' },
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Planner' },
+  icons: { icon: '/icon.svg', apple: '/icon-180.png' },
 };
 
 export const viewport: Viewport = {

@@ -11,9 +11,13 @@
   --maybe: #eab308;
   --no: #ef4444;
   --radius: 14px;
+  /* Ciemny motyw również dla kontrolek natywnych (picker daty, scrollbary) na iOS. */
+  color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html { -webkit-text-size-adjust: 100%; }
 
 html, body {
   margin: 0;
@@ -89,7 +93,7 @@ button.ghost.danger { color: var(--no); border-color: rgba(239, 68, 68, 0.4); }
 button.ghost.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--no); }
 
 .chips { gap: 8px; }
-button.chip { padding: 6px 12px; font-size: 0.85rem; font-weight: 500; }
+button.chip { min-height: 40px; padding: 8px 14px; font-size: 0.85rem; font-weight: 500; }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .spacer { flex: 1; }
@@ -118,7 +122,11 @@ button.chip { padding: 6px 12px; font-size: 0.85rem; font-weight: 500; }
 
 .slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .slot-date { font-weight: 600; font-size: 1.05rem; }
-.slot-del { padding: 4px 10px; font-size: 0.85rem; line-height: 1; color: var(--muted); }
+.slot-del {
+  min-width: 40px; min-height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 4px 10px; font-size: 1rem; line-height: 1; color: var(--muted);
+}
 .slot-del:hover { color: var(--no); border-color: var(--no); }
 .badge {
   font-size: 0.75rem;
