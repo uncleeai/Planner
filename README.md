@@ -1,13 +1,16 @@
 # Planner
 
-Prosty planer dla znajomych: tworzysz wypad, proponujesz terminy, wysyłasz link,
-a każdy zaznacza kiedy może. Wynik („kto może i który termin wygrywa") aktualizuje
-się na żywo. Bez zakładania kont — wystarczy link.
+Jeden wspólny planer dla paczki znajomych. Logujesz się raz (e-mail + kod), potem
+widzisz **oś czasu wypadów** i dodajesz nowe. Dla każdego wypadu proponujecie terminy,
+każdy zaznacza kiedy może, a organizator (twórca wypadu) „ustala" zwycięski termin —
+wtedy wypad ląduje na osi czasu jako nadchodzący. Wynik aktualizuje się na żywo.
+Logowanie pilnuje, że każdy działa tylko jako on sam (nikt nie zagłosuje za kogoś).
 
 ## Stack
 
 - **Next.js 16** (App Router, TypeScript) + **React 19** — frontend i hosting (Vercel).
-- **Supabase** — baza PostgreSQL, dostęp przez API oraz aktualizacje na żywo (Realtime).
+- **Supabase** — baza PostgreSQL, aktualizacje na żywo (Realtime) oraz **logowanie**
+  (Auth, e-mail + kod OTP, trwała sesja).
 - **PWA** — manifest pozwala dodać stronę do ekranu głównego telefonu.
 
 Wszystko mieści się w darmowych planach Vercela i Supabase przy skali „grupka znajomych".
@@ -16,7 +19,9 @@ Wszystko mieści się w darmowych planach Vercela i Supabase przy skali „grupk
 
 1. **Załóż projekt Supabase** na <https://supabase.com> (darmowy plan).
 2. **Utwórz tabele:** w panelu Supabase otwórz *SQL Editor*, wklej zawartość
-   [`supabase/schema.sql`](supabase/schema.sql) i kliknij *Run*.
+   [`supabase/schema.sql`](supabase/schema.sql) i kliknij *Run*. Skrypt jest
+   idempotentny — po aktualizacji schematu uruchamiasz go po prostu ponownie.
+   Schemat włącza logowanie i zacieśnione reguły RLS (zob. „Logowanie" niżej).
 3. **Skopiuj klucze:** *Project Settings → API* → potrzebujesz `Project URL`
    oraz klucza `anon public`.
 4. **Skonfiguruj zmienne środowiskowe:**
@@ -53,13 +58,34 @@ Bez kroków 1–4 strona się otworzy, ale pokaże baner z prośbą o konfigurac
 
 ## Jak to działa
 
-- Każdy **wypad** ma unikalny identyfikator w adresie (`/event/<id>`). Ten link
-  jest jednocześnie zaproszeniem — kto go ma, ten wchodzi.
-- Uczestnik podaje **imię**, które zapisuje się w przeglądarce (`localStorage`).
-  Brak haseł i kont.
-- Każdy może **dodać termin** i przy każdym terminie zaznaczyć: *Mogę / Może / Nie*.
-- Dzięki **Supabase Realtime** głosy i nowe terminy pojawiają się u wszystkich
-  natychmiast.
+- **Logowanie na wejściu.** Podajesz e-mail, dostajesz 6-cyfrowy kod, a przy
+  pierwszym razie ustawiasz nazwę (widoczną przy Twoich głosach). Sesja jest trwała —
+  na danym urządzeniu logujesz się praktycznie raz.
+- **Strona główna = dashboard:** wspólna oś czasu wypadów (Do ustalenia / Nadchodzące /
+  Minione) i przycisk **„Nowy wypad"**.
+- Każdy **wypad** (`/event/<id>`) ma swój link. Uczestnik dodaje terminy
+  i przy każdym zaznacza: *Mogę / Może / Nie*.
+- **Organizator** (twórca wypadu) „ustala" zwycięski termin — wypad dostaje konkretną
+  datę i przechodzi na osi czasu do „Nadchodzące", a po dacie do „Minione".
+- Dzięki **Supabase Realtime** głosy, nowe wypady i ustalenia pojawiają się
+  u wszystkich natychmiast.
+- Reguły bazy pilnują, że **każdy edytuje tylko swoje** (głos, ustalanie terminu) —
+  nikt nie podszyje się pod kogoś innego.
+
+## Logowanie
+
+Logowanie to **e-mail + jednorazowy kod** (Supabase Auth). Konfiguracja w panelu:
+
+1. *Authentication → Providers → Email* — włączone (domyślnie jest).
+2. *Authentication → Email Templates → Magic Link* — dodaj do treści **kod**, np.:
+   `Twój kod logowania: {{ .Token }}` (domyślny szablon pokazuje tylko link, a my
+   logujemy się kodem wpisywanym w aplikacji).
+3. Uruchom (lub uruchom ponownie) `supabase/schema.sql` — włącza reguły RLS „tylko
+   zalogowani; każdy edytuje swoje".
+
+Wbudowana wysyłka maili Supabase jest limitowana (kilka/godz.) — dla paczki znajomych
+wystarcza; docelowo można podpiąć własny SMTP. Sesja trzymana jest w przeglądarce
+i odświeżana automatycznie, więc logujesz się rzadko.
 
 ## Utrzymanie i analityka
 
@@ -89,12 +115,16 @@ W `src/app/layout.tsx` podpięte są `@vercel/analytics` i `@vercel/speed-insigh
 
 Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 
-## Świadome kompromisy (skeleton)
+## Świadome kompromisy
 
-- **Brak autoryzacji.** Dostęp przez link, a reguły RLS w Supabase pozwalają roli
-  `anon` na odczyt i zapis. Dla prywatnej apki dla znajomych to wystarcza, ale
-  każdy z linkiem może edytować dane wydarzenia (w tym głosować „jako ktoś inny").
-  Jeśli kiedyś będzie potrzeba — dochodzi logowanie i zawężenie reguł RLS.
+- **Wspólna baza / cutover.** Włączenie nowego `schema.sql` (logowanie + RLS) sprawia,
+  że stara wersja bez logowania przestaje działać na tej samej bazie. Uruchamiaj nowy
+  schemat **razem** z wdrożeniem nowego kodu na produkcję.
+- **Każdy zweryfikowany ma dostęp.** Nie ma listy zaproszonych — kto się zaloguje, ten
+  korzysta (ale tylko jako on sam). Jeśli zajdzie potrzeba trzymania obcych z daleka,
+  dochodzi allowlista e-maili.
+- **Migawki nazw.** Nazwę wyświetlaną zapisujemy przy głosie/wypadzie w chwili akcji;
+  zmiana nazwy nie aktualizuje wstecz starych wpisów.
 - **`npm audit`** zgłasza jedną podatność *moderate* w pakiecie `postcss`
   (zależność pośrednia, używana tylko przy budowaniu CSS — nie dotyczy runtime).
   Podpowiadany „fix" downgrade'uje Next do prehistorycznej wersji, więc go **nie**
@@ -104,6 +134,6 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 
 - **Powiadomienia push** (Web Push / VAPID, darmowe). Działają na Androidzie;
   na iPhonie tylko od iOS 16.4+ i pod warunkiem dodania strony do ekranu głównego.
-- Logowanie (magic link / Google) i zawężone reguły RLS.
-- Lista nadchodzących i minionych wypadów, komentarze przy wydarzeniu.
+- Logowanie przez Google (jedno kliknięcie) obok kodu e-mail; allowlista e-maili.
+- Komentarze przy wypadzie.
 - Ikony PNG (192/512) i `apple-touch-icon` dla pełnego wsparcia instalacji PWA.

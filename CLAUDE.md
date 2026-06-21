@@ -14,8 +14,10 @@ Guidance for AI assistants (and humans) working in this repository.
 ## Stack
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**.
-- **Supabase** (PostgreSQL + Realtime) jako backend/baza, używane przez przeglądarkę
-  z kluczem `anon`.
+- **Supabase** (PostgreSQL + Realtime + **Auth**) jako backend/baza, używane przez
+  przeglądarkę z kluczem `anon`.
+- **Logowanie** e-mailem (kod OTP) przez Supabase Auth; trwała sesja (zaloguj raz na
+  urządzeniu). Cała apka jest za bramką logowania — zob. `src/lib/auth.tsx`.
 - **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
 - Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka).
 - Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
@@ -42,35 +44,48 @@ Guidance for AI assistants (and humans) working in this repository.
 │   └── icon.svg                  # Ikona aplikacji
 └── src/
     ├── app/
-    │   ├── layout.tsx            # Root layout, metadata, viewport, manifest, analityka Vercela
+    │   ├── layout.tsx            # Root layout + AuthProvider (bramka logowania), metadata, analityka
     │   ├── globals.css           # Wszystkie style
-    │   ├── page.tsx              # Strona główna: tworzenie wydarzenia
-    │   ├── event/[id]/page.tsx   # Strona wydarzenia: terminy, głosowanie, wynik na żywo
+    │   ├── page.tsx              # Strona główna = dashboard: oś czasu wypadów + „Nowy wypad"
+    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, wynik na żywo, ustalanie terminu
     │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     ├── components/
     │   └── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
-        ├── identity.ts           # Imię uczestnika w localStorage (brak kont)
+        ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa) + hook useAuth
         └── types.ts              # Typy: EventRow, Slot, Vote, Availability
 ```
 
-**Punkty wejścia:** `src/app/page.tsx` (`/`) oraz `src/app/event/[id]/page.tsx`
-(`/event/<id>`). Oba to komponenty klienckie (`'use client'`) — całość logiki
-dzieje się w przeglądarce, brak warstwy serwerowej poza renderowaniem stron.
+**Punkty wejścia:** `src/app/page.tsx` (`/`, dashboard wszystkich wypadów) oraz
+`src/app/event/[id]/page.tsx` (`/event/<id>`, pojedynczy wypad). Oba to komponenty
+klienckie (`'use client'`) — całość logiki dzieje się w przeglądarce, brak warstwy
+serwerowej poza renderowaniem stron i endpointem keepalive.
+
+**Model produktu:** jeden wspólny planer dla jednej (stałej) paczki znajomych — bez
+„ekip". Wejście wymaga **logowania** (e-mail + kod OTP, Supabase Auth); po pierwszym
+logowaniu użytkownik ustawia nazwę (w `user_metadata`). Sesja jest trwała.
 
 ## Model danych
 
-Zdefiniowany w `supabase/schema.sql`:
+Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić ponownie):
 
-- **events** — wydarzenie; `id` jest jednocześnie kluczem w linku zapraszającym.
-- **slots** — proponowany termin (`starts_at`) powiązany z wydarzeniem.
-- **votes** — głos uczestnika na termin: `availability` ∈ `yes | maybe | no`,
-  identyfikacja przez `participant_name` (brak kont). Unikalność: `(slot_id, participant_name)`.
+- **events** — wypad; `id` jest kluczem w linku do wypadu. Organizator: `created_by`
+  (nazwa, migawka) + `created_by_user_id` (konto). Ustalony termin: `confirmed_slot_id`
+  + `confirmed_at` (data zwycięskiego slotu).
+- **slots** — proponowany termin (`starts_at`) powiązany z wypadem.
+- **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
+  + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
+- **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name`. Zapisywana
+  przez apkę po zalogowaniu (upsert w `auth.tsx`). Służy do pokazania „kto jeszcze nie
+  zagłosował", bo klient z kluczem `anon` nie ma dostępu do `auth.users`.
+- Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
+  przy głosach/wypadach zapisujemy dodatkowo migawkę nazwy.
 
-Realtime włączony dla `slots` i `votes` (dodane do publikacji `supabase_realtime`).
-RLS jest włączone, ale polityki dają roli `anon` pełny dostęp — świadomy kompromis
-przy dostępie tylko przez link (zob. README → „Świadome kompromisy").
+Realtime włączony dla `events`, `slots`, `votes`, `profiles` (publikacja `supabase_realtime`).
+**RLS:** dostęp tylko dla zalogowanych (`authenticated`); każdy edytuje wyłącznie swoje
+rekordy (głos po `user_id`, ustalanie terminu tylko twórca wypadu). To realna ochrona
+przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodności.
 
 ## Development workflow
 
@@ -113,7 +128,10 @@ przy dostępie tylko przez link (zob. README → „Świadome kompromisy").
 - **Backend tylko przez `supabase` z `src/lib/supabaseClient.ts`** — nie twórz
   klienta w wielu miejscach. Sprawdzaj `isSupabaseConfigured` zanim wykonasz
   zapytania, by uniknąć cichych błędów bez `.env.local`.
-- **Tożsamość uczestnika** wyłącznie przez `src/lib/identity.ts` (localStorage).
+- **Tożsamość i logowanie** wyłącznie przez `src/lib/auth.tsx` — `AuthProvider`
+  opakowuje apkę, a strony pobierają `{ userId, displayName }` hookiem `useAuth()`
+  (gwarantowane, bo bramka renderuje dzieci dopiero po zalogowaniu i ustawieniu nazwy).
+  Nie czytaj sesji bezpośrednio w stronach.
 - **Teksty UI po polsku** — to apka dla polskojęzycznych znajomych autora.
 - **Style** dopisuj do `src/app/globals.css`, korzystając z istniejących zmiennych
   CSS (`--primary`, `--yes`, `--maybe`, `--no` itd.); brak biblioteki UI.

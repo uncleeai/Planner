@@ -27,7 +27,10 @@ html, body {
 .container {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  /* Marginesy + bezpieczne obszary iOS (notch, pasek home) w trybie standalone. */
+  padding:
+    calc(24px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+    calc(64px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
 }
 
 h1 { font-size: 1.9rem; margin: 0 0 4px; }
@@ -82,6 +85,12 @@ button.ghost {
 }
 button.ghost:hover { background: var(--card-2); }
 
+button.ghost.danger { color: var(--no); border-color: rgba(239, 68, 68, 0.4); }
+button.ghost.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--no); }
+
+.chips { gap: 8px; }
+button.chip { padding: 6px 12px; font-size: 0.85rem; font-weight: 500; }
+
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .spacer { flex: 1; }
 .muted { color: var(--muted); }
@@ -107,8 +116,10 @@ button.ghost:hover { background: var(--card-2); }
 }
 .slot.winner { border-color: var(--yes); box-shadow: 0 0 0 1px var(--yes) inset; }
 
-.slot-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .slot-date { font-weight: 600; font-size: 1.05rem; }
+.slot-del { padding: 4px 10px; font-size: 0.85rem; line-height: 1; color: var(--muted); }
+.slot-del:hover { color: var(--no); border-color: var(--no); }
 .badge {
   font-size: 0.75rem;
   font-weight: 700;
@@ -140,3 +151,52 @@ button.ghost:hover { background: var(--card-2); }
 
 .center { text-align: center; }
 .mt { margin-top: 16px; }
+
+/* Lista ekip na stronie głównej */
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  margin-bottom: 8px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+}
+.list-item:hover { border-color: var(--primary); }
+.list-item-title { font-weight: 600; }
+
+/* Karty wypadów na osi czasu */
+.event-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+}
+.event-card:hover { border-color: var(--primary); }
+.event-card-title { font-weight: 600; }
+.event-card-status { flex-shrink: 0; text-align: right; }
+
+.badge-open { background: var(--maybe); color: #3b2f04; }
+
+/* Baner ustalonego terminu na stronie wypadu */
+.confirmed-banner {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid var(--yes);
+  color: var(--yes);
+  font-weight: 600;
+}
+
+.slot.confirmed { border-color: var(--yes); box-shadow: 0 0 0 1px var(--yes) inset; }

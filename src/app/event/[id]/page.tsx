@@ -2,10 +2,11 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { getName, setName as persistName } from '@/lib/identity';
-import type { Availability, EventRow, Slot, Vote } from '@/lib/types';
-import SetupBanner from '@/components/SetupBanner';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/auth';
+import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
+import { SLOT_PRESETS } from '@/lib/slotPresets';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -25,27 +26,30 @@ function formatSlot(iso: string): string {
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
+  const router = useRouter();
+  const { userId, displayName } = useAuth();
 
   const [event, setEvent] = useState<EventRow | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [votes, setVotes] = useState<Vote[]>([]);
+  const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [name, setNameState] = useState('');
-  const [nameInput, setNameInput] = useState('');
   const [newSlot, setNewSlot] = useState('');
   const [copied, setCopied] = useState(false);
+  const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
-    setNameState(getName());
+    setCanShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
   }, []);
 
   const load = useCallback(async () => {
-    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }] = await Promise.all([
+    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
       supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
       supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
       supabase.from('votes').select('*').eq('event_id', eventId),
+      supabase.from('profiles').select('*'),
     ]);
 
     if (evErr || !ev) {
@@ -54,15 +58,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setEvent(ev as EventRow);
       setSlots((sl ?? []) as Slot[]);
       setVotes((vo ?? []) as Vote[]);
+      setMembers((pr ?? []) as Profile[]);
     }
     setLoading(false);
   }, [eventId]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setLoading(false);
-      return;
-    }
     load();
 
     const channel = supabase
@@ -77,6 +78,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         { event: '*', schema: 'public', table: 'votes', filter: `event_id=eq.${eventId}` },
         () => load(),
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
+        () => load(),
+      )
       .subscribe();
 
     return () => {
@@ -84,36 +90,103 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
   }, [eventId, load]);
 
-  function saveName(e: React.FormEvent) {
-    e.preventDefault();
-    const clean = nameInput.trim();
-    if (!clean) return;
-    persistName(clean);
-    setNameState(clean);
+  async function insertSlot(localValue: string) {
+    if (!localValue) return;
+    await supabase.from('slots').insert({
+      event_id: eventId,
+      starts_at: new Date(localValue).toISOString(),
+      created_by: displayName,
+      created_by_user_id: userId,
+    });
   }
 
   async function addSlot(e: React.FormEvent) {
     e.preventDefault();
     if (!newSlot) return;
-    await supabase.from('slots').insert({
-      event_id: eventId,
-      starts_at: new Date(newSlot).toISOString(),
-      created_by: name || null,
-    });
+    await insertSlot(newSlot);
     setNewSlot('');
   }
 
-  async function vote(slotId: string, availability: Availability) {
-    if (!name) return;
-    await supabase.from('votes').upsert(
-      { event_id: eventId, slot_id: slotId, participant_name: name, availability },
-      { onConflict: 'slot_id,participant_name' },
-    );
+  async function deleteSlot(slotId: string) {
+    if (!window.confirm('Usunąć ten termin? Zniknie razem z oddanymi na niego głosami.')) return;
+    // Optymistycznie usuń lokalnie; przy błędzie stan wróci z bazy.
+    setSlots((prev) => prev.filter((s) => s.id !== slotId));
+    const { error } = await supabase.from('slots').delete().eq('id', slotId);
+    if (error) load();
   }
 
-  async function copyLink() {
+  async function vote(slotId: string, availability: Availability) {
+    // Optymistyczna aktualizacja: pokaż wybór od razu, zanim baza odpowie —
+    // bez tego na komórce tap wygląda jakby nie zadziałał (feedback dopiero po realtime).
+    setVotes((prev) => {
+      const existing = prev.find((v) => v.slot_id === slotId && v.user_id === userId);
+      if (existing) {
+        return prev.map((v) => (v === existing ? { ...v, availability } : v));
+      }
+      const optimistic: Vote = {
+        id: `optimistic-${slotId}-${userId}`,
+        event_id: eventId,
+        slot_id: slotId,
+        user_id: userId,
+        participant_name: displayName,
+        availability,
+        created_at: new Date().toISOString(),
+      };
+      return [...prev, optimistic];
+    });
+
+    const { error } = await supabase.from('votes').upsert(
+      { event_id: eventId, slot_id: slotId, user_id: userId, participant_name: displayName, availability },
+      { onConflict: 'slot_id,user_id' },
+    );
+    // Przy błędzie cofnij optymistyczną zmianę, pobierając prawdziwy stan z bazy.
+    if (error) load();
+  }
+
+  async function confirmSlot(slotId: string, startsAt: string) {
+    await supabase
+      .from('events')
+      .update({ confirmed_slot_id: slotId, confirmed_at: startsAt })
+      .eq('id', eventId);
+    load();
+  }
+
+  async function unconfirmSlot() {
+    await supabase
+      .from('events')
+      .update({ confirmed_slot_id: null, confirmed_at: null })
+      .eq('id', eventId);
+    load();
+  }
+
+  async function deleteEvent() {
+    if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
+    const { error } = await supabase.from('events').delete().eq('id', eventId);
+    if (error) {
+      window.alert('Nie udało się usunąć wypadu.');
+      return;
+    }
+    router.push('/');
+  }
+
+  async function shareLink() {
+    const url = window.location.href;
+    // Na iOS/mobile użyj natywnego Share Sheet (iMessage/WhatsApp…); to gest użytkownika.
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: event?.title ? `Wypad: ${event.title}` : 'Wypad',
+          text: event?.title ? `Ustalmy termin: ${event.title}` : 'Ustalmy termin wypadu',
+          url,
+        });
+      } catch {
+        /* użytkownik anulował udostępnianie — nic nie robimy */
+      }
+      return;
+    }
+    // Fallback (desktop): skopiuj link do schowka.
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -130,10 +203,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         yes: slotVotes.filter((v) => v.availability === 'yes').length,
         maybe: slotVotes.filter((v) => v.availability === 'maybe').length,
         no: slotVotes.filter((v) => v.availability === 'no').length,
-        mine: slotVotes.find((v) => v.participant_name === name)?.availability,
+        mine: slotVotes.find((v) => v.user_id === userId)?.availability,
       };
     });
-  }, [slots, votes, name]);
+  }, [slots, votes, userId]);
 
   const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
 
@@ -142,14 +215,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     [votes],
   );
 
-  if (!isSupabaseConfigured) {
-    return (
-      <main>
-        <p><Link href="/">← Planner</Link></p>
-        <SetupBanner />
-      </main>
-    );
-  }
+  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
+  const missingVoters = useMemo(() => {
+    const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
+    return members.filter((m) => !voted.has(m.id)).map((m) => m.display_name);
+  }, [members, votes]);
 
   if (loading) return <main><p className="muted">Wczytuję…</p></main>;
 
@@ -158,20 +228,27 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       <main>
         <h1>Nie znaleziono</h1>
         <p className="lead">Ten wypad nie istnieje albo link jest nieprawidłowy.</p>
-        <Link href="/"><button className="ghost">Utwórz nowy</button></Link>
+        <Link href="/"><button className="ghost">Wróć</button></Link>
       </main>
     );
   }
 
+  const isOrganizer = !event?.created_by_user_id || event.created_by_user_id === userId;
+
   return (
     <main>
-      <p><Link href="/">← Planner</Link></p>
+      <p><Link href="/">← Wszystkie wypady</Link></p>
       <h1>{event?.title}</h1>
       {event?.location && <p className="lead">📍 {event.location}</p>}
+      {event?.created_by && <p className="small muted">Organizuje: {event.created_by}</p>}
+
+      {event?.confirmed_at && (
+        <div className="confirmed-banner">✅ Ustalono: {formatSlot(event.confirmed_at)}</div>
+      )}
 
       <div className="row mt">
-        <button className="ghost" onClick={copyLink}>
-          {copied ? 'Skopiowano ✓' : 'Skopiuj link dla znajomych'}
+        <button className="ghost" onClick={shareLink}>
+          {copied ? 'Skopiowano ✓' : canShare ? 'Udostępnij link 📤' : 'Skopiuj link dla znajomych'}
         </button>
         <span className="spacer" />
         <span className="small muted">
@@ -181,38 +258,62 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </span>
       </div>
 
-      {!name ? (
-        <form className="card mt" onSubmit={saveName}>
-          <h2>Jak masz na imię?</h2>
-          <p className="small muted">Twoje imię zobaczą inni przy Twoich głosach.</p>
-          <div className="field">
-            <input
-              type="text"
-              placeholder="np. Kuba"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <button type="submit" disabled={!nameInput.trim()}>Zapisz</button>
-        </form>
-      ) : (
-        <p className="small muted mt">
-          Głosujesz jako <strong>{name}</strong>.
-        </p>
+      <p className="small muted mt">Głosujesz jako <strong>{displayName}</strong>.</p>
+
+      {slots.length > 0 && members.length > 0 && (
+        missingVoters.length > 0 ? (
+          <p className="small mt" style={{ color: 'var(--maybe)' }}>
+            ⏳ Czekamy jeszcze na: {missingVoters.join(', ')}
+          </p>
+        ) : (
+          <p className="small mt" style={{ color: 'var(--yes)' }}>
+            ✅ Cała paczka już zagłosowała.
+          </p>
+        )
       )}
 
       <div className="card">
         <h2>Proponowane terminy</h2>
+        <p className="small muted" style={{ marginTop: -6 }}>
+          {isOrganizer
+            ? 'Jako organizator możesz „ustalić" finalny termin — wskoczy wtedy na oś czasu.'
+            : event?.created_by
+              ? `Finalny termin ustala organizator (${event.created_by}). Ty zaznacz, kiedy możesz.`
+              : 'Zaznacz przy każdym terminie, kiedy możesz.'}
+        </p>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
 
-        {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => (
-          <div key={slot.id} className={`slot${yes > 0 && yes === maxYes ? ' winner' : ''}`}>
+        {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
+          const isConfirmed = event?.confirmed_slot_id === slot.id;
+          const isBest = yes > 0 && yes === maxYes;
+          const canDelete = isOrganizer || slot.created_by_user_id === userId;
+          return (
+          <div
+            key={slot.id}
+            className={`slot${isConfirmed ? ' confirmed' : isBest ? ' winner' : ''}`}
+          >
             <div className="slot-head">
               <span className="slot-date">{formatSlot(slot.starts_at)}</span>
-              {yes > 0 && yes === maxYes && <span className="badge">najlepszy</span>}
+              {isConfirmed ? (
+                <span className="badge">ustalony</span>
+              ) : (
+                isBest && <span className="badge badge-open">najlepszy</span>
+              )}
+              {canDelete && !isConfirmed && (
+                <>
+                  <span className="spacer" />
+                  <button
+                    type="button"
+                    className="ghost slot-del"
+                    aria-label="Usuń termin"
+                    onClick={() => deleteSlot(slot.id)}
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="tally">
@@ -226,7 +327,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <button
                   key={c.value}
                   className={mine === c.value ? c.cls : ''}
-                  disabled={!name}
                   onClick={() => vote(slot.id, c.value)}
                 >
                   {c.label}
@@ -246,8 +346,34 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 ))}
               </div>
             )}
+
+            {isOrganizer && (
+              <div className="row mt">
+                {isConfirmed ? (
+                  <button className="ghost" onClick={unconfirmSlot}>Odznacz ustalony termin</button>
+                ) : (
+                  <button className="ghost" onClick={() => confirmSlot(slot.id, slot.starts_at)}>
+                    Ustal ten termin
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
+
+        <div className="row mt chips">
+          {SLOT_PRESETS.map((p) => (
+            <button
+              type="button"
+              key={p.label}
+              className="ghost chip"
+              onClick={() => insertSlot(p.build())}
+            >
+              + {p.label}
+            </button>
+          ))}
+        </div>
 
         <form className="row mt" onSubmit={addSlot}>
           <input
@@ -259,6 +385,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <button type="submit" disabled={!newSlot}>Dodaj termin</button>
         </form>
       </div>
+
+      {isOrganizer && (
+        <button type="button" className="ghost danger" onClick={deleteEvent}>
+          Usuń wypad
+        </button>
+      )}
     </main>
   );
 }
