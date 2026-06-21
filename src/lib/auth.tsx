@@ -60,36 +60,17 @@ export async function signOut() {
 
 function LoginForm() {
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
-  // Gdy link logowania wygaśnie/jest nieprawidłowy, Supabase wraca na adres
-  // z `#error=...`. Pokaż czytelny komunikat zamiast cichego formularza.
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.location.hash.includes('error')) return;
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    if (params.get('error_code') === 'otp_expired') {
-      setNotice('Link wygasł lub został już użyty — wyślij nowy poniżej.');
-    } else {
-      const desc = params.get('error_description');
-      setNotice(desc ? decodeURIComponent(desc.replace(/\+/g, ' ')) : 'Logowanie się nie powiodło — spróbuj ponownie.');
-    }
-    history.replaceState(null, '', window.location.pathname);
-  }, []);
-
-  async function sendLink(e: React.FormEvent) {
+  async function sendCode(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || busy) return;
     setBusy(true);
     setError('');
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-      },
-    });
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
     if (error) {
       setError(error.message);
       setBusy(false);
@@ -99,15 +80,31 @@ function LoginForm() {
     setBusy(false);
   }
 
+  async function verify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim() || busy) return;
+    setBusy(true);
+    setError('');
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email',
+    });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+      return;
+    }
+    // onAuthStateChange ustawi sesję i przełączy widok — w TEJ przeglądarce.
+  }
+
   return (
     <main>
       <h1>Planner</h1>
       <p className="lead">Zaloguj się, żeby głosy i ustalenia były naprawdę Twoje.</p>
 
-      {notice && <div className="banner">{notice}</div>}
-
       {!sent ? (
-        <form className="card" onSubmit={sendLink}>
+        <form className="card" onSubmit={sendCode}>
           <h2>Logowanie</h2>
           <div className="field">
             <label htmlFor="email">E-mail</label>
@@ -124,28 +121,42 @@ function LoginForm() {
           </div>
           {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
           <button type="submit" disabled={!email.trim() || busy}>
-            {busy ? 'Wysyłam…' : 'Wyślij link'}
+            {busy ? 'Wysyłam…' : 'Wyślij kod'}
           </button>
           <p className="small muted mt">
-            Dostaniesz maila z linkiem. Otwórz go na tym samym urządzeniu — wrócisz tu
-            zalogowany i zostaniesz zalogowany na stałe.
+            Dostaniesz na maila 6-cyfrowy kod. Przepisz go tutaj — zalogujesz się
+            w tej przeglądarce i zostaniesz zalogowany na stałe.
           </p>
         </form>
       ) : (
-        <div className="card">
-          <h2>Sprawdź maila</h2>
-          <p className="small muted">
-            Wysłaliśmy link logowania na <strong>{email}</strong>. Otwórz wiadomość i kliknij
-            „Sign in" — wrócisz tutaj zalogowany. (Otwórz na tym samym urządzeniu.)
-          </p>
+        <form className="card" onSubmit={verify}>
+          <h2>Wpisz kod</h2>
+          <p className="small muted">Wysłaliśmy 6-cyfrowy kod na <strong>{email}</strong>.</p>
+          <div className="field">
+            <label htmlFor="code">Kod z maila</label>
+            <input
+              id="code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="np. 123456"
+              value={code}
+              onChange={(ev) => setCode(ev.target.value)}
+              autoFocus
+            />
+          </div>
+          {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
+          <button type="submit" disabled={!code.trim() || busy}>
+            {busy ? 'Sprawdzam…' : 'Zaloguj'}
+          </button>
           <button
             type="button"
             className="ghost mt"
-            onClick={() => { setSent(false); setError(''); }}
+            onClick={() => { setSent(false); setCode(''); setError(''); }}
           >
             Zmień e-mail / wyślij ponownie
           </button>
-        </div>
+        </form>
       )}
     </main>
   );
