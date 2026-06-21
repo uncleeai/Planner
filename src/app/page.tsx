@@ -27,6 +27,7 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [proposedSlots, setProposedSlots] = useState<string[]>(['']);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -72,6 +73,19 @@ export default function Home() {
       setBusy(false);
       return;
     }
+
+    // Wstaw zaproponowane terminy (jeśli podano) jednym zapytaniem.
+    const slotRows = proposedSlots
+      .filter((s) => s)
+      .map((s) => ({
+        event_id: data.id,
+        starts_at: new Date(s).toISOString(),
+        created_by: displayName,
+      }));
+    if (slotRows.length > 0) {
+      await supabase.from('slots').insert(slotRows);
+    }
+
     router.push(`/event/${data.id}`);
   }
 
@@ -136,6 +150,40 @@ export default function Home() {
               onChange={(e) => setLocation(e.target.value)}
             />
           </div>
+
+          <div className="field">
+            <label>Proponowane terminy (opcjonalnie)</label>
+            {proposedSlots.map((slot, i) => (
+              <div className="row" key={i} style={{ marginBottom: 8 }}>
+                <input
+                  type="datetime-local"
+                  value={slot}
+                  onChange={(e) =>
+                    setProposedSlots((prev) => prev.map((s, j) => (j === i ? e.target.value : s)))
+                  }
+                  style={{ flex: 1, minWidth: 200 }}
+                />
+                {proposedSlots.length > 1 && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    aria-label="Usuń termin"
+                    onClick={() => setProposedSlots((prev) => prev.filter((_, j) => j !== i))}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setProposedSlots((prev) => [...prev, ''])}
+            >
+              + Dodaj kolejny termin
+            </button>
+          </div>
+
           {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
           <button type="submit" disabled={!title.trim() || busy}>
             {busy ? 'Tworzę…' : 'Utwórz wypad'}
