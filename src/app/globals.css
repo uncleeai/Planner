@@ -88,6 +88,9 @@ button.ghost:hover { background: var(--card-2); }
 button.ghost.danger { color: var(--no); border-color: rgba(239, 68, 68, 0.4); }
 button.ghost.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--no); }
 
+.chips { gap: 8px; }
+button.chip { padding: 6px 12px; font-size: 0.85rem; font-weight: 500; }
+
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .spacer { flex: 1; }
 .muted { color: var(--muted); }

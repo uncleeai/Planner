@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
 import type { EventRow } from '@/lib/types';
+import { SLOT_PRESETS } from '@/lib/slotPresets';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('pl-PL', {
@@ -154,6 +155,26 @@ export default function Home() {
 
           <div className="field">
             <label>Proponowane terminy (opcjonalnie)</label>
+            <div className="row chips" style={{ marginBottom: 10 }}>
+              {SLOT_PRESETS.map((p) => (
+                <button
+                  type="button"
+                  key={p.label}
+                  className="ghost chip"
+                  onClick={() =>
+                    setProposedSlots((prev) => {
+                      const empty = prev.findIndex((s) => !s);
+                      const value = p.build();
+                      return empty !== -1
+                        ? prev.map((s, j) => (j === empty ? value : s))
+                        : [...prev, value];
+                    })
+                  }
+                >
+                  + {p.label}
+                </button>
+              ))}
+            </div>
             {proposedSlots.map((slot, i) => (
               <div className="row" key={i} style={{ marginBottom: 8 }}>
                 <input

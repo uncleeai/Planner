@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
+import { SLOT_PRESETS } from '@/lib/slotPresets';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -89,15 +90,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
   }, [eventId, load]);
 
-  async function addSlot(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newSlot) return;
+  async function insertSlot(localValue: string) {
+    if (!localValue) return;
     await supabase.from('slots').insert({
       event_id: eventId,
-      starts_at: new Date(newSlot).toISOString(),
+      starts_at: new Date(localValue).toISOString(),
       created_by: displayName,
       created_by_user_id: userId,
     });
+  }
+
+  async function addSlot(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newSlot) return;
+    await insertSlot(newSlot);
     setNewSlot('');
   }
 
@@ -355,6 +361,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
           );
         })}
+
+        <div className="row mt chips">
+          {SLOT_PRESETS.map((p) => (
+            <button
+              type="button"
+              key={p.label}
+              className="ghost chip"
+              onClick={() => insertSlot(p.build())}
+            >
+              + {p.label}
+            </button>
+          ))}
+        </div>
 
         <form className="row mt" onSubmit={addSlot}>
           <input
