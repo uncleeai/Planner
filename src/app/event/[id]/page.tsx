@@ -2,9 +2,10 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import type { Availability, EventRow, Slot, Vote } from '@/lib/types';
+import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -24,11 +25,13 @@ function formatSlot(iso: string): string {
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
+  const router = useRouter();
   const { userId, displayName } = useAuth();
 
   const [event, setEvent] = useState<EventRow | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [votes, setVotes] = useState<Vote[]>([]);
+  const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -36,10 +39,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }] = await Promise.all([
+    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
       supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
       supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
       supabase.from('votes').select('*').eq('event_id', eventId),
+      supabase.from('profiles').select('*'),
     ]);
 
     if (evErr || !ev) {
@@ -48,6 +52,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setEvent(ev as EventRow);
       setSlots((sl ?? []) as Slot[]);
       setVotes((vo ?? []) as Vote[]);
+      setMembers((pr ?? []) as Profile[]);
     }
     setLoading(false);
   }, [eventId]);
@@ -86,15 +91,45 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       event_id: eventId,
       starts_at: new Date(newSlot).toISOString(),
       created_by: displayName,
+      created_by_user_id: userId,
     });
     setNewSlot('');
   }
 
+  async function deleteSlot(slotId: string) {
+    if (!window.confirm('Usunąć ten termin? Zniknie razem z oddanymi na niego głosami.')) return;
+    // Optymistycznie usuń lokalnie; przy błędzie stan wróci z bazy.
+    setSlots((prev) => prev.filter((s) => s.id !== slotId));
+    const { error } = await supabase.from('slots').delete().eq('id', slotId);
+    if (error) load();
+  }
+
   async function vote(slotId: string, availability: Availability) {
-    await supabase.from('votes').upsert(
+    // Optymistyczna aktualizacja: pokaż wybór od razu, zanim baza odpowie —
+    // bez tego na komórce tap wygląda jakby nie zadziałał (feedback dopiero po realtime).
+    setVotes((prev) => {
+      const existing = prev.find((v) => v.slot_id === slotId && v.user_id === userId);
+      if (existing) {
+        return prev.map((v) => (v === existing ? { ...v, availability } : v));
+      }
+      const optimistic: Vote = {
+        id: `optimistic-${slotId}-${userId}`,
+        event_id: eventId,
+        slot_id: slotId,
+        user_id: userId,
+        participant_name: displayName,
+        availability,
+        created_at: new Date().toISOString(),
+      };
+      return [...prev, optimistic];
+    });
+
+    const { error } = await supabase.from('votes').upsert(
       { event_id: eventId, slot_id: slotId, user_id: userId, participant_name: displayName, availability },
       { onConflict: 'slot_id,user_id' },
     );
+    // Przy błędzie cofnij optymistyczną zmianę, pobierając prawdziwy stan z bazy.
+    if (error) load();
   }
 
   async function confirmSlot(slotId: string, startsAt: string) {
@@ -111,6 +146,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .update({ confirmed_slot_id: null, confirmed_at: null })
       .eq('id', eventId);
     load();
+  }
+
+  async function deleteEvent() {
+    if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
+    const { error } = await supabase.from('events').delete().eq('id', eventId);
+    if (error) {
+      window.alert('Nie udało się usunąć wypadu.');
+      return;
+    }
+    router.push('/');
   }
 
   async function copyLink() {
@@ -143,6 +188,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     () => Array.from(new Set(votes.map((v) => v.participant_name))),
     [votes],
   );
+
+  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
+  const missingVoters = useMemo(() => {
+    const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
+    return members.filter((m) => !voted.has(m.id)).map((m) => m.display_name);
+  }, [members, votes]);
 
   if (loading) return <main><p className="muted">Wczytuję…</p></main>;
 
@@ -183,6 +234,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <p className="small muted mt">Głosujesz jako <strong>{displayName}</strong>.</p>
 
+      {slots.length > 0 && members.length > 0 && (
+        missingVoters.length > 0 ? (
+          <p className="small mt" style={{ color: 'var(--maybe)' }}>
+            ⏳ Czekamy jeszcze na: {missingVoters.join(', ')}
+          </p>
+        ) : (
+          <p className="small mt" style={{ color: 'var(--yes)' }}>
+            ✅ Cała paczka już zagłosowała.
+          </p>
+        )
+      )}
+
       <div className="card">
         <h2>Proponowane terminy</h2>
         <p className="small muted" style={{ marginTop: -6 }}>
@@ -199,6 +262,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
           const isConfirmed = event?.confirmed_slot_id === slot.id;
           const isBest = yes > 0 && yes === maxYes;
+          const canDelete = isOrganizer || slot.created_by_user_id === userId;
           return (
           <div
             key={slot.id}
@@ -210,6 +274,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <span className="badge">ustalony</span>
               ) : (
                 isBest && <span className="badge badge-open">najlepszy</span>
+              )}
+              {canDelete && !isConfirmed && (
+                <>
+                  <span className="spacer" />
+                  <button
+                    type="button"
+                    className="ghost slot-del"
+                    aria-label="Usuń termin"
+                    onClick={() => deleteSlot(slot.id)}
+                  >
+                    ✕
+                  </button>
+                </>
               )}
             </div>
 
@@ -269,6 +346,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <button type="submit" disabled={!newSlot}>Dodaj termin</button>
         </form>
       </div>
+
+      {isOrganizer && (
+        <button type="button" className="ghost danger" onClick={deleteEvent}>
+          Usuń wypad
+        </button>
+      )}
     </main>
   );
 }

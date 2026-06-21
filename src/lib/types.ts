@@ -17,6 +17,7 @@ export type Slot = {
   event_id: string;
   starts_at: string;
   created_by: string | null;
+  created_by_user_id: string | null;
   created_at: string;
 };
 
@@ -28,4 +29,11 @@ export type Vote = {
   participant_name: string;
   availability: Availability;
   created_at: string;
+};
+
+export type Profile = {
+  id: string;
+  display_name: string;
+  created_at: string;
+  updated_at: string;
 };

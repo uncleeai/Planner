@@ -76,10 +76,13 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
 - **slots** — proponowany termin (`starts_at`) powiązany z wypadem.
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
-- Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth (bez tabeli profili);
-  przy głosach/wypadach zapisujemy migawkę nazwy.
+- **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name`. Zapisywana
+  przez apkę po zalogowaniu (upsert w `auth.tsx`). Służy do pokazania „kto jeszcze nie
+  zagłosował", bo klient z kluczem `anon` nie ma dostępu do `auth.users`.
+- Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
+  przy głosach/wypadach zapisujemy dodatkowo migawkę nazwy.
 
-Realtime włączony dla `events`, `slots`, `votes` (publikacja `supabase_realtime`).
+Realtime włączony dla `events`, `slots`, `votes`, `profiles` (publikacja `supabase_realtime`).
 **RLS:** dostęp tylko dla zalogowanych (`authenticated`); każdy edytuje wyłącznie swoje
 rekordy (głos po `user_id`, ustalanie terminu tylko twórca wypadu). To realna ochrona
 przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodności.

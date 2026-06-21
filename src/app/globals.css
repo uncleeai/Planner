@@ -27,7 +27,10 @@ html, body {
 .container {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  /* Marginesy + bezpieczne obszary iOS (notch, pasek home) w trybie standalone. */
+  padding:
+    calc(24px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+    calc(64px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
 }
 
 h1 { font-size: 1.9rem; margin: 0 0 4px; }
@@ -82,6 +85,9 @@ button.ghost {
 }
 button.ghost:hover { background: var(--card-2); }
 
+button.ghost.danger { color: var(--no); border-color: rgba(239, 68, 68, 0.4); }
+button.ghost.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--no); }
+
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .spacer { flex: 1; }
 .muted { color: var(--muted); }
@@ -107,8 +113,10 @@ button.ghost:hover { background: var(--card-2); }
 }
 .slot.winner { border-color: var(--yes); box-shadow: 0 0 0 1px var(--yes) inset; }
 
-.slot-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .slot-date { font-weight: 600; font-size: 1.05rem; }
+.slot-del { padding: 4px 10px; font-size: 0.85rem; line-height: 1; color: var(--muted); }
+.slot-del:hover { color: var(--no); border-color: var(--no); }
 .badge {
   font-size: 0.75rem;
   font-weight: 700;
