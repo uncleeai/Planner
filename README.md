@@ -1,10 +1,10 @@
 # Planner
 
-Planer dla ekipy znajomych: zakładasz **ekipę** (jedno wspólne miejsce z linkiem),
-a w niej planujecie **wypady**. Dla każdego wypadu proponujecie terminy, każdy
-zaznacza kiedy może, a organizator może „ustalić" zwycięski termin — wtedy wypad
-ląduje na osi czasu ekipy. Wynik aktualizuje się na żywo. Bez zakładania kont —
-wystarczy link.
+Jeden wspólny planer dla paczki znajomych. Po wejściu widzisz **oś czasu wypadów**
+i dodajesz nowe. Dla każdego wypadu proponujecie terminy, każdy zaznacza kiedy może,
+a ktokolwiek może „ustalić" zwycięski termin — wtedy wypad ląduje na osi czasu jako
+nadchodzący. Wynik aktualizuje się na żywo. Bez zakładania kont — każdy podaje tylko
+imię (logowanie w planach na później).
 
 ## Stack
 
@@ -56,17 +56,16 @@ Bez kroków 1–4 strona się otworzy, ale pokaże baner z prośbą o konfigurac
 
 ## Jak to działa
 
-- **Ekipa** (`/group/<id>`) to stałe miejsce grupy — jej link jest zaproszeniem.
-  Otwarcie linku zapamiętuje ekipę w przeglądarce (`localStorage`), więc pojawia
-  się na stronie głównej w „Twoje ekipy". Brak haseł i kont.
-- Na **dashboardzie ekipy** widać oś czasu wypadów (Do ustalenia / Nadchodzące /
-  Minione) i przycisk **„Nowy wypad"**.
-- Każdy **wypad** (`/event/<id>`) ma swój link. Uczestnik podaje **imię**
-  (też w `localStorage`), dodaje terminy i zaznacza: *Mogę / Może / Nie*.
+- **Strona główna = dashboard.** Przy pierwszym wejściu apka pyta o **imię**
+  (zapisywane w `localStorage`), potem pokazuje wspólną oś czasu wypadów
+  (Do ustalenia / Nadchodzące / Minione) i przycisk **„Nowy wypad"**.
+- Każdy **wypad** (`/event/<id>`) ma swój link. Uczestnik dodaje terminy
+  i przy każdym zaznacza: *Mogę / Może / Nie*.
 - Gdy termin jest jasny, ktokolwiek może go **„ustalić"** — wypad dostaje
-  konkretną datę i przechodzi na osi czasu do „Nadchodzące".
+  konkretną datę i przechodzi na osi czasu do „Nadchodzące", a po dacie do „Minione".
 - Dzięki **Supabase Realtime** głosy, nowe wypady i ustalenia pojawiają się
   u wszystkich natychmiast.
+- Brak kont (dostęp przez link) — proste logowanie planowane na później.
 
 ## Utrzymanie i analityka
 

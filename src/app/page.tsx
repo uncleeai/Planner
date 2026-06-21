@@ -1,88 +1,229 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { getGroups, rememberGroup, type RememberedGroup } from '@/lib/membership';
+import { getName, setName as persistName } from '@/lib/identity';
+import type { EventRow } from '@/lib/types';
 import SetupBanner from '@/components/SetupBanner';
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString('pl-PL', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function Home() {
   const router = useRouter();
-  const [groups, setGroups] = useState<RememberedGroup[]>([]);
-  const [name, setName] = useState('');
+
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [name, setNameState] = useState('');
+  const [nameInput, setNameInput] = useState('');
+
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState('');
+  const [location, setLocation] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setGroups(getGroups());
+    setNameState(getName());
   }, []);
 
-  async function createGroup(e: React.FormEvent) {
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('events')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setEvents((data ?? []) as EventRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+    load();
+
+    const channel = supabase
+      .channel('events-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
+
+  function saveName(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || busy) return;
+    const clean = nameInput.trim();
+    if (!clean) return;
+    persistName(clean);
+    setNameState(clean);
+  }
+
+  async function createEvent(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || busy) return;
     setBusy(true);
     setError('');
 
     const { data, error } = await supabase
-      .from('groups')
-      .insert({ name: name.trim() })
-      .select('id, name')
+      .from('events')
+      .insert({ title: title.trim(), location: location.trim() || null })
+      .select('id')
       .single();
 
     if (error || !data) {
-      setError(error?.message ?? 'Nie udało się utworzyć ekipy.');
+      setError(error?.message ?? 'Nie udało się utworzyć wypadu.');
       setBusy(false);
       return;
     }
-    rememberGroup(data.id, data.name);
-    router.push(`/group/${data.id}`);
+    router.push(`/event/${data.id}`);
+  }
+
+  const { open, upcoming, past } = useMemo(() => {
+    const now = Date.now();
+    const open: EventRow[] = [];
+    const upcoming: EventRow[] = [];
+    const past: EventRow[] = [];
+
+    for (const ev of events) {
+      if (!ev.confirmed_at) {
+        open.push(ev);
+      } else if (new Date(ev.confirmed_at).getTime() >= now) {
+        upcoming.push(ev);
+      } else {
+        past.push(ev);
+      }
+    }
+    upcoming.sort((a, b) => new Date(a.confirmed_at!).getTime() - new Date(b.confirmed_at!).getTime());
+    past.sort((a, b) => new Date(b.confirmed_at!).getTime() - new Date(a.confirmed_at!).getTime());
+    return { open, upcoming, past };
+  }, [events]);
+
+  if (!isSupabaseConfigured) {
+    return (
+      <main>
+        <h1>Planner</h1>
+        <SetupBanner />
+      </main>
+    );
+  }
+
+  // Bramka na imię — pytamy raz przy wejściu, potem zapisane w przeglądarce.
+  if (!name) {
+    return (
+      <main>
+        <h1>Planner</h1>
+        <p className="lead">Wspólne planowanie wypadów dla ekipy. Bez zakładania konta.</p>
+        <form className="card" onSubmit={saveName}>
+          <h2>Jak masz na imię?</h2>
+          <p className="small muted">Twoje imię zobaczą inni przy Twoich głosach.</p>
+          <div className="field">
+            <input
+              type="text"
+              placeholder="np. Kuba"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <button type="submit" disabled={!nameInput.trim()}>Wchodzę</button>
+        </form>
+      </main>
+    );
   }
 
   return (
     <main>
-      <h1>Planner</h1>
-      <p className="lead">
-        Wspólne miejsce dla ekipy: planujcie wypady, zbierajcie terminy i ustalajcie
-        kiedy się widzicie. Bez zakładania konta.
-      </p>
+      <div className="row">
+        <h1 style={{ marginBottom: 0 }}>Planner</h1>
+        <span className="spacer" />
+        <span className="small muted">Cześć, {name}</span>
+      </div>
+      <p className="lead">Wasze wypady w jednym miejscu — proponujcie terminy i ustalajcie kiedy.</p>
 
-      {!isSupabaseConfigured && <SetupBanner />}
+      <div className="row mt">
+        <span className="spacer" />
+        <button onClick={() => setShowForm((v) => !v)}>
+          {showForm ? 'Anuluj' : '+ Nowy wypad'}
+        </button>
+      </div>
 
-      {groups.length > 0 && (
-        <div className="card">
-          <h2>Twoje ekipy</h2>
-          {groups.map((g) => (
-            <Link key={g.id} href={`/group/${g.id}`} className="list-item">
-              <span className="list-item-title">{g.name}</span>
-              <span className="muted">→</span>
-            </Link>
-          ))}
-        </div>
+      {showForm && (
+        <form className="card mt" onSubmit={createEvent}>
+          <h2>Nowy wypad</h2>
+          <div className="field">
+            <label htmlFor="title">Nazwa</label>
+            <input
+              id="title"
+              type="text"
+              placeholder="np. Piwo w piątek, wyjazd w góry…"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="location">Miejsce (opcjonalnie)</label>
+            <input
+              id="location"
+              type="text"
+              placeholder="np. u Kuby, Zakopane…"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+          {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
+          <button type="submit" disabled={!title.trim() || busy}>
+            {busy ? 'Tworzę…' : 'Utwórz wypad'}
+          </button>
+        </form>
       )}
 
-      <form className="card" onSubmit={createGroup}>
-        <h2>Nowa ekipa</h2>
-        <div className="field">
-          <label htmlFor="name">Nazwa ekipy</label>
-          <input
-            id="name"
-            type="text"
-            placeholder="np. Ekipa z liceum, Wypady górskie…"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-          />
-        </div>
-        {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-        <button type="submit" disabled={!name.trim() || busy}>
-          {busy ? 'Tworzę…' : 'Utwórz ekipę'}
-        </button>
-      </form>
+      {loading && <p className="muted mt">Wczytuję…</p>}
 
-      <p className="small muted center">
-        Masz link do ekipy od znajomych? Otwórz go — ekipa sama zapisze się tutaj.
-      </p>
+      {!loading && events.length === 0 && (
+        <p className="muted mt">Brak wypadów. Kliknij „+ Nowy wypad", żeby zaproponować pierwszy.</p>
+      )}
+
+      <Timeline title="Do ustalenia" events={open} />
+      <Timeline title="Nadchodzące" events={upcoming} />
+      <Timeline title="Minione" events={past} muted />
     </main>
+  );
+}
+
+function Timeline({ title, events, muted }: { title: string; events: EventRow[]; muted?: boolean }) {
+  if (events.length === 0) return null;
+  return (
+    <section className="mt">
+      <h2 className={muted ? 'muted' : ''}>{title}</h2>
+      {events.map((ev) => (
+        <Link key={ev.id} href={`/event/${ev.id}`} className="event-card">
+          <div>
+            <div className="event-card-title">{ev.title}</div>
+            {ev.location && <div className="small muted">📍 {ev.location}</div>}
+          </div>
+          <div className="event-card-status">
+            {ev.confirmed_at ? (
+              <span className="badge">{formatDate(ev.confirmed_at)}</span>
+            ) : (
+              <span className="badge badge-open">Zbieramy terminy</span>
+            )}
+          </div>
+        </Link>
+      ))}
+    </section>
   );
 }

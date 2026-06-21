@@ -186,13 +186,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main>
-      <p>
-        {event?.group_id ? (
-          <Link href={`/group/${event.group_id}`}>← Wróć do ekipy</Link>
-        ) : (
-          <Link href="/">← Planner</Link>
-        )}
-      </p>
+      <p><Link href="/">← Wszystkie wypady</Link></p>
       <h1>{event?.title}</h1>
       {event?.location && <p className="lead">📍 {event.location}</p>}
 

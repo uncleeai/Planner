@@ -1,14 +1,7 @@
 export type Availability = 'yes' | 'maybe' | 'no';
 
-export type Group = {
-  id: string;
-  name: string;
-  created_at: string;
-};
-
 export type EventRow = {
   id: string;
-  group_id: string | null;
   title: string;
   location: string | null;
   description: string | null;

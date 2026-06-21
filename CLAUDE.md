@@ -44,8 +44,7 @@ Guidance for AI assistants (and humans) working in this repository.
     ├── app/
     │   ├── layout.tsx            # Root layout, metadata, viewport, manifest, analityka Vercela
     │   ├── globals.css           # Wszystkie style
-    │   ├── page.tsx              # Strona główna: lista „Twoje ekipy" + tworzenie ekipy
-    │   ├── group/[id]/page.tsx   # Dashboard ekipy: oś czasu wypadów + „Nowy wypad"
+    │   ├── page.tsx              # Strona główna = dashboard: oś czasu wypadów + „Nowy wypad" (bramka na imię)
     │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, wynik na żywo, ustalanie terminu
     │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     ├── components/
@@ -53,28 +52,29 @@ Guidance for AI assistants (and humans) working in this repository.
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── identity.ts           # Imię uczestnika w localStorage (brak kont)
-        ├── membership.ts         # Ekipy zapamiętane w localStorage (brak kont)
-        └── types.ts              # Typy: Group, EventRow, Slot, Vote, Availability
+        └── types.ts              # Typy: EventRow, Slot, Vote, Availability
 ```
 
-**Punkty wejścia:** `src/app/page.tsx` (`/`, lista ekip),
-`src/app/group/[id]/page.tsx` (`/group/<id>`, dashboard ekipy) oraz
-`src/app/event/[id]/page.tsx` (`/event/<id>`, pojedynczy wypad). Wszystkie to
-komponenty klienckie (`'use client'`) — całość logiki dzieje się w przeglądarce,
-brak warstwy serwerowej poza renderowaniem stron i endpointem keepalive.
+**Punkty wejścia:** `src/app/page.tsx` (`/`, dashboard wszystkich wypadów) oraz
+`src/app/event/[id]/page.tsx` (`/event/<id>`, pojedynczy wypad). Oba to komponenty
+klienckie (`'use client'`) — całość logiki dzieje się w przeglądarce, brak warstwy
+serwerowej poza renderowaniem stron i endpointem keepalive.
+
+**Model produktu:** jeden wspólny planer dla jednej (stałej) paczki znajomych — bez
+„ekip" i bez kont. Strona główna pyta raz o imię (localStorage), potem pokazuje
+wspólną oś czasu wypadów. Logowanie planowane na później.
 
 ## Model danych
 
 Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić ponownie):
 
-- **groups** — ekipa (stałe miejsce grupy znajomych); `id` jest kluczem w linku ekipy.
-- **events** — wypad; należy do ekipy (`group_id`), `id` jest kluczem w linku do wypadu.
-  Ustalony termin: `confirmed_slot_id` + `confirmed_at` (data zwycięskiego slotu).
+- **events** — wypad; `id` jest kluczem w linku do wypadu. Ustalony termin:
+  `confirmed_slot_id` + `confirmed_at` (data zwycięskiego slotu).
 - **slots** — proponowany termin (`starts_at`) powiązany z wypadem.
 - **votes** — głos uczestnika na termin: `availability` ∈ `yes | maybe | no`,
   identyfikacja przez `participant_name` (brak kont). Unikalność: `(slot_id, participant_name)`.
 
-Realtime włączony dla `groups`, `events`, `slots`, `votes` (publikacja `supabase_realtime`).
+Realtime włączony dla `events`, `slots`, `votes` (publikacja `supabase_realtime`).
 RLS jest włączone, ale polityki dają roli `anon` pełny dostęp — świadomy kompromis
 przy dostępie tylko przez link (zob. README → „Świadome kompromisy").
 
@@ -119,9 +119,8 @@ przy dostępie tylko przez link (zob. README → „Świadome kompromisy").
 - **Backend tylko przez `supabase` z `src/lib/supabaseClient.ts`** — nie twórz
   klienta w wielu miejscach. Sprawdzaj `isSupabaseConfigured` zanim wykonasz
   zapytania, by uniknąć cichych błędów bez `.env.local`.
-- **Tożsamość uczestnika** wyłącznie przez `src/lib/identity.ts` (localStorage).
-- **Przynależność do ekip** wyłącznie przez `src/lib/membership.ts` (localStorage);
-  współdzielenie odbywa się przez link ekipy, nie przez konta.
+- **Tożsamość uczestnika** wyłącznie przez `src/lib/identity.ts` (localStorage);
+  imię pytane raz przy wejściu. Logowanie planowane na później.
 - **Teksty UI po polsku** — to apka dla polskojęzycznych znajomych autora.
 - **Style** dopisuj do `src/app/globals.css`, korzystając z istniejących zmiennych
   CSS (`--primary`, `--yes`, `--maybe`, `--no` itd.); brak biblioteki UI.
