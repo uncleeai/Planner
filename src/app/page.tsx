@@ -81,6 +81,7 @@ export default function Home() {
         event_id: data.id,
         starts_at: new Date(s).toISOString(),
         created_by: displayName,
+        created_by_user_id: userId,
       }));
     if (slotRows.length > 0) {
       await supabase.from('slots').insert(slotRows);

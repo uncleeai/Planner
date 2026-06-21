@@ -25,6 +25,10 @@ create table if not exists public.slots (
   created_at timestamptz not null default now()
 );
 
+-- Autor terminu (konto) — do uprawnień: usunąć termin może jego autor lub organizator.
+alter table public.slots
+  add column if not exists created_by_user_id uuid references auth.users(id) on delete set null;
+
 -- Ustalony (zatwierdzony) termin wypadu — wskazuje wybrany slot i jego datę.
 alter table public.events
   add column if not exists confirmed_slot_id uuid references public.slots(id) on delete set null;
@@ -86,8 +90,10 @@ drop policy if exists "public access" on public.votes;
 drop policy if exists "events read"   on public.events;
 drop policy if exists "events insert" on public.events;
 drop policy if exists "events update" on public.events;
+drop policy if exists "events delete" on public.events;
 drop policy if exists "slots read"    on public.slots;
 drop policy if exists "slots insert"  on public.slots;
+drop policy if exists "slots delete"  on public.slots;
 drop policy if exists "votes read"    on public.votes;
 drop policy if exists "votes insert"  on public.votes;
 drop policy if exists "votes update"  on public.votes;
@@ -104,10 +110,21 @@ create policy "events insert" on public.events for insert to authenticated
 create policy "events update" on public.events for update to authenticated
   using (created_by_user_id = auth.uid() or created_by_user_id is null)
   with check (created_by_user_id = auth.uid() or created_by_user_id is null);
+create policy "events delete" on public.events for delete to authenticated
+  using (created_by_user_id = auth.uid() or created_by_user_id is null);
 
--- slots: każdy zalogowany czyta i może proponować termin.
+-- slots: każdy zalogowany czyta i może proponować termin; usunąć może autor lub organizator.
 create policy "slots read"   on public.slots for select to authenticated using (true);
 create policy "slots insert" on public.slots for insert to authenticated with check (true);
+create policy "slots delete" on public.slots for delete to authenticated
+  using (
+    created_by_user_id = auth.uid()
+    or created_by_user_id is null
+    or exists (
+      select 1 from public.events e
+      where e.id = slots.event_id and e.created_by_user_id = auth.uid()
+    )
+  );
 
 -- votes: każdy zalogowany czyta; ale dodać/zmienić/usunąć można tylko swój głos.
 create policy "votes read"   on public.votes for select to authenticated using (true);

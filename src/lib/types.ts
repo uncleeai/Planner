@@ -17,6 +17,7 @@ export type Slot = {
   event_id: string;
   starts_at: string;
   created_by: string | null;
+  created_by_user_id: string | null;
   created_at: string;
 };
 

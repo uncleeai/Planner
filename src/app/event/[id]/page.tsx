@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
@@ -24,6 +25,7 @@ function formatSlot(iso: string): string {
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
+  const router = useRouter();
   const { userId, displayName } = useAuth();
 
   const [event, setEvent] = useState<EventRow | null>(null);
@@ -89,8 +91,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       event_id: eventId,
       starts_at: new Date(newSlot).toISOString(),
       created_by: displayName,
+      created_by_user_id: userId,
     });
     setNewSlot('');
+  }
+
+  async function deleteSlot(slotId: string) {
+    if (!window.confirm('Usunąć ten termin? Zniknie razem z oddanymi na niego głosami.')) return;
+    // Optymistycznie usuń lokalnie; przy błędzie stan wróci z bazy.
+    setSlots((prev) => prev.filter((s) => s.id !== slotId));
+    const { error } = await supabase.from('slots').delete().eq('id', slotId);
+    if (error) load();
   }
 
   async function vote(slotId: string, availability: Availability) {
@@ -135,6 +146,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .update({ confirmed_slot_id: null, confirmed_at: null })
       .eq('id', eventId);
     load();
+  }
+
+  async function deleteEvent() {
+    if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
+    const { error } = await supabase.from('events').delete().eq('id', eventId);
+    if (error) {
+      window.alert('Nie udało się usunąć wypadu.');
+      return;
+    }
+    router.push('/');
   }
 
   async function copyLink() {
@@ -241,6 +262,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
           const isConfirmed = event?.confirmed_slot_id === slot.id;
           const isBest = yes > 0 && yes === maxYes;
+          const canDelete = isOrganizer || slot.created_by_user_id === userId;
           return (
           <div
             key={slot.id}
@@ -252,6 +274,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <span className="badge">ustalony</span>
               ) : (
                 isBest && <span className="badge badge-open">najlepszy</span>
+              )}
+              {canDelete && !isConfirmed && (
+                <>
+                  <span className="spacer" />
+                  <button
+                    type="button"
+                    className="ghost slot-del"
+                    aria-label="Usuń termin"
+                    onClick={() => deleteSlot(slot.id)}
+                  >
+                    ✕
+                  </button>
+                </>
               )}
             </div>
 
@@ -311,6 +346,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <button type="submit" disabled={!newSlot}>Dodaj termin</button>
         </form>
       </div>
+
+      {isOrganizer && (
+        <button type="button" className="ghost danger" onClick={deleteEvent}>
+          Usuń wypad
+        </button>
+      )}
     </main>
   );
 }
