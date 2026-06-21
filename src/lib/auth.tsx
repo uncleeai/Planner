@@ -63,6 +63,21 @@ function LoginForm() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  // Gdy link logowania wygaśnie/jest nieprawidłowy, Supabase wraca na adres
+  // z `#error=...`. Pokaż czytelny komunikat zamiast cichego formularza.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.location.hash.includes('error')) return;
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    if (params.get('error_code') === 'otp_expired') {
+      setNotice('Link wygasł lub został już użyty — wyślij nowy poniżej.');
+    } else {
+      const desc = params.get('error_description');
+      setNotice(desc ? decodeURIComponent(desc.replace(/\+/g, ' ')) : 'Logowanie się nie powiodło — spróbuj ponownie.');
+    }
+    history.replaceState(null, '', window.location.pathname);
+  }, []);
 
   async function sendLink(e: React.FormEvent) {
     e.preventDefault();
@@ -88,6 +103,8 @@ function LoginForm() {
     <main>
       <h1>Planner</h1>
       <p className="lead">Zaloguj się, żeby głosy i ustalenia były naprawdę Twoje.</p>
+
+      {notice && <div className="banner">{notice}</div>}
 
       {!sent ? (
         <form className="card" onSubmit={sendLink}>
