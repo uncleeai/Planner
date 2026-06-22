@@ -419,14 +419,14 @@ img.avatar { display: inline-block; }
 
 .glass-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  /* Rozlana aurora: kilka dużych, miękkich plam koloru wtopionych w ciemną bazę. */
+  /* Aurora: wielkie, miękkie pasma koloru wpływające z poza kadru (środki off-screen),
+     zlane z ukośną, ciemną bazą — bez widocznych „kół". */
   background:
-    radial-gradient(38% 44% at 12% 8%, rgba(124, 58, 237, 0.38), transparent 70%),
-    radial-gradient(42% 42% at 88% 14%, rgba(37, 99, 235, 0.30), transparent 70%),
-    radial-gradient(48% 52% at 84% 86%, rgba(6, 182, 212, 0.22), transparent 72%),
-    radial-gradient(46% 50% at 14% 90%, rgba(168, 85, 247, 0.24), transparent 72%),
-    radial-gradient(75% 70% at 50% 45%, rgba(30, 27, 75, 0.35), transparent 80%),
-    #070710;
+    radial-gradient(140% 100% at 8% -15%, rgba(124, 58, 237, 0.30), transparent 52%),
+    radial-gradient(130% 95% at 98% 0%, rgba(56, 89, 230, 0.22), transparent 55%),
+    radial-gradient(150% 115% at 112% 108%, rgba(6, 182, 212, 0.20), transparent 55%),
+    radial-gradient(150% 120% at -12% 115%, rgba(168, 85, 247, 0.18), transparent 55%),
+    linear-gradient(165deg, #0c0a1c 0%, #08070f 50%, #060610 100%);
 }
 .glass-grain {
   position: absolute; inset: 0;
