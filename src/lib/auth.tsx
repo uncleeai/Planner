@@ -86,17 +86,19 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-// Szybkie logowanie dla preview/dev — przycisk pojawia się TYLKO, gdy ustawione są
-// te zmienne. Ustaw je wyłącznie w środowisku Preview (i lokalnie), NIGDY na produkcji.
-const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_EMAIL;
-const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_PASSWORD;
-
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
+
+  // Guzik „gość" pokazujemy tylko na preview/localhost (adres brancha zawiera „-git-").
+  useEffect(() => {
+    const h = window.location.hostname;
+    setIsPreview(h.includes('-git-') || h.includes('localhost') || h.startsWith('127.'));
+  }, []);
 
   async function sendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -131,13 +133,17 @@ function LoginForm() {
     // onAuthStateChange ustawi sesję i przełączy widok — w TEJ przeglądarce.
   }
 
-  async function devLogin() {
-    if (!DEV_EMAIL || !DEV_PASSWORD || busy) return;
+  async function guestLogin() {
+    if (busy) return;
     setBusy(true);
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({
-      email: DEV_EMAIL,
-      password: DEV_PASSWORD,
+    const { error } = await supabase.auth.signInAnonymously({
+      options: {
+        data: {
+          display_name: `Gość ${Math.floor(Math.random() * 900 + 100)}`,
+          avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
+        },
+      },
     });
     if (error) {
       setError(error.message);
@@ -206,15 +212,15 @@ function LoginForm() {
         </form>
       )}
 
-      {DEV_EMAIL && DEV_PASSWORD && (
+      {isPreview && (
         <button
           type="button"
           className="ghost mt"
           style={{ width: '100%' }}
           disabled={busy}
-          onClick={devLogin}
+          onClick={guestLogin}
         >
-          ⚡ Szybkie logowanie (dev)
+          Wejdź bez logowania (gość)
         </button>
       )}
     </main>
