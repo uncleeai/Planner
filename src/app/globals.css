@@ -419,14 +419,41 @@ img.avatar { display: inline-block; }
 
 .glass-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  /* Aurora: wielkie, miękkie pasma koloru wpływające z poza kadru (środki off-screen),
-     zlane z ukośną, ciemną bazą — bez widocznych „kół". */
+  /* Nocne niebo + delikatna poświata zorzy nad horyzontem. */
   background:
-    radial-gradient(140% 100% at 8% -15%, rgba(124, 58, 237, 0.30), transparent 52%),
-    radial-gradient(130% 95% at 98% 0%, rgba(56, 89, 230, 0.22), transparent 55%),
-    radial-gradient(150% 115% at 112% 108%, rgba(6, 182, 212, 0.20), transparent 55%),
-    radial-gradient(150% 120% at -12% 115%, rgba(168, 85, 247, 0.18), transparent 55%),
-    linear-gradient(165deg, #0c0a1c 0%, #08070f 50%, #060610 100%);
+    radial-gradient(120% 70% at 50% 125%, rgba(45, 212, 191, 0.12), transparent 60%),
+    linear-gradient(180deg, #070815 0%, #05060e 55%, #04040a 100%);
+}
+
+/* Zorza polarna: pionowe, miękkie kurtyny światła (maska po bokach, blend „screen"). */
+.aurora { position: absolute; left: -15%; right: -15%; top: -20%; height: 95%; }
+.aurora-band {
+  position: absolute; top: 0; bottom: 0; width: 42%;
+  mix-blend-mode: screen;
+  will-change: transform;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 38%, #000 62%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 38%, #000 62%, transparent);
+}
+.aurora-band.b1 {
+  left: 2%;
+  background: linear-gradient(to top, transparent 4%, rgba(34, 197, 94, 0.30) 28%, rgba(45, 212, 191, 0.52) 50%, rgba(99, 102, 241, 0.30) 82%, transparent 100%);
+  animation: aurora1 28s ease-in-out infinite alternate;
+}
+.aurora-band.b2 {
+  left: 30%;
+  background: linear-gradient(to top, transparent 8%, rgba(45, 212, 191, 0.40) 42%, rgba(168, 85, 247, 0.38) 84%, transparent 100%);
+  animation: aurora2 34s ease-in-out infinite alternate;
+}
+.aurora-band.b3 {
+  left: 56%;
+  background: linear-gradient(to top, transparent 6%, rgba(56, 189, 248, 0.34) 46%, rgba(124, 58, 237, 0.28) 86%, transparent 100%);
+  animation: aurora3 40s ease-in-out infinite alternate;
+}
+@keyframes aurora1 { from { transform: translateX(-6%) skewX(-7deg) scaleY(1); } to { transform: translateX(9%) skewX(6deg) scaleY(1.08); } }
+@keyframes aurora2 { from { transform: translateX(7%) skewX(8deg) scaleY(1.05); } to { transform: translateX(-8%) skewX(-6deg) scaleY(0.96); } }
+@keyframes aurora3 { from { transform: translateX(-5%) skewX(-5deg) scaleY(1); } to { transform: translateX(7%) skewX(7deg) scaleY(1.1); } }
+@media (prefers-reduced-motion: reduce) {
+  .aurora-band { animation: none; }
 }
 .glass-grain {
   position: absolute; inset: 0;
