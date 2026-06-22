@@ -77,6 +77,10 @@ create table if not exists public.profiles (
   updated_at   timestamptz not null default now()
 );
 
+-- Awatar wybrany przez użytkownika przy pierwszym logowaniu (emoji).
+alter table public.profiles
+  add column if not exists avatar text;
+
 -- RLS: dostęp tylko dla zalogowanych; każdy edytuje wyłącznie swoje rekordy.
 alter table public.events   enable row level security;
 alter table public.slots    enable row level security;

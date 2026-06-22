@@ -34,6 +34,7 @@ export type Vote = {
 export type Profile = {
   id: string;
   display_name: string;
+  avatar: string | null;
   created_at: string;
   updated_at: string;
 };

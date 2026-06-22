@@ -192,8 +192,9 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .choices button.active-maybe:hover { background: var(--maybe); }
 .choices button.active-no:hover { background: var(--no); }
 
-.voters { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.7; }
+.voters { font-size: 0.82rem; color: var(--muted); margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .voters .name { color: var(--text); }
+.voter-chip { display: inline-flex; align-items: center; gap: 5px; }
 
 .center { text-align: center; }
 .mt { margin-top: 16px; }
@@ -286,3 +287,82 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 }
 
 .slot.confirmed { border-color: rgba(48, 209, 88, 0.5); box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.5) inset; }
+
+/* ===== Hybryda: nagłówek, awatary, karty wypadów, postęp ===== */
+
+.dash-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.app-icon { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; box-shadow: var(--shadow); }
+
+/* Awatary */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: #fff; font-weight: 600; line-height: 1;
+  border: 2px solid var(--card); flex-shrink: 0; overflow: hidden; user-select: none;
+}
+.avatar-stack { display: inline-flex; }
+.avatar-stack > * + * { margin-left: -9px; }
+.avatar-more { background: var(--card-2); color: var(--muted); }
+
+/* Wybór awatara (setup) */
+.avatar-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 8px; }
+.avatar-option {
+  background: var(--card-2); border: 1px solid var(--border); border-radius: 12px;
+  font-size: 1.4rem; padding: 8px 0; min-height: 48px; color: inherit; font-weight: 400;
+}
+.avatar-option:hover { background: #262833; }
+.avatar-option.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(91, 87, 242, 0.4);
+  background: rgba(91, 87, 242, 0.12);
+}
+
+/* Gradientowy CTA */
+.cta-gradient {
+  width: 100%;
+  background: linear-gradient(135deg, #6d6af6, #4f46e5);
+  box-shadow: 0 8px 24px rgba(91, 87, 242, 0.35);
+  padding: 15px 18px;
+  font-size: 1.02rem;
+}
+.cta-gradient:hover { background: linear-gradient(135deg, #7b78f8, #5a51ea); }
+
+/* Karta wypadu (bogata) */
+.event-rich {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
+}
+.event-rich:hover { background: var(--card-2); border-color: var(--border-strong); }
+.event-rich:active { transform: scale(0.992); }
+.event-rich-head { display: flex; align-items: center; gap: 10px; }
+.event-rich-title { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; flex: 1; min-width: 0; }
+
+.event-meta { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.88rem; }
+.event-meta svg { flex-shrink: 0; opacity: 0.85; }
+.event-meta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.event-rich-foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; min-height: 28px; }
+.event-rich-foot .spacer { flex: 1; }
+
+/* Pasek postępu głosowania */
+.progress-wrap { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+.progress { flex: 1; height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.progress-label { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+
+/* Baner z poradą */
+.tip-banner {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 24px; padding: 14px 16px;
+  background: rgba(91, 87, 242, 0.08);
+  border: 1px solid rgba(91, 87, 242, 0.22);
+  border-radius: 14px;
+  color: var(--muted); font-size: 0.88rem;
+}
+.tip-banner .tip-icon { color: var(--primary-hover); flex-shrink: 0; }

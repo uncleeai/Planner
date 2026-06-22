@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { SLOT_PRESETS } from '@/lib/slotPresets';
+import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
+import { IconPin } from '@/components/icons';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -248,10 +250,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
 
-  const participants = useMemo(
-    () => Array.from(new Set(votes.map((v) => v.participant_name))),
-    [votes],
-  );
+  const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+
+  // Uczestnicy, którzy oddali jakikolwiek głos — z awatarami (do stosu na górze).
+  const participantsPeople = useMemo<Person[]>(() => {
+    const seen = new Map<string, Person>();
+    for (const v of votes) {
+      const key = v.user_id ?? `name:${v.participant_name}`;
+      if (seen.has(key)) continue;
+      const prof = v.user_id ? profileById.get(v.user_id) : undefined;
+      seen.set(key, { name: prof?.display_name ?? v.participant_name, avatar: prof?.avatar ?? null });
+    }
+    return Array.from(seen.values());
+  }, [votes, profileById]);
 
   // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
   const missingVoters = useMemo(() => {
@@ -279,7 +290,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <header className="app-header">
         <h1 className="large-title">{event?.title}</h1>
-        {event?.location && <p className="meta">📍 {event.location}</p>}
+        {event?.location && (
+          <p className="meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <IconPin size={14} /> {event.location}
+          </p>
+        )}
         {event?.created_by && <p className="meta">Organizuje: {event.created_by}</p>}
       </header>
 
@@ -292,11 +307,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           {copied ? 'Skopiowano ✓' : canShare ? 'Udostępnij link 📤' : 'Skopiuj link dla znajomych'}
         </button>
         <span className="spacer" />
-        <span className="small muted">
-          {participants.length > 0
-            ? `${participants.length} ${participants.length === 1 ? 'osoba' : 'osób'} już głosowało`
-            : 'Nikt jeszcze nie głosował'}
-        </span>
+        {participantsPeople.length > 0 ? (
+          <span className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+            <AvatarStack people={participantsPeople} size={26} />
+            <span className="small muted">{participantsPeople.length} głosowało</span>
+          </span>
+        ) : (
+          <span className="small muted">Nikt jeszcze nie głosował</span>
+        )}
       </div>
 
       {slots.length > 0 && members.length > 0 && (
@@ -375,14 +393,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
             {slotVotes.length > 0 && (
               <div className="voters">
-                {slotVotes.map((v) => (
-                  <span key={v.id}>
-                    <span className="name">{v.participant_name}</span>
-                    {' '}
-                    {v.availability === 'yes' ? '✓' : v.availability === 'maybe' ? '~' : '✗'}
-                    {'   '}
-                  </span>
-                ))}
+                {slotVotes.map((v) => {
+                  const prof = v.user_id ? profileById.get(v.user_id) : undefined;
+                  const name = prof?.display_name ?? v.participant_name;
+                  return (
+                    <span key={v.id} className="voter-chip">
+                      <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
+                      <span className="name">{name}</span>
+                      {' '}
+                      {v.availability === 'yes' ? '✓' : v.availability === 'maybe' ? '~' : '✗'}
+                    </span>
+                  );
+                })}
               </div>
             )}
 
