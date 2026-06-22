@@ -426,28 +426,28 @@ img.avatar { display: inline-block; }
 }
 
 /* Zorza polarna: pionowe, miękkie kurtyny światła (maska po bokach, blend „screen"). */
-.aurora { position: absolute; left: -20%; right: -20%; top: -10%; height: 120%; opacity: 0.8; }
+.aurora { position: absolute; left: -25%; right: -25%; top: -10%; height: 120%; opacity: 0.55; }
 .aurora-band {
-  position: absolute; top: 0; bottom: 0; width: 44%;
+  position: absolute; top: 0; bottom: 0; width: 46%;
   mix-blend-mode: screen;
   will-change: transform;
   -webkit-mask-image: linear-gradient(to right, transparent, #000 35%, #000 65%, transparent);
   mask-image: linear-gradient(to right, transparent, #000 35%, #000 65%, transparent);
 }
-/* Jasna część gradientu jest na środku (≈48%) → zorza siedzi w centrum, nie tylko u góry. */
+/* Wyciszona zorza zepchnięta na boki — środek (treść) spokojniejszy. */
 .aurora-band.b1 {
-  left: 0%;
-  background: linear-gradient(to top, transparent 4%, rgba(34, 197, 94, 0.22) 30%, rgba(45, 212, 191, 0.40) 50%, rgba(99, 102, 241, 0.22) 76%, transparent 96%);
+  left: -10%;
+  background: linear-gradient(to top, transparent 6%, rgba(34, 197, 94, 0.16) 30%, rgba(45, 212, 191, 0.30) 50%, rgba(99, 102, 241, 0.16) 76%, transparent 96%);
   animation: aurora1 20s ease-in-out infinite alternate;
 }
 .aurora-band.b2 {
-  left: 30%;
-  background: linear-gradient(to top, transparent 6%, rgba(45, 212, 191, 0.32) 42%, rgba(168, 85, 247, 0.30) 74%, transparent 94%);
+  left: 64%;
+  background: linear-gradient(to top, transparent 6%, rgba(45, 212, 191, 0.24) 44%, rgba(168, 85, 247, 0.26) 78%, transparent 96%);
   animation: aurora2 25s ease-in-out infinite alternate;
 }
 .aurora-band.b3 {
-  left: 58%;
-  background: linear-gradient(to top, transparent 8%, rgba(56, 189, 248, 0.28) 46%, rgba(124, 58, 237, 0.24) 78%, transparent 96%);
+  left: 28%;
+  background: linear-gradient(to top, transparent 12%, rgba(56, 189, 248, 0.12) 48%, rgba(124, 58, 237, 0.12) 80%, transparent 94%);
   animation: aurora3 17s ease-in-out infinite alternate;
 }
 @keyframes aurora1 { from { transform: translateX(-15%) skewX(-11deg) scaleY(1); } to { transform: translateX(16%) skewX(8deg) scaleY(1.14); } }
@@ -479,14 +479,16 @@ img.avatar { display: inline-block; }
 }
 .glass-page .card:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
 
-/* Karty listy: „smoked glass" BEZ backdrop-filter → płynny scroll (zero rozmycia per-klatka). */
+/* Karty listy: matowe szkło (frosted) + fazowana krawędź i glinty w rogach. */
 .glass-page .event-rich {
   background:
-    radial-gradient(60% 55% at 0% 0%, rgba(255, 255, 255, 0.10), transparent 60%),
-    radial-gradient(45% 40% at 100% 0%, rgba(255, 255, 255, 0.06), transparent 60%),
-    radial-gradient(55% 50% at 100% 100%, rgba(99, 102, 241, 0.08), transparent 62%),
-    rgba(18, 20, 34, 0.46);
+    radial-gradient(60% 55% at 0% 0%, rgba(255, 255, 255, 0.12), transparent 60%),
+    radial-gradient(45% 40% at 100% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(55% 50% at 100% 100%, rgba(99, 102, 241, 0.10), transparent 62%),
+    rgba(14, 16, 28, 0.28);
   border: 1px solid rgba(255, 255, 255, 0.10);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.22),
     inset -1px -1px 1px rgba(0, 0, 0, 0.40),
