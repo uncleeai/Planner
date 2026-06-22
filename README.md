@@ -77,9 +77,13 @@ Bez kroków 1–4 strona się otworzy, ale pokaże baner z prośbą o konfigurac
 Logowanie to **e-mail + jednorazowy kod** (Supabase Auth). Konfiguracja w panelu:
 
 1. *Authentication → Providers → Email* — włączone (domyślnie jest).
-2. *Authentication → Email Templates → Magic Link* — dodaj do treści **kod**, np.:
-   `Twój kod logowania: {{ .Token }}` (domyślny szablon pokazuje tylko link, a my
-   logujemy się kodem wpisywanym w aplikacji).
+2. *Authentication → Email Templates* — dodaj **kod** `{{ .Token }}` do treści w **obu**
+   szablonach (domyślne pokazują tylko link, a my logujemy się kodem wpisywanym w apce):
+   - **Magic Link** — używany dla **istniejących** kont. Np. `Twój kod logowania: {{ .Token }}`.
+   - **Confirm signup** — używany przy **pierwszym** logowaniu nowego adresu. Też dodaj
+     `{{ .Token }}`, inaczej nowi użytkownicy dostaną link zamiast kodu.
+   (Alternatywa: wyłączyć *Confirm email* w ustawieniach providera Email — wtedy nowe
+   adresy też idą szablonem Magic Link.)
 3. Uruchom (lub uruchom ponownie) `supabase/schema.sql` — włącza reguły RLS „tylko
    zalogowani; każdy edytuje swoje".
 
