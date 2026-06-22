@@ -86,6 +86,11 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+// Szybkie logowanie dla preview/dev — przycisk pojawia się TYLKO, gdy ustawione są
+// te zmienne. Ustaw je wyłącznie w środowisku Preview (i lokalnie), NIGDY na produkcji.
+const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_EMAIL;
+const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_PASSWORD;
+
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -124,6 +129,20 @@ function LoginForm() {
       return;
     }
     // onAuthStateChange ustawi sesję i przełączy widok — w TEJ przeglądarce.
+  }
+
+  async function devLogin() {
+    if (!DEV_EMAIL || !DEV_PASSWORD || busy) return;
+    setBusy(true);
+    setError('');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: DEV_EMAIL,
+      password: DEV_PASSWORD,
+    });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+    }
   }
 
   return (
@@ -185,6 +204,18 @@ function LoginForm() {
             Zmień e-mail / wyślij ponownie
           </button>
         </form>
+      )}
+
+      {DEV_EMAIL && DEV_PASSWORD && (
+        <button
+          type="button"
+          className="ghost mt"
+          style={{ width: '100%' }}
+          disabled={busy}
+          onClick={devLogin}
+        >
+          ⚡ Szybkie logowanie (dev)
+        </button>
       )}
     </main>
   );
