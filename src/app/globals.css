@@ -426,7 +426,7 @@ img.avatar { display: inline-block; }
 }
 
 /* Zorza polarna: pionowe, miękkie kurtyny światła (maska po bokach, blend „screen"). */
-.aurora { position: absolute; left: -25%; right: -25%; top: -10%; height: 120%; opacity: 0.55; }
+.aurora { position: absolute; left: -25%; right: -25%; top: -10%; height: 120%; opacity: 0.63; }
 .aurora-band {
   position: absolute; top: 0; bottom: 0; width: 46%;
   mix-blend-mode: screen;
@@ -492,13 +492,30 @@ img.avatar { display: inline-block; }
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.22),
     inset -1px -1px 1px rgba(0, 0, 0, 0.40),
+    inset 3px 3px 9px rgba(120, 200, 255, 0.11),
+    inset -3px -3px 9px rgba(185, 135, 255, 0.11),
     0 18px 50px rgba(0, 0, 0, 0.5);
+}
+/* Tęczowo przesunięty rant — światło załamane na krawędzi szkła (refrakcja). */
+.glass-page .event-rich::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(130, 210, 255, 0.40), rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0) 62%, rgba(190, 140, 255, 0.34));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
 }
 .glass-page .event-rich:hover {
   border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.30),
     inset -1px -1px 1px rgba(0, 0, 0, 0.40),
+    inset 3px 3px 9px rgba(120, 200, 255, 0.14),
+    inset -3px -3px 9px rgba(185, 135, 255, 0.14),
     0 22px 60px rgba(0, 0, 0, 0.55);
 }
 
