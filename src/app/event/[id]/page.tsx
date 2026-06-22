@@ -275,10 +275,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main>
-      <p><Link href="/">← Wszystkie wypady</Link></p>
-      <h1>{event?.title}</h1>
-      {event?.location && <p className="lead">📍 {event.location}</p>}
-      {event?.created_by && <p className="small muted">Organizuje: {event.created_by}</p>}
+      <Link href="/" className="back-link">‹ Wszystkie wypady</Link>
+
+      <header className="app-header">
+        <h1 className="large-title">{event?.title}</h1>
+        {event?.location && <p className="meta">📍 {event.location}</p>}
+        {event?.created_by && <p className="meta">Organizuje: {event.created_by}</p>}
+      </header>
 
       {event?.confirmed_at && (
         <div className="confirmed-banner">✅ Ustalono: {formatSlot(event.confirmed_at)}</div>
@@ -296,19 +299,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </span>
       </div>
 
-      <p className="small muted mt">Głosujesz jako <strong>{displayName}</strong>.</p>
-
       {slots.length > 0 && members.length > 0 && (
-        missingVoters.length > 0 ? (
-          <p className="small mt" style={{ color: 'var(--maybe)' }}>
-            ⏳ Czekamy jeszcze na: {missingVoters.join(', ')}
-          </p>
-        ) : (
-          <p className="small mt" style={{ color: 'var(--yes)' }}>
-            ✅ Cała paczka już zagłosowała.
-          </p>
-        )
+        <div className="mt">
+          {missingVoters.length > 0 ? (
+            <span className="pill-wait">⏳ Czekamy na: {missingVoters.join(', ')}</span>
+          ) : (
+            <span className="pill-done">✅ Cała paczka zagłosowała</span>
+          )}
+        </div>
       )}
+
+      <p className="small muted mt">Głosujesz jako <strong>{displayName}</strong>.</p>
 
       <div className="card">
         <h2>Proponowane terminy</h2>
@@ -425,7 +426,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {isOrganizer && (
-        <button type="button" className="ghost danger" onClick={deleteEvent}>
+        <button type="button" className="ghost danger chip mt" onClick={deleteEvent}>
           Usuń wypad
         </button>
       )}

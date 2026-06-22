@@ -113,20 +113,18 @@ export default function Home() {
 
   return (
     <main>
-      <div className="row">
-        <h1 style={{ marginBottom: 0 }}>Planner</h1>
-        <span className="spacer" />
-        <span className="small muted">Cześć, {displayName}</span>
-      </div>
-      <p className="lead">Wasze wypady w jednym miejscu — proponujcie terminy i ustalajcie kiedy.</p>
+      <header className="app-header">
+        <div className="row">
+          <h1 className="large-title">Planner</h1>
+          <span className="spacer" />
+          <button className="ghost chip" onClick={() => signOut()}>Wyloguj</button>
+        </div>
+        <p className="lead">Cześć, {displayName} — wasze wypady w jednym miejscu.</p>
+      </header>
 
-      <div className="row mt">
-        <button className="ghost" onClick={() => signOut()}>Wyloguj</button>
-        <span className="spacer" />
-        <button onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Anuluj' : '+ Nowy wypad'}
-        </button>
-      </div>
+      <button style={{ width: '100%' }} onClick={() => setShowForm((v) => !v)}>
+        {showForm ? 'Anuluj' : '+ Nowy wypad'}
+      </button>
 
       {showForm && (
         <form className="card mt" onSubmit={createEvent}>
@@ -215,8 +213,13 @@ export default function Home() {
 
       {loading && <p className="muted mt">Wczytuję…</p>}
 
-      {!loading && events.length === 0 && (
-        <p className="muted mt">Brak wypadów. Kliknij „+ Nowy wypad", żeby zaproponować pierwszy.</p>
+      {!loading && events.length === 0 && !showForm && (
+        <div className="empty-state mt">
+          <div className="emoji">🗓️</div>
+          <h2>Brak wypadów</h2>
+          <p>Zaproponuj pierwszy termin i wyślij znajomym.</p>
+          <button onClick={() => setShowForm(true)}>+ Nowy wypad</button>
+        </div>
       )}
 
       <Timeline title="Do ustalenia" events={open} />
@@ -229,23 +232,24 @@ export default function Home() {
 function Timeline({ title, events, muted }: { title: string; events: EventRow[]; muted?: boolean }) {
   if (events.length === 0) return null;
   return (
-    <section className="mt">
-      <h2 className={muted ? 'muted' : ''}>{title}</h2>
-      {events.map((ev) => (
-        <Link key={ev.id} href={`/event/${ev.id}`} className="event-card">
-          <div>
-            <div className="event-card-title">{ev.title}</div>
-            {ev.location && <div className="small muted">📍 {ev.location}</div>}
-          </div>
-          <div className="event-card-status">
+    <section>
+      <div className={`section-label${muted ? ' faded' : ''}`}>{title}</div>
+      <div className="list-group">
+        {events.map((ev) => (
+          <Link key={ev.id} href={`/event/${ev.id}`} className="list-row">
+            <div className="list-row-main">
+              <div className="list-row-title">{ev.title}</div>
+              {ev.location && <div className="meta">📍 {ev.location}</div>}
+            </div>
             {ev.confirmed_at ? (
               <span className="badge">{formatDate(ev.confirmed_at)}</span>
             ) : (
               <span className="badge badge-open">Zbieramy terminy</span>
             )}
-          </div>
-        </Link>
-      ))}
+            <span className="row-chevron">›</span>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }

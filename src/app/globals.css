@@ -198,42 +198,81 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .center { text-align: center; }
 .mt { margin-top: 16px; }
 
-/* Lista ekip na stronie głównej */
-.list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  margin-bottom: 8px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  text-decoration: none;
-  color: var(--text);
-}
-.list-item:hover { border-color: var(--border-strong); }
-.list-item-title { font-weight: 600; }
+/* Nagłówek strony (iOS large title) */
+.app-header { margin-bottom: 18px; }
+.large-title { font-size: 2rem; font-weight: 700; letter-spacing: -0.022em; margin: 0 0 2px; }
 
-/* Karty wypadów na osi czasu */
-.event-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  margin-bottom: 10px;
+/* Nagłówki sekcji (jak grupy w Ustawieniach iOS) */
+.section-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 26px 4px 8px;
+}
+.section-label.faded { color: #6a6f80; }
+
+/* Zgrupowana lista — jedna „wyspa" z cienkimi separatorami */
+.list-group {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
   text-decoration: none;
   color: var(--text);
-  box-shadow: var(--shadow);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
+  transition: background 0.15s ease, transform 0.06s ease;
 }
-.event-card:hover { background: var(--card-2); border-color: var(--border-strong); }
-.event-card:active { transform: scale(0.99); }
-.event-card-title { font-weight: 600; letter-spacing: -0.01em; }
-.event-card-status { flex-shrink: 0; text-align: right; }
+.list-row + .list-row { border-top: 1px solid var(--border); }
+.list-row:hover { background: var(--card-2); }
+.list-row:active { transform: scale(0.992); }
+.list-row-main { min-width: 0; flex: 1; }
+.list-row-title { font-weight: 600; letter-spacing: -0.01em; }
+.row-chevron { flex-shrink: 0; color: var(--muted); font-size: 1.3rem; line-height: 1; }
+
+/* Drobna linia meta (miejsce, organizator) */
+.meta { font-size: 0.85rem; color: var(--muted); margin: 3px 0 0; }
+.meta:first-child { margin-top: 0; }
+
+/* Stan pusty */
+.empty-state {
+  text-align: center;
+  padding: 44px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.empty-state .emoji { font-size: 2.4rem; line-height: 1; }
+.empty-state h2 { margin: 14px 0 4px; }
+.empty-state p { color: var(--muted); margin: 0 auto 18px; max-width: 30ch; }
+
+/* Pille statusu głosowania */
+.pill-wait, .pill-done {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.pill-wait { color: var(--maybe); background: rgba(255, 214, 10, 0.12); border: 1px solid rgba(255, 214, 10, 0.25); }
+.pill-done { color: var(--yes); background: rgba(48, 209, 88, 0.12); border: 1px solid rgba(48, 209, 88, 0.3); }
+
+/* Back link (iOS) */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.95rem;
+  color: var(--primary-hover);
+  margin-bottom: 14px;
+}
 
 /* Baner ustalonego terminu na stronie wypadu */
 .confirmed-banner {
