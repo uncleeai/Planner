@@ -1,10 +1,11 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
-import { AVATARS } from '@/lib/avatars';
+import { Avatar } from '@/components/Avatar';
+import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 
 type AuthCtx = { userId: string; displayName: string; avatar: string };
 
@@ -73,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const displayName = (meta.display_name as string | undefined)?.trim() ?? '';
   const avatar = (meta.avatar as string | undefined) ?? '';
   if (!displayName || !avatar) {
-    return <SetupForm initialName={displayName} initialAvatar={avatar} />;
+    return <SetupForm userId={session.user.id} initialName={displayName} initialAvatar={avatar} />;
   }
 
   return (
@@ -189,11 +190,36 @@ function LoginForm() {
   );
 }
 
-function SetupForm({ initialName, initialAvatar }: { initialName: string; initialAvatar: string }) {
+function SetupForm({
+  userId,
+  initialName,
+  initialAvatar,
+}: {
+  userId: string;
+  initialName: string;
+  initialAvatar: string;
+}) {
   const [name, setName] = useState(initialName);
   const [avatar, setAvatar] = useState(initialAvatar || AVATARS[0]);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      setAvatar(await uploadAvatarImage(userId, file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się wgrać zdjęcia.');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -230,6 +256,13 @@ function SetupForm({ initialName, initialAvatar }: { initialName: string; initia
         </div>
         <div className="field">
           <label>Awatar</label>
+          <div className="row" style={{ alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <Avatar name={name || 'Ty'} avatar={avatar} size={56} />
+            <button type="button" className="ghost chip" disabled={uploading} onClick={() => fileRef.current?.click()}>
+              {uploading ? 'Wgrywam…' : '📷 Wgraj zdjęcie'}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
+          </div>
           <div className="avatar-picker">
             {AVATARS.map((a) => (
               <button

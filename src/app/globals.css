@@ -356,6 +356,30 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .progress-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
 .progress-label { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
 
+img.avatar { display: inline-block; }
+
+/* Menu profilu (klik w avatar) */
+.profile-menu { position: relative; flex-shrink: 0; }
+.profile-trigger { padding: 0; background: none; border: none; border-radius: 50%; line-height: 0; }
+.profile-trigger:hover { background: none; }
+.profile-trigger:active { transform: scale(0.94); }
+.menu-backdrop { position: fixed; inset: 0; z-index: 40; }
+.menu-sheet {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 50;
+  min-width: 210px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: var(--shadow); padding: 6px;
+}
+.menu-item {
+  display: block; width: 100%; text-align: left;
+  background: none; border: none; color: var(--text); font-weight: 500;
+  padding: 11px 12px; border-radius: 9px; font-size: 0.95rem;
+}
+.menu-item:hover { background: var(--card-2); }
+.menu-item:disabled { opacity: 0.5; }
+.menu-item.danger { color: var(--no); }
+.menu-sheet .avatar-picker { padding: 4px; }
+
 /* Baner z poradą */
 .tip-banner {
   display: flex; align-items: center; gap: 12px;

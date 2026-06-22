@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth, signOut } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
 import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { SLOT_PRESETS } from '@/lib/slotPresets';
-import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
+import { AvatarStack, type Person } from '@/components/Avatar';
+import ProfileMenu from '@/components/ProfileMenu';
 import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
 
 function fmtDate(iso: string): string {
@@ -30,7 +31,7 @@ const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null };
 
 export default function Home() {
   const router = useRouter();
-  const { userId, displayName, avatar } = useAuth();
+  const { userId, displayName } = useAuth();
 
   const [events, setEvents] = useState<EventRow[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -164,20 +165,10 @@ export default function Home() {
 
   return (
     <main>
-      <header className="dash-header">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="app-icon" src="/icon.svg" alt="" />
-        <h1 className="large-title" style={{ margin: 0 }}>Planner</h1>
-        <span className="spacer" />
-        <Avatar name={displayName} avatar={avatar} size={38} />
+      <header className="dash-header" style={{ marginBottom: 16 }}>
+        <span className="lead" style={{ margin: 0, flex: 1 }}>Cześć, {displayName}</span>
+        <ProfileMenu />
       </header>
-      <div className="row" style={{ marginBottom: 16 }}>
-        <span className="lead" style={{ margin: 0 }}>
-          Cześć, {displayName} — proponujcie terminy i ustalajcie kiedy.
-        </span>
-        <span className="spacer" />
-        <button className="ghost chip" onClick={() => signOut()}>Wyloguj</button>
-      </div>
 
       <button className="cta-gradient" onClick={() => setShowForm((v) => !v)}>
         {showForm ? 'Anuluj' : '+ Nowy wypad'}
