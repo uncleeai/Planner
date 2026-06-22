@@ -413,3 +413,51 @@ img.avatar { display: inline-block; }
   color: var(--muted); font-size: 0.88rem;
 }
 .tip-banner .tip-icon { color: var(--primary-hover); flex-shrink: 0; }
+
+/* ===== Liquid Glass (dashboard) ===== */
+.glass-page { position: relative; z-index: 1; }
+
+.glass-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: #07070d;
+}
+.glass-blob {
+  position: absolute; width: 70vw; height: 70vw; max-width: 480px; max-height: 480px;
+  border-radius: 50%; filter: blur(90px);
+}
+.glass-blob-1 { top: -8%; left: -12%; opacity: 0.55; background: linear-gradient(135deg, #7c3aed, #4f46e5); }
+.glass-blob-2 { bottom: -12%; right: -14%; opacity: 0.5; background: linear-gradient(135deg, #2563eb, #06b6d4); }
+
+/* Recepta szkła: półprzezroczyste tło + rozmycie/saturacja + krawędź + mokry odblask. */
+.glass-page .event-rich,
+.glass-page .card,
+.glass-page .empty-state,
+.glass-page .tip-banner {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.10);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+.glass-page .event-rich:hover,
+.glass-page .card:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
+
+/* Szklisty CTA zamiast pełnego gradientu */
+.glass-page .cta-gradient {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.glass-page .cta-gradient:hover { background: rgba(255, 255, 255, 0.18); }
+
+.glass-page .section-label { color: rgba(255, 255, 255, 0.5); letter-spacing: 0.12em; }
+
+/* Pasek postępu: ciemny „żelowy" tor, kolorowy wskaźnik (sygnał %) zostaje */
+.glass-page .progress {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}

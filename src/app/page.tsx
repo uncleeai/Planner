@@ -9,6 +9,7 @@ import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { SLOT_PRESETS } from '@/lib/slotPresets';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
+import GlassBackground from '@/components/GlassBackground';
 import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
 
 function fmtDate(iso: string): string {
@@ -164,7 +165,8 @@ export default function Home() {
   }, [events, slots, votes, profiles]);
 
   return (
-    <main>
+    <main className="glass-page">
+      <GlassBackground />
       <header className="dash-header" style={{ marginBottom: 16 }}>
         <span className="lead" style={{ margin: 0, flex: 1 }}>Cześć, {displayName}</span>
         <ProfileMenu />
