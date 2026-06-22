@@ -1,25 +1,30 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 
-// Avatar bieżącego użytkownika w rogu; klik → menu: zmień zdjęcie / wybierz emoji / wyloguj.
+// Avatar bieżącego użytkownika w rogu; klik → wyśrodkowany modal: zdjęcie/emoji, nick, wyloguj.
 export default function ProfileMenu() {
   const { userId, displayName, avatar } = useAuth();
   const [open, setOpen] = useState(false);
-  const [showEmoji, setShowEmoji] = useState(false);
+  const [name, setName] = useState(displayName);
   const [busy, setBusy] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [savedName, setSavedName] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function close() {
-    setOpen(false);
-    setShowEmoji(false);
-    setError('');
-  }
+  // Po otwarciu modala zsynchronizuj pole nicku z aktualną nazwą.
+  useEffect(() => {
+    if (open) {
+      setName(displayName);
+      setSavedName(false);
+      setError('');
+    }
+  }, [open, displayName]);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -30,7 +35,6 @@ export default function ProfileMenu() {
     try {
       const url = await uploadAvatarImage(userId, file);
       await supabase.auth.updateUser({ data: { avatar: url } });
-      close();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się wgrać zdjęcia.');
     } finally {
@@ -43,49 +47,89 @@ export default function ProfileMenu() {
     setError('');
     await supabase.auth.updateUser({ data: { avatar: emoji } });
     setBusy(false);
-    close();
+  }
+
+  async function saveName() {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === displayName || savingName) return;
+    setSavingName(true);
+    setError('');
+    const { error } = await supabase.auth.updateUser({ data: { display_name: trimmed } });
+    setSavingName(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSavedName(true);
   }
 
   return (
     <div className="profile-menu">
-      <button className="profile-trigger" onClick={() => setOpen((v) => !v)} aria-label="Profil">
+      <button className="profile-trigger" onClick={() => setOpen(true)} aria-label="Profil">
         <Avatar name={displayName} avatar={avatar} size={38} />
       </button>
 
       {open && (
-        <>
-          <div className="menu-backdrop" onClick={close} />
-          <div className="menu-sheet">
-            {!showEmoji ? (
-              <>
-                <button className="menu-item" disabled={busy} onClick={() => fileRef.current?.click()}>
-                  {busy ? 'Wgrywam…' : '📷 Zmień zdjęcie'}
+        <div className="profile-overlay" onClick={() => setOpen(false)}>
+          <div className="profile-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setOpen(false)} aria-label="Zamknij">✕</button>
+
+            <div className="avatar-xl-wrap">
+              <Avatar name={displayName} avatar={avatar} size={104} />
+              <button
+                className="avatar-camera"
+                disabled={busy}
+                onClick={() => fileRef.current?.click()}
+                aria-label="Zmień zdjęcie"
+              >
+                {busy ? '…' : '📷'}
+              </button>
+            </div>
+
+            <div className="profile-emoji-row">
+              {AVATARS.map((a) => (
+                <button
+                  type="button"
+                  key={a}
+                  className={`avatar-option${avatar === a ? ' selected' : ''}`}
+                  disabled={busy}
+                  onClick={() => pickEmoji(a)}
+                >
+                  {a}
                 </button>
-                <button className="menu-item" disabled={busy} onClick={() => setShowEmoji(true)}>
-                  😀 Wybierz emoji
+              ))}
+            </div>
+
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label htmlFor="nick">Nick</label>
+              <div className="row" style={{ flexWrap: 'nowrap' }}>
+                <input
+                  id="nick"
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setSavedName(false);
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  className="ghost"
+                  disabled={savingName || !name.trim() || name.trim() === displayName}
+                  onClick={saveName}
+                >
+                  {savingName ? 'Zapisuję…' : savedName ? 'Zapisano ✓' : 'Zapisz'}
                 </button>
-                <button className="menu-item danger" onClick={() => signOut()}>
-                  Wyloguj
-                </button>
-              </>
-            ) : (
-              <div className="avatar-picker">
-                {AVATARS.map((a) => (
-                  <button
-                    type="button"
-                    key={a}
-                    className={`avatar-option${avatar === a ? ' selected' : ''}`}
-                    disabled={busy}
-                    onClick={() => pickEmoji(a)}
-                  >
-                    {a}
-                  </button>
-                ))}
               </div>
-            )}
-            {error && <p className="small" style={{ color: 'var(--no)', margin: '6px 4px 0' }}>{error}</p>}
+            </div>
+
+            {error && <p className="small" style={{ color: 'var(--no)', margin: '0 0 12px' }}>{error}</p>}
+
+            <button className="ghost danger" style={{ width: '100%' }} onClick={() => signOut()}>
+              Wyloguj
+            </button>
           </div>
-        </>
+        </div>
       )}
 
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
