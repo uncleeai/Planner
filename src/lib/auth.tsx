@@ -94,10 +94,11 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isPreview, setIsPreview] = useState(false);
 
-  // Guzik „gość" pokazujemy tylko na preview/localhost (adres brancha zawiera „-git-").
+  // Guzik „gość" pokazujemy na preview i lokalnie (każdy adres *.vercel.app oraz localhost).
+  // Na własnej domenie produkcyjnej się nie pokaże.
   useEffect(() => {
     const h = window.location.hostname;
-    setIsPreview(h.includes('-git-') || h.includes('localhost') || h.startsWith('127.'));
+    setIsPreview(h.endsWith('.vercel.app') || h.includes('localhost') || h.startsWith('127.'));
   }, []);
 
   async function sendCode(e: React.FormEvent) {
