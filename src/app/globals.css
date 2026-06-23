@@ -192,48 +192,88 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .choices button.active-maybe:hover { background: var(--maybe); }
 .choices button.active-no:hover { background: var(--no); }
 
-.voters { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.7; }
+.voters { font-size: 0.82rem; color: var(--muted); margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .voters .name { color: var(--text); }
+.voter-chip { display: inline-flex; align-items: center; gap: 5px; }
 
 .center { text-align: center; }
 .mt { margin-top: 16px; }
 
-/* Lista ekip na stronie głównej */
-.list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  margin-bottom: 8px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  text-decoration: none;
-  color: var(--text);
-}
-.list-item:hover { border-color: var(--border-strong); }
-.list-item-title { font-weight: 600; }
+/* Nagłówek strony (iOS large title) */
+.app-header { margin-bottom: 18px; }
+.large-title { font-size: 2rem; font-weight: 700; letter-spacing: -0.022em; margin: 0 0 2px; }
 
-/* Karty wypadów na osi czasu */
-.event-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  margin-bottom: 10px;
+/* Nagłówki sekcji (jak grupy w Ustawieniach iOS) */
+.section-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 26px 4px 8px;
+}
+.section-label.faded { color: #6a6f80; }
+
+/* Zgrupowana lista — jedna „wyspa" z cienkimi separatorami */
+.list-group {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
   text-decoration: none;
   color: var(--text);
-  box-shadow: var(--shadow);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
+  transition: background 0.15s ease, transform 0.06s ease;
 }
-.event-card:hover { background: var(--card-2); border-color: var(--border-strong); }
-.event-card:active { transform: scale(0.99); }
-.event-card-title { font-weight: 600; letter-spacing: -0.01em; }
-.event-card-status { flex-shrink: 0; text-align: right; }
+.list-row + .list-row { border-top: 1px solid var(--border); }
+.list-row:hover { background: var(--card-2); }
+.list-row:active { transform: scale(0.992); }
+.list-row-main { min-width: 0; flex: 1; }
+.list-row-title { font-weight: 600; letter-spacing: -0.01em; }
+.row-chevron { flex-shrink: 0; color: var(--muted); font-size: 1.3rem; line-height: 1; }
+
+/* Drobna linia meta (miejsce, organizator) */
+.meta { font-size: 0.85rem; color: var(--muted); margin: 3px 0 0; }
+.meta:first-child { margin-top: 0; }
+
+/* Stan pusty */
+.empty-state {
+  text-align: center;
+  padding: 44px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.empty-state .emoji { font-size: 2.4rem; line-height: 1; }
+.empty-state h2 { margin: 14px 0 4px; }
+.empty-state p { color: var(--muted); margin: 0 auto 18px; max-width: 30ch; }
+
+/* Pille statusu głosowania */
+.pill-wait, .pill-done {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.pill-wait { color: var(--maybe); background: rgba(255, 214, 10, 0.12); border: 1px solid rgba(255, 214, 10, 0.25); }
+.pill-done { color: var(--yes); background: rgba(48, 209, 88, 0.12); border: 1px solid rgba(48, 209, 88, 0.3); }
+
+/* Back link (iOS) */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.95rem;
+  color: var(--primary-hover);
+  margin-bottom: 14px;
+}
 
 /* Baner ustalonego terminu na stronie wypadu */
 .confirmed-banner {
@@ -247,3 +287,276 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 }
 
 .slot.confirmed { border-color: rgba(48, 209, 88, 0.5); box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.5) inset; }
+
+/* ===== Hybryda: nagłówek, awatary, karty wypadów, postęp ===== */
+
+.dash-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.app-icon { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; box-shadow: var(--shadow); }
+
+/* Awatary */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: #fff; font-weight: 600; line-height: 1;
+  border: 2px solid var(--card); flex-shrink: 0; overflow: hidden; user-select: none;
+}
+.avatar-stack { display: inline-flex; }
+.avatar-stack > * + * { margin-left: -9px; }
+.avatar-more { background: var(--card-2); color: var(--muted); }
+
+/* Wybór awatara (setup) */
+.avatar-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 8px; }
+.avatar-option {
+  background: var(--card-2); border: 1px solid var(--border); border-radius: 12px;
+  font-size: 1.4rem; padding: 8px 0; min-height: 48px; color: inherit; font-weight: 400;
+}
+.avatar-option:hover { background: #262833; }
+.avatar-option.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(91, 87, 242, 0.4);
+  background: rgba(91, 87, 242, 0.12);
+}
+
+/* Gradientowy CTA */
+.cta-gradient {
+  width: 100%;
+  background: linear-gradient(135deg, #6d6af6, #4f46e5);
+  box-shadow: 0 8px 24px rgba(91, 87, 242, 0.35);
+  padding: 15px 18px;
+  font-size: 1.02rem;
+}
+.cta-gradient:hover { background: linear-gradient(135deg, #7b78f8, #5a51ea); }
+
+/* Karta wypadu (bogata) */
+.event-rich {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
+}
+.event-rich:hover { background: var(--card-2); border-color: var(--border-strong); }
+.event-rich:active { transform: scale(0.992); }
+.event-rich-head { display: flex; align-items: center; gap: 10px; }
+.event-rich-title { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; flex: 1; min-width: 0; }
+
+.event-meta { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.88rem; }
+.event-meta svg { flex-shrink: 0; opacity: 0.85; }
+.event-meta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.event-rich-foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; min-height: 28px; }
+.event-rich-foot .spacer { flex: 1; }
+
+/* Pasek postępu głosowania */
+.progress-wrap { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+.progress { flex: 1; height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.progress-label { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+
+img.avatar { display: inline-block; }
+
+/* Menu profilu (klik w avatar) */
+.profile-menu { position: relative; flex-shrink: 0; }
+.profile-trigger { padding: 0; background: none; border: none; border-radius: 50%; line-height: 0; }
+.profile-trigger:hover { background: none; }
+.profile-trigger:active { transform: scale(0.94); }
+
+/* Modal profilu (wyśrodkowany, rozmyte tło) */
+.profile-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.profile-modal {
+  position: relative;
+  width: 100%; max-width: 360px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; box-shadow: var(--shadow);
+  padding: 28px 20px 20px;
+  text-align: center;
+}
+.modal-close {
+  position: absolute; top: 12px; right: 12px;
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--card-2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 50%; font-size: 0.9rem; font-weight: 500;
+}
+.modal-close:hover { background: #262833; color: var(--text); }
+
+.avatar-xl-wrap { position: relative; display: inline-block; margin-bottom: 16px; }
+.avatar-camera {
+  position: absolute; right: -2px; bottom: -2px;
+  width: 36px; height: 36px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 1rem;
+  background: var(--primary); border: 3px solid var(--card); color: #fff;
+}
+.avatar-camera:hover { background: var(--primary-hover); }
+
+.profile-emoji-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 18px; }
+.profile-modal .field { text-align: left; }
+
+/* Baner z poradą */
+.tip-banner {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 24px; padding: 14px 16px;
+  background: rgba(91, 87, 242, 0.08);
+  border: 1px solid rgba(91, 87, 242, 0.22);
+  border-radius: 14px;
+  color: var(--muted); font-size: 0.88rem;
+}
+.tip-banner .tip-icon { color: var(--primary-hover); flex-shrink: 0; }
+
+/* ===== Liquid Glass (dashboard) ===== */
+.glass-page { position: relative; z-index: 1; }
+
+.glass-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  /* Nocne niebo + delikatna poświata zorzy nad horyzontem. */
+  background:
+    radial-gradient(120% 70% at 50% 125%, rgba(76, 112, 162, 0.07), transparent 60%),
+    linear-gradient(180deg, #070815 0%, #05060e 55%, #04040a 100%);
+}
+
+/* Zorza polarna: pionowe, miękkie kurtyny światła (maska po bokach, blend „screen"). */
+.aurora { position: absolute; left: -25%; right: -25%; top: -10%; height: 120%; opacity: 0.63; }
+.aurora-band {
+  position: absolute; top: 0; bottom: 0; width: 46%;
+  mix-blend-mode: screen;
+  will-change: transform;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 35%, #000 65%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 35%, #000 65%, transparent);
+}
+/* Wyciszona zorza zepchnięta na boki — środek (treść) spokojniejszy. */
+.aurora-band.b1 {
+  left: -10%;
+  background: linear-gradient(to top, transparent 6%, rgba(72, 116, 168, 0.16) 30%, rgba(88, 112, 182, 0.30) 50%, rgba(110, 100, 176, 0.18) 76%, transparent 96%);
+  animation: aurora1 20s ease-in-out infinite alternate;
+}
+.aurora-band.b2 {
+  left: 64%;
+  background: linear-gradient(to top, transparent 6%, rgba(118, 110, 190, 0.22) 44%, rgba(178, 124, 168, 0.24) 78%, transparent 96%);
+  animation: aurora2 25s ease-in-out infinite alternate;
+}
+.aurora-band.b3 {
+  left: 28%;
+  background: linear-gradient(to top, transparent 12%, rgba(90, 120, 174, 0.12) 48%, rgba(126, 112, 168, 0.12) 80%, transparent 94%);
+  animation: aurora3 17s ease-in-out infinite alternate;
+}
+@keyframes aurora1 { from { transform: translateX(-15%) skewX(-11deg) scaleY(1); } to { transform: translateX(16%) skewX(8deg) scaleY(1.14); } }
+@keyframes aurora2 { from { transform: translateX(14%) skewX(10deg) scaleY(1.1); } to { transform: translateX(-16%) skewX(-9deg) scaleY(0.92); } }
+@keyframes aurora3 { from { transform: translateX(-13%) skewX(-8deg) scaleY(1.06); } to { transform: translateX(15%) skewX(12deg) scaleY(1.18); } }
+@media (prefers-reduced-motion: reduce) {
+  .aurora-band { animation: none; }
+}
+.glass-grain {
+  position: absolute; inset: 0;
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
+
+/* Recepta szkła: półprzezroczyste tło + rozmycie/saturacja + krawędź + mokry odblask. */
+.glass-page .card,
+.glass-page .empty-state,
+.glass-page .tip-banner {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.10);
+  -webkit-backdrop-filter: blur(12px) saturate(175%);
+  backdrop-filter: blur(12px) saturate(175%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.22),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.35),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.glass-page .card:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
+
+/* Karty listy: matowe szkło (frosted) + fazowana krawędź i glinty w rogach. */
+.glass-page .event-rich {
+  background:
+    radial-gradient(60% 55% at 0% 0%, rgba(255, 255, 255, 0.12), transparent 60%),
+    radial-gradient(45% 40% at 100% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(55% 50% at 100% 100%, rgba(99, 102, 241, 0.10), transparent 62%),
+    rgba(14, 16, 28, 0.20);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  -webkit-backdrop-filter: blur(12px) saturate(195%);
+  backdrop-filter: blur(12px) saturate(195%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.22),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.40),
+    inset 3px 3px 9px rgba(120, 200, 255, 0.11),
+    inset -3px -3px 9px rgba(185, 135, 255, 0.11),
+    0 18px 50px rgba(0, 0, 0, 0.5);
+}
+/* Tęczowo przesunięty rant — światło załamane na krawędzi szkła (refrakcja). */
+.glass-page .event-rich::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(130, 210, 255, 0.40), rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0) 62%, rgba(190, 140, 255, 0.34));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass-page .event-rich:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.30),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.40),
+    inset 3px 3px 9px rgba(120, 200, 255, 0.14),
+    inset -3px -3px 9px rgba(185, 135, 255, 0.14),
+    0 22px 60px rgba(0, 0, 0, 0.55);
+}
+
+/* Szklisty CTA zamiast pełnego gradientu */
+.glass-page .cta-gradient {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(12px) saturate(175%);
+  backdrop-filter: blur(12px) saturate(175%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.30),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.25);
+  color: #fff;
+}
+.glass-page .cta-gradient:hover { background: rgba(255, 255, 255, 0.18); }
+
+.glass-page .section-label { color: rgba(255, 255, 255, 0.5); letter-spacing: 0.12em; }
+
+/* Pasek postępu: ciemny „żelowy" tor, kolorowy wskaźnik (sygnał %) zostaje */
+.glass-page .progress {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Mokry połysk na górnej krawędzi — jaśniejszy w środku, zanikający po bokach. */
+.glass-page .event-rich,
+.glass-page .card,
+.glass-page .empty-state,
+.glass-page .tip-banner,
+.glass-page .cta-gradient { position: relative; }
+
+.glass-page .event-rich::before,
+.glass-page .card::before,
+.glass-page .empty-state::before,
+.glass-page .tip-banner::before,
+.glass-page .cta-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 14%; right: 14%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.35), transparent);
+  pointer-events: none;
+}

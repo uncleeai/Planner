@@ -1,11 +1,13 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
+import { Avatar } from '@/components/Avatar';
+import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 
-type AuthCtx = { userId: string; displayName: string };
+type AuthCtx = { userId: string; displayName: string; avatar: string };
 
 const Ctx = createContext<AuthCtx | null>(null);
 
@@ -38,12 +40,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // kto jeszcze nie zagłosował (klient nie ma dostępu do auth.users).
   useEffect(() => {
     if (!session) return;
-    const name = (session.user.user_metadata?.display_name as string | undefined)?.trim();
+    const meta = session.user.user_metadata ?? {};
+    const name = (meta.display_name as string | undefined)?.trim();
     if (!name) return;
     supabase
       .from('profiles')
       .upsert(
-        { id: session.user.id, display_name: name, updated_at: new Date().toISOString() },
+        {
+          id: session.user.id,
+          display_name: name,
+          avatar: (meta.avatar as string | undefined) ?? null,
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: 'id' },
       )
       .then(() => {});
@@ -62,11 +70,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (!session) return <LoginForm />;
 
-  const displayName =
-    (session.user.user_metadata?.display_name as string | undefined)?.trim() ?? '';
-  if (!displayName) return <NameForm />;
+  const meta = session.user.user_metadata ?? {};
+  const displayName = (meta.display_name as string | undefined)?.trim() ?? '';
+  const avatar = (meta.avatar as string | undefined) ?? '';
+  if (!displayName || !avatar) {
+    return <SetupForm userId={session.user.id} initialName={displayName} initialAvatar={avatar} />;
+  }
 
-  return <Ctx.Provider value={{ userId: session.user.id, displayName }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ userId: session.user.id, displayName, avatar }}>{children}</Ctx.Provider>
+  );
 }
 
 export async function signOut() {
@@ -79,6 +92,14 @@ function LoginForm() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
+
+  // Guzik „gość" pokazujemy na preview i lokalnie (każdy adres *.vercel.app oraz localhost).
+  // Na własnej domenie produkcyjnej się nie pokaże.
+  useEffect(() => {
+    const h = window.location.hostname;
+    setIsPreview(h.endsWith('.vercel.app') || h.includes('localhost') || h.startsWith('127.'));
+  }, []);
 
   async function sendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -111,6 +132,24 @@ function LoginForm() {
       return;
     }
     // onAuthStateChange ustawi sesję i przełączy widok — w TEJ przeglądarce.
+  }
+
+  async function guestLogin() {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    const { error } = await supabase.auth.signInAnonymously({
+      options: {
+        data: {
+          display_name: `Gość ${Math.floor(Math.random() * 900 + 100)}`,
+          avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
+        },
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+    }
   }
 
   return (
@@ -173,21 +212,61 @@ function LoginForm() {
           </button>
         </form>
       )}
+
+      {isPreview && (
+        <button
+          type="button"
+          className="ghost mt"
+          style={{ width: '100%' }}
+          disabled={busy}
+          onClick={guestLogin}
+        >
+          Wejdź bez logowania (gość)
+        </button>
+      )}
     </main>
   );
 }
 
-function NameForm() {
-  const [name, setName] = useState('');
+function SetupForm({
+  userId,
+  initialName,
+  initialAvatar,
+}: {
+  userId: string;
+  initialName: string;
+  initialAvatar: string;
+}) {
+  const [name, setName] = useState(initialName);
+  const [avatar, setAvatar] = useState(initialAvatar || AVATARS[0]);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      setAvatar(await uploadAvatarImage(userId, file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się wgrać zdjęcia.');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || busy) return;
+    if (!name.trim() || !avatar || busy) return;
     setBusy(true);
     setError('');
-    const { error } = await supabase.auth.updateUser({ data: { display_name: name.trim() } });
+    const { error } = await supabase.auth.updateUser({
+      data: { display_name: name.trim(), avatar },
+    });
     if (error) {
       setError(error.message);
       setBusy(false);
@@ -200,16 +279,41 @@ function NameForm() {
     <main>
       <h1>Planner</h1>
       <form className="card" onSubmit={save}>
-        <h2>Jak masz na imię?</h2>
-        <p className="small muted">Tę nazwę zobaczą inni przy Twoich głosach.</p>
+        <h2>Twój profil</h2>
+        <p className="small muted">Tę nazwę i awatar zobaczą inni przy Twoich głosach.</p>
         <div className="field">
+          <label htmlFor="name">Imię</label>
           <input
+            id="name"
             type="text"
             placeholder="np. Kuba"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
           />
+        </div>
+        <div className="field">
+          <label>Awatar</label>
+          <div className="row" style={{ alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <Avatar name={name || 'Ty'} avatar={avatar} size={56} />
+            <button type="button" className="ghost chip" disabled={uploading} onClick={() => fileRef.current?.click()}>
+              {uploading ? 'Wgrywam…' : '📷 Wgraj zdjęcie'}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
+          </div>
+          <div className="avatar-picker">
+            {AVATARS.map((a) => (
+              <button
+                type="button"
+                key={a}
+                className={`avatar-option${avatar === a ? ' selected' : ''}`}
+                onClick={() => setAvatar(a)}
+                aria-label={`Awatar ${a}`}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
         </div>
         {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
         <button type="submit" disabled={!name.trim() || busy}>

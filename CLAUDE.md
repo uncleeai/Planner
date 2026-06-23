@@ -50,11 +50,16 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, wynik na żywo, ustalanie terminu
     │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     ├── components/
-    │   └── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
+    │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
+    │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
+    │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
+    │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin…)
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
-        ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa) + hook useAuth
-        └── types.ts              # Typy: EventRow, Slot, Vote, Availability
+        ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar) + hook useAuth
+        ├── slotPresets.ts        # Szybkie presety terminów (chipy)
+        ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
+        └── types.ts              # Typy: EventRow, Slot, Vote, Profile, Availability
 ```
 
 **Punkty wejścia:** `src/app/page.tsx` (`/`, dashboard wszystkich wypadów) oraz
@@ -64,7 +69,7 @@ serwerowej poza renderowaniem stron i endpointem keepalive.
 
 **Model produktu:** jeden wspólny planer dla jednej (stałej) paczki znajomych — bez
 „ekip". Wejście wymaga **logowania** (e-mail + kod OTP, Supabase Auth); po pierwszym
-logowaniu użytkownik ustawia nazwę (w `user_metadata`). Sesja jest trwała.
+logowaniu użytkownik ustawia nazwę i wybiera awatar (w `user_metadata`). Sesja jest trwała.
 
 ## Model danych
 
@@ -76,9 +81,12 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
 - **slots** — proponowany termin (`starts_at`) powiązany z wypadem.
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
-- **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name`. Zapisywana
-  przez apkę po zalogowaniu (upsert w `auth.tsx`). Służy do pokazania „kto jeszcze nie
-  zagłosował", bo klient z kluczem `anon` nie ma dostępu do `auth.users`.
+- **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name` + `avatar` (emoji
+  albo URL wgranego zdjęcia). Zapisywana przez apkę po zalogowaniu (upsert w `auth.tsx`). Służy
+  do pokazania „kto jeszcze nie zagłosował" i awatarów uczestników, bo klient z kluczem `anon`
+  nie ma dostępu do `auth.users`.
+- **Storage** — bucket `avatars` (publiczny) na zdjęcia profilowe; każdy zarządza tylko swoim
+  folderem `<uid>/...` (RLS w `schema.sql`). Upload + skalowanie w `src/lib/avatars.ts`.
 - Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
   przy głosach/wypadach zapisujemy dodatkowo migawkę nazwy.
 

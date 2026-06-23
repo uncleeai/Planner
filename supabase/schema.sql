@@ -77,6 +77,10 @@ create table if not exists public.profiles (
   updated_at   timestamptz not null default now()
 );
 
+-- Awatar wybrany przez użytkownika przy pierwszym logowaniu (emoji).
+alter table public.profiles
+  add column if not exists avatar text;
+
 -- RLS: dostęp tylko dla zalogowanych; każdy edytuje wyłącznie swoje rekordy.
 alter table public.events   enable row level security;
 alter table public.slots    enable row level security;
@@ -157,3 +161,23 @@ begin
     end if;
   end loop;
 end $$;
+
+-- Storage: bucket na zdjęcia profilowe (publiczny odczyt; każdy zarządza tylko swoim folderem <uid>/...).
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists "avatars read"   on storage.objects;
+drop policy if exists "avatars insert" on storage.objects;
+drop policy if exists "avatars update" on storage.objects;
+drop policy if exists "avatars delete" on storage.objects;
+
+create policy "avatars read" on storage.objects for select
+  using (bucket_id = 'avatars');
+create policy "avatars insert" on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "avatars update" on storage.objects for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "avatars delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
