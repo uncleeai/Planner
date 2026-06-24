@@ -10,6 +10,7 @@ import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
+import { getCache, setCache } from '@/lib/dataCache';
 import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
 
 function fmtDate(iso: string): string {
@@ -34,11 +35,13 @@ export default function Home() {
   const navigate = useTransitionNavigate();
   const { userId, displayName } = useAuth();
 
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [votes, setVotes] = useState<Vote[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed z cache (jeśli wracamy z wypadu) — lista pojawia się od razu, bez „Wczytuję…".
+  const cached = getCache();
+  const [events, setEvents] = useState<EventRow[]>(() => cached?.events ?? []);
+  const [slots, setSlots] = useState<Slot[]>(() => cached?.slots ?? []);
+  const [votes, setVotes] = useState<Vote[]>(() => cached?.votes ?? []);
+  const [profiles, setProfiles] = useState<Profile[]>(() => cached?.profiles ?? []);
+  const [loading, setLoading] = useState(() => !cached);
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
@@ -64,10 +67,15 @@ export default function Home() {
       supabase.from('votes').select('*'),
       supabase.from('profiles').select('*'),
     ]);
-    setEvents((ev ?? []) as EventRow[]);
-    setSlots((sl ?? []) as Slot[]);
-    setVotes((vo ?? []) as Vote[]);
-    setProfiles((pr ?? []) as Profile[]);
+    const events = (ev ?? []) as EventRow[];
+    const slots = (sl ?? []) as Slot[];
+    const votes = (vo ?? []) as Vote[];
+    const profiles = (pr ?? []) as Profile[];
+    setEvents(events);
+    setSlots(slots);
+    setVotes(votes);
+    setProfiles(profiles);
+    setCache({ events, slots, votes, profiles }); // zaliczka dla strony wypadu
     setLoading(false);
   }, []);
 

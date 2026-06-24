@@ -10,6 +10,7 @@ import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
+import { getCache, mergeEventData } from '@/lib/dataCache';
 
 // Docinki dla tych, co jeszcze się nie zapisali — losowane przy każdym wejściu.
 const NAG_TEXTS = [
@@ -41,11 +42,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const navigate = useTransitionNavigate();
   const { userId, displayName } = useAuth();
 
-  const [event, setEvent] = useState<EventRow | null>(null);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [votes, setVotes] = useState<Vote[]>([]);
-  const [members, setMembers] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed z cache dashboardu (jeśli wchodzimy z listy) — wypad pokazuje się natychmiast,
+  // a load() poniżej i tak dociąga świeże dane i podpina realtime.
+  const seed = getCache();
+  const seedEvent = seed?.events.find((e) => e.id === eventId) ?? null;
+  const [event, setEvent] = useState<EventRow | null>(seedEvent);
+  const [slots, setSlots] = useState<Slot[]>(() => seed?.slots.filter((s) => s.event_id === eventId) ?? []);
+  const [votes, setVotes] = useState<Vote[]>(() => seed?.votes.filter((v) => v.event_id === eventId) ?? []);
+  const [members, setMembers] = useState<Profile[]>(() => seed?.profiles ?? []);
+  const [loading, setLoading] = useState(!seedEvent);
   const [notFound, setNotFound] = useState(false);
 
   const [newSlot, setNewSlot] = useState('');
@@ -98,6 +103,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         }
       }
       setVotes(merged);
+
+      // Odśwież cache tego wypadu, by powrót na listę pokazał aktualne dane.
+      mergeEventData(eventId, {
+        event: ev as EventRow,
+        slots: (sl ?? []) as Slot[],
+        votes: dbVotes,
+        profiles: (pr ?? []) as Profile[],
+      });
     }
     setLoading(false);
   }, [eventId, userId, displayName]);
