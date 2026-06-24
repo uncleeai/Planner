@@ -8,8 +8,22 @@ import { useAuth } from '@/lib/auth';
 import { getConfirmedSlot } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
-import { IconPin } from '@/components/icons';
+import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
 import GlassBackground from '@/components/GlassBackground';
+
+// Docinki dla tych, co jeszcze nie zagłosowali — losowane, ale stabilne per wypad.
+const NAG_TEXTS = [
+  'Te cweluchy nie zagłosowały',
+  'Olali temat',
+  'Cisza w eterze od',
+  'Wciąż się obijają',
+  'Mają to w nosie',
+];
+function pickNag(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return NAG_TEXTS[Math.abs(h) % NAG_TEXTS.length];
+}
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -40,16 +54,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [notFound, setNotFound] = useState(false);
 
   const [newSlot, setNewSlot] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [canShare, setCanShare] = useState(false);
 
   // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
   // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
-
-  useEffect(() => {
-    setCanShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
-  }, []);
 
   const load = useCallback(async () => {
     const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
@@ -196,31 +204,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     router.push('/');
   }
 
-  async function shareLink() {
-    const url = window.location.href;
-    // Na iOS/mobile użyj natywnego Share Sheet (iMessage/WhatsApp…); to gest użytkownika.
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: event?.title ? `Wypad: ${event.title}` : 'Wypad',
-          text: event?.title ? `Ustalmy termin: ${event.title}` : 'Ustalmy termin wypadu',
-          url,
-        });
-      } catch {
-        /* użytkownik anulował udostępnianie — nic nie robimy */
-      }
-      return;
-    }
-    // Fallback (desktop): skopiuj link do schowka.
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* schowek niedostępny — użytkownik może skopiować URL ręcznie */
-    }
-  }
-
   const stats = useMemo(() => {
     return slots.map((slot) => {
       const slotVotes = votes.filter((v) => v.slot_id === slot.id);
@@ -277,6 +260,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const isOrganizer = !event?.created_by_user_id || event.created_by_user_id === userId;
 
+  const memberCount = members.length;
+  const votedCount = participantsPeople.length;
+  const votedPct = memberCount > 0 ? Math.min(100, Math.round((votedCount / memberCount) * 100)) : 0;
+  const nag = pickNag(eventId);
+
   return (
     <main className="glass-page">
       <GlassBackground />
@@ -284,42 +272,54 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <header className="app-header">
         <h1 className="large-title">{event?.title}</h1>
-        {event?.location && (
-          <p className="meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <IconPin size={14} /> {event.location}
-          </p>
+        {(event?.location || event?.created_by) && (
+          <div className="event-submeta">
+            {event?.location && (
+              <span><IconPin size={13} /> {event.location}</span>
+            )}
+            {event?.location && event?.created_by && <span className="sep">·</span>}
+            {event?.created_by && <span>Organizuje {event.created_by}</span>}
+          </div>
         )}
-        {event?.created_by && <p className="meta">Organizuje: {event.created_by}</p>}
+        {confirmedAt && (
+          <div className="confirmed-inline">
+            <IconCalendar size={15} />
+            <span className="confirmed-date">{formatSlot(confirmedAt)}</span>
+            <span className="confirmed-tag"><IconCheck size={12} /> Ustalono</span>
+          </div>
+        )}
       </header>
 
-      {confirmedAt && (
-        <div className="confirmed-banner">✅ Ustalono: {formatSlot(confirmedAt)}</div>
-      )}
-
-      <div className="row mt">
-        <button className="ghost" onClick={shareLink}>
-          {copied ? 'Skopiowano ✓' : canShare ? 'Udostępnij link 📤' : 'Skopiuj link dla znajomych'}
-        </button>
-        <span className="spacer" />
-        {participantsPeople.length > 0 ? (
-          <span className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-            <AvatarStack people={participantsPeople} size={26} />
-            <span className="small muted">{participantsPeople.length} głosowało</span>
-          </span>
-        ) : (
-          <span className="small muted">Nikt jeszcze nie głosował</span>
-        )}
-      </div>
-
-      {slots.length > 0 && members.length > 0 && (
-        <div className="mt">
-          {missingVoters.length > 0 ? (
-            <span className="pill-wait">
-              ⏳ Czekamy na: {missingVoters.slice(0, 5).join(', ')}
-              {missingVoters.length > 5 && ` i ${missingVoters.length - 5} innych`}
+      {slots.length > 0 && (
+        <div className="vote-status">
+          <div className="vote-status-row">
+            {votedCount > 0 && <AvatarStack people={participantsPeople} size={26} />}
+            <span className="vote-status-count">
+              {votedCount > 0 ? (
+                <>
+                  <strong>{votedCount}{memberCount > 0 ? ` / ${memberCount}` : ''}</strong> zagłosowało
+                </>
+              ) : (
+                'Nikt jeszcze nie głosował'
+              )}
             </span>
-          ) : (
-            <span className="pill-done">✅ Cała paczka zagłosowała</span>
+          </div>
+
+          {memberCount > 0 && (
+            <div className="vote-progress">
+              <div className="vote-progress-bar" style={{ width: `${votedPct}%` }} />
+            </div>
+          )}
+
+          {memberCount > 0 && (
+            missingVoters.length > 0 ? (
+              <p className="vote-missing">
+                {nag}: {missingVoters.slice(0, 5).join(', ')}
+                {missingVoters.length > 5 && ` …i ${missingVoters.length - 5} innych`}
+              </p>
+            ) : (
+              <p className="vote-missing all-in">✅ Cała paczka zagłosowała</p>
+            )
           )}
         </div>
       )}
