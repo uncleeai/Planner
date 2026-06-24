@@ -235,6 +235,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return Array.from(seen.values());
   }, [votes, profileById]);
 
+  // Docinek losowany raz na zamontowanie strony (nie miga przy live-update).
+  const nag = useMemo(() => NAG_TEXTS[Math.floor(Math.random() * NAG_TEXTS.length)], []);
+
   // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
   const missingVoters = useMemo(() => {
     const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
@@ -259,7 +262,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const memberCount = members.length;
   const votedCount = participantsPeople.length;
   const votedPct = memberCount > 0 ? Math.min(100, Math.round((votedCount / memberCount) * 100)) : 0;
-  const nag = useMemo(() => NAG_TEXTS[Math.floor(Math.random() * NAG_TEXTS.length)], []);
 
   return (
     <main className="glass-page">
