@@ -24,3 +24,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test files
+/gemini-code-*.html
+/test_ssr.html
+
+# large video assets
+/public/BG/*.mp4
+!/public/BG/dark abstract.mp4
+/public/BG.mp4

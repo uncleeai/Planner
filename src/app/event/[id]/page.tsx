@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
+import { getConfirmedSlot } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
-import { SLOT_PRESETS } from '@/lib/slotPresets';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin } from '@/components/icons';
+import GlassBackground from '@/components/GlassBackground';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Mogę', cls: 'active-yes' },
@@ -183,21 +184,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     }
   }
 
-  async function confirmSlot(slotId: string, startsAt: string) {
-    await supabase
-      .from('events')
-      .update({ confirmed_slot_id: slotId, confirmed_at: startsAt })
-      .eq('id', eventId);
-    load();
-  }
-
-  async function unconfirmSlot() {
-    await supabase
-      .from('events')
-      .update({ confirmed_slot_id: null, confirmed_at: null })
-      .eq('id', eventId);
-    load();
-  }
+  // confirmed_slot_id and confirmed_at are now computed dynamically on the client
 
   async function deleteEvent() {
     if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
@@ -250,6 +237,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
 
+  const { confirmedSlotId, confirmedAt } = useMemo(() => {
+    const { slotId, confirmedAt } = getConfirmedSlot(slots, votes);
+    return { confirmedSlotId: slotId, confirmedAt };
+  }, [slots, votes]);
+
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
   // Uczestnicy, którzy oddali jakikolwiek głos — z awatarami (do stosu na górze).
@@ -270,11 +262,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return members.filter((m) => !voted.has(m.id)).map((m) => m.display_name);
   }, [members, votes]);
 
-  if (loading) return <main><p className="muted">Wczytuję…</p></main>;
+  if (loading) return <main className="glass-page"><GlassBackground /><p className="muted">Wczytuję…</p></main>;
 
   if (notFound) {
     return (
-      <main>
+      <main className="glass-page">
+        <GlassBackground />
         <h1>Nie znaleziono</h1>
         <p className="lead">Ten wypad nie istnieje albo link jest nieprawidłowy.</p>
         <Link href="/"><button className="ghost">Wróć</button></Link>
@@ -285,7 +278,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const isOrganizer = !event?.created_by_user_id || event.created_by_user_id === userId;
 
   return (
-    <main>
+    <main className="glass-page">
+      <GlassBackground />
       <Link href="/" className="back-link">‹ Wszystkie wypady</Link>
 
       <header className="app-header">
@@ -298,8 +292,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         {event?.created_by && <p className="meta">Organizuje: {event.created_by}</p>}
       </header>
 
-      {event?.confirmed_at && (
-        <div className="confirmed-banner">✅ Ustalono: {formatSlot(event.confirmed_at)}</div>
+      {confirmedAt && (
+        <div className="confirmed-banner">✅ Ustalono: {formatSlot(confirmedAt)}</div>
       )}
 
       <div className="row mt">
@@ -332,18 +326,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       <div className="card">
         <h2>Proponowane terminy</h2>
         <p className="small muted" style={{ marginTop: -6 }}>
-          {isOrganizer
-            ? 'Jako organizator możesz „ustalić" finalny termin — wskoczy wtedy na oś czasu.'
-            : event?.created_by
-              ? `Finalny termin ustala organizator (${event.created_by}). Ty zaznacz, kiedy możesz.`
-              : 'Zaznacz przy każdym terminie, kiedy możesz.'}
+          Ustalony termin to ten, na który pasuje najwięcej osób (w przypadku remisu decyduje wcześniejszy termin). Zaznacz przy każdym terminie, kiedy możesz.
         </p>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
 
         {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
-          const isConfirmed = event?.confirmed_slot_id === slot.id;
+          const isConfirmed = confirmedSlotId === slot.id;
           const isBest = yes > 0 && yes === maxYes;
           const canDelete = isOrganizer || slot.created_by_user_id === userId;
           return (
@@ -407,34 +397,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 })}
               </div>
             )}
-
-            {isOrganizer && (
-              <div className="row mt">
-                {isConfirmed ? (
-                  <button className="ghost" onClick={unconfirmSlot}>Odznacz ustalony termin</button>
-                ) : (
-                  <button className="ghost" onClick={() => confirmSlot(slot.id, slot.starts_at)}>
-                    Ustal ten termin
-                  </button>
-                )}
-              </div>
-            )}
           </div>
           );
         })}
 
-        <div className="row mt chips">
-          {SLOT_PRESETS.map((p) => (
-            <button
-              type="button"
-              key={p.label}
-              className="ghost chip"
-              onClick={() => insertSlot(p.build())}
-            >
-              + {p.label}
-            </button>
-          ))}
-        </div>
+
 
         <form className="row mt" onSubmit={addSlot}>
           <input
@@ -445,13 +412,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           />
           <button type="submit" disabled={!newSlot}>Dodaj termin</button>
         </form>
-      </div>
 
-      {isOrganizer && (
-        <button type="button" className="ghost danger chip mt" onClick={deleteEvent}>
-          Usuń wypad
-        </button>
-      )}
+        <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <button type="button" className="ghost danger" style={{ width: '100%' }} onClick={deleteEvent}>
+            Usuń wypad
+          </button>
+        </div>
+      </div>
     </main>
   );
 }

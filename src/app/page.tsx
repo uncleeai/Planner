@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
+import { getConfirmedSlot } from '@/lib/types';
 import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
-import { SLOT_PRESETS } from '@/lib/slotPresets';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import GlassBackground from '@/components/GlassBackground';
@@ -43,9 +43,19 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
-  const [proposedSlots, setProposedSlots] = useState<string[]>(['']);
+  const [startsAt, setStartsAt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showForm && titleInputRef.current) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 100);
+    }
+  }, [showForm]);
 
   const load = useCallback(async () => {
     const [{ data: ev }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
@@ -77,7 +87,7 @@ export default function Home() {
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || busy) return;
+    if (!title.trim() || !startsAt || busy) return;
     setBusy(true);
     setError('');
 
@@ -98,16 +108,13 @@ export default function Home() {
       return;
     }
 
-    const slotRows = proposedSlots
-      .filter((s) => s)
-      .map((s) => ({
+    if (startsAt) {
+      await supabase.from('slots').insert({
         event_id: data.id,
-        starts_at: new Date(s).toISOString(),
+        starts_at: new Date(startsAt).toISOString(),
         created_by: displayName,
         created_by_user_id: userId,
-      }));
-    if (slotRows.length > 0) {
-      await supabase.from('slots').insert(slotRows);
+      });
     }
 
     router.push(`/event/${data.id}`);
@@ -118,17 +125,54 @@ export default function Home() {
     const open: EventRow[] = [];
     const upcoming: EventRow[] = [];
     const past: EventRow[] = [];
-    for (const ev of events) {
-      if (!ev.confirmed_at) open.push(ev);
-      else if (new Date(ev.confirmed_at).getTime() >= now) upcoming.push(ev);
-      else past.push(ev);
-    }
-    upcoming.sort((a, b) => new Date(a.confirmed_at!).getTime() - new Date(b.confirmed_at!).getTime());
-    past.sort((a, b) => new Date(b.confirmed_at!).getTime() - new Date(a.confirmed_at!).getTime());
-    return { open, upcoming, past };
-  }, [events]);
 
-  // Agregaty per wypad: głosujący (z awatarami), % paczki, reprezentatywna data.
+    const slotsByEvent = new Map<string, Slot[]>();
+    for (const s of slots) {
+      const arr = slotsByEvent.get(s.event_id) ?? [];
+      arr.push(s);
+      slotsByEvent.set(s.event_id, arr);
+    }
+    const votesByEvent = new Map<string, Vote[]>();
+    for (const v of votes) {
+      const arr = votesByEvent.get(v.event_id) ?? [];
+      arr.push(v);
+      votesByEvent.set(v.event_id, arr);
+    }
+
+    const confirmedDateMap = new Map<string, string>();
+
+    for (const ev of events) {
+      const evSlots = slotsByEvent.get(ev.id) ?? [];
+      const evVotes = votesByEvent.get(ev.id) ?? [];
+      const { confirmedAt } = getConfirmedSlot(evSlots, evVotes);
+
+      if (!confirmedAt) {
+        open.push(ev);
+      } else {
+        confirmedDateMap.set(ev.id, confirmedAt);
+        if (new Date(confirmedAt).getTime() >= now) {
+          upcoming.push(ev);
+        } else {
+          past.push(ev);
+        }
+      }
+    }
+
+    upcoming.sort((a, b) => {
+      const da = new Date(confirmedDateMap.get(a.id)!).getTime();
+      const db = new Date(confirmedDateMap.get(b.id)!).getTime();
+      return da - db;
+    });
+
+    past.sort((a, b) => {
+      const da = new Date(confirmedDateMap.get(a.id)!).getTime();
+      const db = new Date(confirmedDateMap.get(b.id)!).getTime();
+      return db - da;
+    });
+
+    return { open, upcoming, past };
+  }, [events, slots, votes]);
+
   const aggByEvent = useMemo(() => {
     const profileById = new Map(profiles.map((p) => [p.id, p]));
     const slotsBy = new Map<string, Slot[]>();
@@ -147,7 +191,8 @@ export default function Home() {
     const result = new Map<string, Agg>();
     for (const ev of events) {
       const seen = new Map<string, Person>();
-      for (const v of votesBy.get(ev.id) ?? []) {
+      const evVotes = votesBy.get(ev.id) ?? [];
+      for (const v of evVotes) {
         const key = v.user_id ?? `name:${v.participant_name}`;
         if (seen.has(key)) continue;
         const prof = v.user_id ? profileById.get(v.user_id) : undefined;
@@ -158,7 +203,8 @@ export default function Home() {
       const evSlots = (slotsBy.get(ev.id) ?? [])
         .slice()
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-      const dateIso = ev.confirmed_at ?? evSlots[0]?.starts_at ?? null;
+      const { confirmedAt } = getConfirmedSlot(evSlots, evVotes);
+      const dateIso = confirmedAt ?? evSlots[0]?.starts_at ?? null;
       result.set(ev.id, { voters, percent, dateIso });
     }
     return result;
@@ -167,108 +213,229 @@ export default function Home() {
   return (
     <main className="glass-page">
       <GlassBackground />
-      <header className="dash-header" style={{ marginBottom: 16 }}>
-        <span className="lead" style={{ margin: 0, flex: 1 }}>Cześć, {displayName}</span>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
+        {/* Logo */}
+        <div style={{
+          width: 38, height: 38, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 12,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+        }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="5" ry="5" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </div>
+
+        {/* Nazwa + powitanie */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff', lineHeight: 1.2 }}>
+            Planner
+          </div>
+          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.3, marginTop: 1 }}>
+            Hej, {displayName} 👋
+          </div>
+        </div>
+
         <ProfileMenu />
       </header>
 
-      <button className="cta-gradient" onClick={() => setShowForm((v) => !v)}>
-        {showForm ? 'Anuluj' : '+ Nowy wypad'}
-      </button>
+      {events.length > 0 && (
+        <button className="cta-gradient" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? 'Anuluj' : '+ Nowy wypad'}
+        </button>
+      )}
 
-      {showForm && (
-        <form className="card mt" onSubmit={createEvent}>
-          <h2>Nowy wypad</h2>
-          <div className="field">
-            <label htmlFor="title">Nazwa</label>
-            <input
-              id="title"
-              type="text"
-              placeholder="np. Piwo w piątek, wyjazd w góry…"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="location">Miejsce (opcjonalnie)</label>
-            <input
-              id="location"
-              type="text"
-              placeholder="np. u Kuby, Zakopane…"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-          </div>
-
-          <div className="field">
-            <label>Proponowane terminy (opcjonalnie)</label>
-            <div className="row chips" style={{ marginBottom: 10 }}>
-              {SLOT_PRESETS.map((p) => (
-                <button
-                  type="button"
-                  key={p.label}
-                  className="ghost chip"
-                  onClick={() =>
-                    setProposedSlots((prev) => {
-                      const empty = prev.findIndex((s) => !s);
-                      const value = p.build();
-                      return empty !== -1
-                        ? prev.map((s, j) => (j === empty ? value : s))
-                        : [...prev, value];
-                    })
-                  }
-                >
-                  + {p.label}
-                </button>
-              ))}
+      {events.length > 0 && (
+        <div className={`form-collapse ${showForm ? 'open' : ''}`}>
+          <form className="card" onSubmit={createEvent}>
+            <h2>Nowy wypad</h2>
+            <div className="field">
+              <label htmlFor="title">Nazwa</label>
+              <input
+                id="title"
+                type="text"
+                placeholder="np. Piwo w piątek, wyjazd w góry…"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                ref={titleInputRef}
+              />
             </div>
-            {proposedSlots.map((slot, i) => (
-              <div className="row" key={i} style={{ marginBottom: 8 }}>
-                <input
-                  type="datetime-local"
-                  value={slot}
-                  onChange={(e) =>
-                    setProposedSlots((prev) => prev.map((s, j) => (j === i ? e.target.value : s)))
-                  }
-                  style={{ flex: 1, minWidth: 200 }}
-                />
-                {proposedSlots.length > 1 && (
-                  <button
-                    type="button"
-                    className="ghost"
-                    aria-label="Usuń termin"
-                    onClick={() => setProposedSlots((prev) => prev.filter((_, j) => j !== i))}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => setProposedSlots((prev) => [...prev, ''])}
-            >
-              + Dodaj kolejny termin
-            </button>
-          </div>
+            <div className="field">
+              <label htmlFor="location">Miejsce (opcjonalnie)</label>
+              <input
+                id="location"
+                type="text"
+                placeholder="np. u Kuby, Zakopane…"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
 
-          {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-          <button type="submit" disabled={!title.trim() || busy}>
-            {busy ? 'Tworzę…' : 'Utwórz wypad'}
-          </button>
-        </form>
+            <div className="field">
+              <label htmlFor="startsAt">Data i godzina</label>
+              <input
+                id="startsAt"
+                type="datetime-local"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+                style={{ flex: 1, minWidth: 200 }}
+                required
+              />
+            </div>
+
+            {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
+            <button type="submit" disabled={!title.trim() || !startsAt || busy}>
+              {busy ? 'Tworzę…' : 'Utwórz wypad'}
+            </button>
+          </form>
+        </div>
       )}
 
       {loading && <p className="muted mt">Wczytuję…</p>}
 
-      {!loading && events.length === 0 && !showForm && (
-        <div className="empty-state mt">
-          <div className="emoji">🗓️</div>
-          <h2>Brak wypadów</h2>
-          <p>Zaproponuj pierwszy termin i wyślij znajomym.</p>
-          <button onClick={() => setShowForm(true)}>+ Nowy wypad</button>
+      {!loading && events.length === 0 && (
+        <div className="empty-state mt" style={{
+          padding: showForm ? '20px' : '44px 24px',
+          textAlign: showForm ? 'left' : 'center',
+          transition: 'padding 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+          overflow: 'hidden',
+        }}>
+          {/* Sekcja 1: Brak wypadów (Empty State) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateRows: showForm ? '0fr' : '1fr',
+            transition: 'grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+          }}>
+            <div style={{ minHeight: 0, overflow: 'hidden' }}>
+              {[
+                <div key="icon" style={{
+                  width: 56, height: 56,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 16,
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+                  margin: '0 auto 16px',
+                  color: '#ffffff'
+                }}>
+                  <IconCalendar size={26} />
+                </div>,
+                <h2 key="title" style={{ margin: '0 0 4px', textAlign: 'center' }}>Brak wypadów</h2>,
+                <p key="desc" style={{ color: 'var(--muted)', margin: '0 auto 18px', maxWidth: '30ch', textAlign: 'center' }}>
+                  Zaproponuj pierwszy termin i wyślij znajomym.
+                </p>,
+                <button
+                  key="cta"
+                  onClick={() => setShowForm(true)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.12)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                    color: '#ffffff',
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    fontWeight: 600,
+                    fontSize: '0.95rem',
+                    margin: '0 auto',
+                    display: 'block'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)' }}
+                >
+                  + Nowy wypad
+                </button>,
+              ].map((child, i) => (
+                <div
+                  key={i}
+                  style={{
+                    opacity: showForm ? 0 : 1,
+                    transition: !showForm
+                      ? `opacity 0.4s ease ${0.12 + i * 0.07}s`
+                      : 'opacity 0.2s ease',
+                  }}
+                >
+                  {child}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sekcja 2: Formularz — kaskadowy fade-in od lewej */}
+          <div style={{
+            display: 'grid',
+            gridTemplateRows: showForm ? '1fr' : '0fr',
+            transition: 'grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+          }}>
+            <div style={{ minHeight: 0, overflow: 'hidden', padding: '0 4px' }}>
+              <form onSubmit={createEvent} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  <h2 key="h" style={{ margin: 0 }}>Nowy wypad</h2>,
+                  <div className="field" key="title">
+                    <label htmlFor="title">Nazwa</label>
+                    <input
+                      id="title"
+                      type="text"
+                      placeholder="np. Piwo w piątek, wyjazd w góry…"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      ref={titleInputRef}
+                    />
+                  </div>,
+                  <div className="field" key="loc">
+                    <label htmlFor="location">Miejsce (opcjonalnie)</label>
+                    <input
+                      id="location"
+                      type="text"
+                      placeholder="np. u Kuby, Zakopane…"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                    />
+                  </div>,
+                  <div className="field" key="date">
+                    <label htmlFor="startsAt">Data i godzina</label>
+                    <input
+                      id="startsAt"
+                      type="datetime-local"
+                      value={startsAt}
+                      onChange={(e) => setStartsAt(e.target.value)}
+                      style={{ flex: 1, minWidth: 200 }}
+                      required
+                    />
+                  </div>,
+                  error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
+                  <button key="submit" type="submit" disabled={!title.trim() || !startsAt || busy} style={{ width: '100%' }}>
+                    {busy ? 'Tworzę…' : 'Utwórz wypad'}
+                  </button>,
+                  <button
+                    key="cancel"
+                    type="button"
+                    className="ghost"
+                    onClick={() => setShowForm(false)}
+                    style={{ width: '100%', marginTop: -4 }}
+                  >
+                    Anuluj
+                  </button>,
+                ].filter(Boolean).map((child, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      opacity: showForm ? 1 : 0,
+                      transition: showForm
+                        ? `opacity 0.4s ease ${0.12 + i * 0.07}s`
+                        : 'opacity 0.15s ease',
+                    }}
+                  >
+                    {child}
+                  </div>
+                ))}
+              </form>
+            </div>
+          </div>
         </div>
       )}
 
@@ -341,24 +508,27 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
         ) : (
           <span className="small muted">Nikt jeszcze nie głosował</span>
         )}
-        <span className="spacer" />
-        {variant === 'past' && <span className="badge">✓ Zakończony</span>}
-        {variant === 'upcoming' && <span className="badge">Ustalony</span>}
-      </div>
 
-      {variant === 'open' && (
-        <div className="progress-wrap">
-          <div className="progress">
-            <div
-              className="progress-bar"
-              style={{ width: `${agg.percent}%`, background: progressColor(agg.percent) }}
-            />
+        {variant === 'open' ? (
+          <div className="progress-inline-wrap">
+            <div className="progress">
+              <div
+                className="progress-bar"
+                style={{ width: `${agg.percent}%` }}
+              />
+            </div>
+            <span className="progress-label">
+              {agg.percent}% <span className="label-sub">zagłosowało</span>
+            </span>
           </div>
-          <span className="progress-label" style={{ color: progressColor(agg.percent) }}>
-            {agg.percent}% zagłosowało
-          </span>
-        </div>
-      )}
+        ) : (
+          <>
+            <span className="spacer" />
+            {variant === 'past' && <span className="badge">✓ Zakończony</span>}
+            {variant === 'upcoming' && <span className="badge">Ustalony</span>}
+          </>
+        )}
+      </div>
     </Link>
   );
 }

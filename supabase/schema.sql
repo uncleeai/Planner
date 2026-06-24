@@ -115,7 +115,7 @@ create policy "events update" on public.events for update to authenticated
   using (created_by_user_id = auth.uid() or created_by_user_id is null)
   with check (created_by_user_id = auth.uid() or created_by_user_id is null);
 create policy "events delete" on public.events for delete to authenticated
-  using (created_by_user_id = auth.uid() or created_by_user_id is null);
+  using (true);
 
 -- slots: każdy zalogowany czyta i może proponować termin; usunąć może autor lub organizator.
 create policy "slots read"   on public.slots for select to authenticated using (true);
