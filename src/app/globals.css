@@ -523,6 +523,36 @@ img.avatar { display: inline-block; }
 .profile-emoji-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 18px; }
 .profile-modal .field { text-align: left; }
 
+/* Wiersz ustawienia (np. przełącznik tła) */
+.setting-row {
+  display: flex; align-items: center; gap: 12px;
+  text-align: left; margin-bottom: 18px;
+}
+.setting-text { flex: 1; min-width: 0; }
+.setting-title { display: block; font-weight: 500; color: rgba(255, 255, 255, 0.9); }
+.setting-sub { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
+
+/* Przełącznik w stylu iOS */
+.switch {
+  flex-shrink: 0;
+  width: 50px; height: 30px; padding: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+  transition: background 0.2s ease;
+}
+.switch.on { background: var(--yes); border-color: transparent; }
+.switch-knob {
+  position: absolute; top: 50%; left: 3px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fff;
+  transform: translateY(-50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: left 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.switch.on .switch-knob { left: 23px; }
+
 .profile-modal label {
   color: rgba(255, 255, 255, 0.7);
   font-weight: 500;

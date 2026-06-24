@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
+import { useBackground } from '@/lib/background';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 
 // Avatar bieżącego użytkownika w rogu; klik → wyśrodkowany modal: zdjęcie/emoji, nick, wyloguj.
 export default function ProfileMenu() {
   const { userId, displayName, avatar } = useAuth();
+  const { enabled: bgEnabled, toggle: toggleBg } = useBackground();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(displayName);
   const [busy, setBusy] = useState(false);
@@ -98,6 +100,23 @@ export default function ProfileMenu() {
                   {a}
                 </button>
               ))}
+            </div>
+
+            <div className="setting-row">
+              <div className="setting-text">
+                <span className="setting-title">Animowane tło</span>
+                <span className="setting-sub">Wyłącz dla lepszej płynności</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={bgEnabled}
+                aria-label="Animowane tło"
+                className={`switch${bgEnabled ? ' on' : ''}`}
+                onClick={toggleBg}
+              >
+                <span className="switch-knob" />
+              </button>
             </div>
 
             <div className="field" style={{ marginBottom: 12 }}>
