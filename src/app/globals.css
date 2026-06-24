@@ -710,12 +710,15 @@ img.avatar { display: inline-block; }
 .form-collapse {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.42s cubic-bezier(0.25, 1, 0.5, 1), 
-              opacity 0.35s ease-in-out, 
-              margin-top 0.42s cubic-bezier(0.25, 1, 0.5, 1), 
+  transition: grid-template-rows 0.42s cubic-bezier(0.25, 1, 0.5, 1),
+              opacity 0.35s ease-in-out,
+              margin-top 0.42s cubic-bezier(0.25, 1, 0.5, 1),
               margin-bottom 0.42s cubic-bezier(0.25, 1, 0.5, 1);
   opacity: 0;
   overflow: hidden;
+  /* Zaokrąglone przycięcie rodzica — inaczej prostokątny clip + szklany blur karty
+     daje kwadratowy róg wystający spod zaokrąglenia */
+  border-radius: var(--radius);
   margin-top: 0;
   margin-bottom: 0;
 }
