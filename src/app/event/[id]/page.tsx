@@ -314,7 +314,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {slots.length > 0 && members.length > 0 && (
         <div className="mt">
           {missingVoters.length > 0 ? (
-            <span className="pill-wait">⏳ Czekamy na: {missingVoters.join(', ')}</span>
+            <span className="pill-wait">
+              ⏳ Czekamy na: {missingVoters.slice(0, 5).join(', ')}
+              {missingVoters.length > 5 && ` i ${missingVoters.length - 5} innych`}
+            </span>
           ) : (
             <span className="pill-done">✅ Cała paczka zagłosowała</span>
           )}
