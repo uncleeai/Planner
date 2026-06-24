@@ -814,12 +814,16 @@ img.avatar { display: inline-block; }
 .form-collapse .card,
 .form-collapse .empty-state {
   margin-bottom: 0;
-  /* Bez backdrop-filter: duża szklana karta liczyłaby rozmycie tła co klatkę
-     dokładnie w trakcie animacji wysokości — to psuło płynność rozwijania.
-     Zamiast frostu ciemny, kryjący panel. */
-  background: rgba(16, 16, 20, 0.9);
+  /* Wyłączamy backdrop-filter w zamkniętym stanie, żeby uniknąć przeskoku koloru */
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  transition: backdrop-filter 0.3s ease 0.35s, -webkit-backdrop-filter 0.3s ease 0.35s;
+}
+.form-collapse.open .card,
+.form-collapse.open .empty-state {
+  /* Włączamy backdrop-filter z opóźnieniem — dopiero po zakończeniu rozwijania grida */
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  backdrop-filter: blur(30px) saturate(200%);
 }
 
 /* Animacja zawartości (wygładzenie pojawiania się) */
