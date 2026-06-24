@@ -10,6 +10,7 @@ import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
 import GlassBackground from '@/components/GlassBackground';
+import PageTransition from '@/components/PageTransition';
 import DateTimeInput from '@/components/DateTimeInput';
 
 // Docinki dla tych, co jeszcze się nie zapisali — losowane przy każdym wejściu.
@@ -252,7 +253,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <GlassBackground />
         <h1>Nie znaleziono</h1>
         <p className="lead">Ten wypad nie istnieje albo link jest nieprawidłowy.</p>
-        <Link href="/"><button className="ghost">Wróć</button></Link>
+        <Link href="/" transitionTypes={['nav-back']}><button className="ghost">Wróć</button></Link>
       </main>
     );
   }
@@ -266,7 +267,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   return (
     <main className="glass-page">
       <GlassBackground />
-      <Link href="/" className="back-link">‹ Wszystkie wypady</Link>
+      <PageTransition>
+      <Link href="/" className="back-link" transitionTypes={['nav-back']}>‹ Wszystkie wypady</Link>
 
       <header className="app-header">
         <h1 className="large-title">{event?.title}</h1>
@@ -414,6 +416,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </button>
         </div>
       </div>
+      </PageTransition>
     </main>
   );
 }

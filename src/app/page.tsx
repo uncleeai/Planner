@@ -10,6 +10,7 @@ import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import GlassBackground from '@/components/GlassBackground';
+import PageTransition from '@/components/PageTransition';
 import DateTimeInput from '@/components/DateTimeInput';
 import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
 
@@ -118,7 +119,7 @@ export default function Home() {
       });
     }
 
-    router.push(`/event/${data.id}`);
+    router.push(`/event/${data.id}`, { transitionTypes: ['nav-forward'] });
   }
 
   const { open, upcoming, past } = useMemo(() => {
@@ -214,6 +215,7 @@ export default function Home() {
   return (
     <main className="glass-page">
       <GlassBackground />
+      <PageTransition>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
         {/* Logo */}
         <div style={{
@@ -446,6 +448,7 @@ export default function Home() {
           <span>Im więcej osób da znać, tym łatwiej trafić w dobry termin.</span>
         </div>
       )}
+      </PageTransition>
     </main>
   );
 }
@@ -476,7 +479,7 @@ function Section({
 
 function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'past' }) {
   return (
-    <Link href={`/event/${ev.id}`} className="event-rich">
+    <Link href={`/event/${ev.id}`} className="event-rich" transitionTypes={['nav-forward']}>
       <div className="event-rich-head">
         <span className="event-rich-title">{ev.title}</span>
         <IconChevron size={18} className="row-chevron" />
