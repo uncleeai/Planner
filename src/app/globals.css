@@ -526,7 +526,9 @@ img.avatar { display: inline-block; }
 .glass-page { position: relative; z-index: 1; }
 
 .glass-bg {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  /* z-index: -1 trzyma tło za CAŁĄ zawartością .glass-page (też niepozycjonowanym
+     nagłówkiem), inaczej pozycjonowane tło zasłaniałoby tytuł i przycisk udostępniania */
+  position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
   background: #050505;
 }
 
