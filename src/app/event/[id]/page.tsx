@@ -328,9 +328,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <div className="card">
         <h2>Proponowane terminy</h2>
-        <p className="small muted" style={{ marginTop: -6 }}>
-          Ustalony termin to ten, na który pasuje najwięcej osób (w przypadku remisu decyduje wcześniejszy termin). Zaznacz przy każdym terminie, kiedy możesz.
-        </p>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
