@@ -347,7 +347,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               ) : (
                 isBest && <span className="badge badge-open">najlepszy</span>
               )}
-              {canDelete && !isConfirmed && (
+              {canDelete && (
                 <>
                   <span className="spacer" />
                   <button
@@ -402,7 +402,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
 
 
-        <form className="row mt" onSubmit={addSlot}>
+        <form className="add-slot-form mt" onSubmit={addSlot}>
           <DateTimeInput
             value={newSlot}
             onChange={(e) => setNewSlot(e.target.value)}
