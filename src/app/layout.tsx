@@ -6,7 +6,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Planner — ustalajcie terminy bez chaosu',
-  description: 'Zaproponuj terminy wypadu, zbierz głosy znajomych i zobacz wynik na żywo.',
+  description: 'Zaproponuj terminy wypadu, zobacz kto wchodzi i który termin prowadzi — na żywo.',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Planner' },
   icons: { icon: '/icon.svg', apple: '/icon-180.png' },

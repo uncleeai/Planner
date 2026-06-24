@@ -436,14 +436,14 @@ export default function Home() {
         </div>
       )}
 
-      <Section title="Do ustalenia" events={open} agg={aggByEvent} variant="open" />
+      <Section title="W trakcie" events={open} agg={aggByEvent} variant="open" />
       <Section title="Nadchodzące" events={upcoming} agg={aggByEvent} variant="upcoming" />
       <Section title="Minione" events={past} agg={aggByEvent} variant="past" muted />
 
       {!loading && events.length > 0 && (
         <div className="tip-banner">
           <IconBulb size={20} className="tip-icon" />
-          <span>Im więcej osób zagłosuje, tym łatwiej ustalić idealny termin.</span>
+          <span>Im więcej osób da znać, tym łatwiej trafić w dobry termin.</span>
         </div>
       )}
     </main>
@@ -503,7 +503,7 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
         {agg.voters.length > 0 ? (
           <AvatarStack people={agg.voters} size={28} />
         ) : (
-          <span className="small muted">Nikt jeszcze nie głosował</span>
+          <span className="small muted">Jeszcze nikt nie dał znać</span>
         )}
 
         {variant === 'open' ? (
@@ -515,14 +515,14 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
               />
             </div>
             <span className="progress-label">
-              {agg.percent}% <span className="label-sub">zagłosowało</span>
+              {agg.percent}% <span className="label-sub">dało znać</span>
             </span>
           </div>
         ) : (
           <>
             <span className="spacer" />
             {variant === 'past' && <span className="badge">✓ Zakończony</span>}
-            {variant === 'upcoming' && <span className="badge">Ustalony</span>}
+            {variant === 'upcoming' && <span className="badge">Jest termin</span>}
           </>
         )}
       </div>

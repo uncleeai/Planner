@@ -12,9 +12,9 @@ import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
 import GlassBackground from '@/components/GlassBackground';
 import DateTimeInput from '@/components/DateTimeInput';
 
-// Docinki dla tych, co jeszcze nie zagłosowali — losowane, ale stabilne per wypad.
+// Docinki dla tych, co jeszcze się nie zapisali — losowane, ale stabilne per wypad.
 const NAG_TEXTS = [
-  'Te cweluchy nie zagłosowały',
+  'Te cweluchy się nie piszą',
   'Olali temat',
   'Cisza w eterze od',
   'Wciąż się obijają',
@@ -27,9 +27,9 @@ function pickNag(id: string): string {
 }
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
-  { value: 'yes', label: 'Mogę', cls: 'active-yes' },
+  { value: 'yes', label: 'Wchodzę', cls: 'active-yes' },
   { value: 'maybe', label: 'Może', cls: 'active-maybe' },
-  { value: 'no', label: 'Nie', cls: 'active-no' },
+  { value: 'no', label: 'Pas', cls: 'active-no' },
 ];
 
 function formatSlot(iso: string): string {
@@ -286,7 +286,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <div className="confirmed-inline">
             <IconCalendar size={15} />
             <span className="confirmed-date">{formatSlot(confirmedAt)}</span>
-            <span className="confirmed-tag"><IconCheck size={12} /> Ustalono</span>
+            <span className="confirmed-tag"><IconCheck size={12} /> Na czele</span>
           </div>
         )}
       </header>
@@ -298,10 +298,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             <span className="vote-status-count">
               {votedCount > 0 ? (
                 <>
-                  <strong>{votedCount}{memberCount > 0 ? ` / ${memberCount}` : ''}</strong> zagłosowało
+                  <strong>{votedCount}{memberCount > 0 ? ` / ${memberCount}` : ''}</strong> dało znać
                 </>
               ) : (
-                'Nikt jeszcze nie głosował'
+                'Jeszcze nikt nie dał znać'
               )}
             </span>
           </div>
@@ -319,7 +319,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 {missingVoters.length > 5 && ` …i ${missingVoters.length - 5} innych`}
               </p>
             ) : (
-              <p className="vote-missing all-in">✅ Cała paczka zagłosowała</p>
+              <p className="vote-missing all-in">✅ Cała paczka dała znać</p>
             )
           )}
         </div>
@@ -343,9 +343,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             <div className="slot-head">
               <span className="slot-date">{formatSlot(slot.starts_at)}</span>
               {isConfirmed ? (
-                <span className="badge">ustalony</span>
+                <span className="badge">na czele</span>
               ) : (
-                isBest && <span className="badge badge-open">najlepszy</span>
+                isBest && <span className="badge badge-open">remis</span>
               )}
               {canDelete && (
                 <>
