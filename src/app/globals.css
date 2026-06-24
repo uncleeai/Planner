@@ -760,6 +760,15 @@ img.avatar { display: inline-block; }
   transition: opacity 0.3s ease-out 0.08s, transform 0.35s cubic-bezier(0.25, 1, 0.5, 1) 0.08s;
 }
 
+/* Kaskada pól po kolei — jak w stanie pustym przy pierwszym wypadzie */
+.form-collapse.open form > *:nth-child(1) { transition-delay: 0.12s; }
+.form-collapse.open form > *:nth-child(2) { transition-delay: 0.19s; }
+.form-collapse.open form > *:nth-child(3) { transition-delay: 0.26s; }
+.form-collapse.open form > *:nth-child(4) { transition-delay: 0.33s; }
+.form-collapse.open form > *:nth-child(5) { transition-delay: 0.40s; }
+.form-collapse.open form > *:nth-child(6) { transition-delay: 0.47s; }
+.form-collapse.open form > *:nth-child(7) { transition-delay: 0.54s; }
+
 /* Logo i branding w nagłówku (bezpieczne klasy przed AdBlockami) */
 .app-title-group {
   display: flex !important;

@@ -12,7 +12,7 @@ import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
 import GlassBackground from '@/components/GlassBackground';
 import DateTimeInput from '@/components/DateTimeInput';
 
-// Docinki dla tych, co jeszcze się nie zapisali — losowane, ale stabilne per wypad.
+// Docinki dla tych, co jeszcze się nie zapisali — losowane przy każdym wejściu.
 const NAG_TEXTS = [
   'Te cweluchy się nie piszą',
   'Olali temat',
@@ -20,11 +20,6 @@ const NAG_TEXTS = [
   'Wciąż się obijają',
   'Mają to w nosie',
 ];
-function pickNag(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return NAG_TEXTS[Math.abs(h) % NAG_TEXTS.length];
-}
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Wchodzę', cls: 'active-yes' },
@@ -264,7 +259,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const memberCount = members.length;
   const votedCount = participantsPeople.length;
   const votedPct = memberCount > 0 ? Math.min(100, Math.round((votedCount / memberCount) * 100)) : 0;
-  const nag = pickNag(eventId);
+  const nag = useMemo(() => NAG_TEXTS[Math.floor(Math.random() * NAG_TEXTS.length)], []);
 
   return (
     <main className="glass-page">
