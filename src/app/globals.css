@@ -40,6 +40,9 @@ html, body {
 .container {
   max-width: 680px;
   margin: 0 auto;
+  /* Nad globalnym tłem (.glass-bg z-index:0), nad nieprzezroczystym tłem body. */
+  position: relative;
+  z-index: 1;
   /* Marginesy + bezpieczne obszary iOS (notch, pasek home) w trybie standalone. */
   padding:
     calc(28px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right))
@@ -582,9 +585,9 @@ img.avatar { display: inline-block; }
 .glass-page { position: relative; z-index: 1; }
 
 .glass-bg {
-  /* z-index: -1 trzyma tło za CAŁĄ zawartością .glass-page (też niepozycjonowanym
-     nagłówkiem), inaczej pozycjonowane tło zasłaniałoby tytuł i przycisk udostępniania */
-  position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
+  /* Globalne tło na z-index:0 (nad nieprzezroczystym tłem body); cała treść siedzi
+     w .container z z-index:1, więc jest nad aurorą. */
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
   background: #050505;
 }
 
