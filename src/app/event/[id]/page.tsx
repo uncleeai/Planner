@@ -10,6 +10,7 @@ import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
 import GlassBackground from '@/components/GlassBackground';
+import DateTimeInput from '@/components/DateTimeInput';
 
 // Docinki dla tych, co jeszcze nie zagłosowali — losowane, ale stabilne per wypad.
 const NAG_TEXTS = [
@@ -324,8 +325,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </div>
       )}
 
-      <p className="small muted mt">Głosujesz jako <strong>{displayName}</strong>.</p>
-
       <div className="card">
         <h2>Proponowane terminy</h2>
         {stats.length === 0 && (
@@ -404,11 +403,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
 
         <form className="row mt" onSubmit={addSlot}>
-          <input
-            type="datetime-local"
+          <DateTimeInput
             value={newSlot}
             onChange={(e) => setNewSlot(e.target.value)}
-            style={{ flex: 1, minWidth: 200 }}
+            placeholder="Wybierz datę i godzinę"
           />
           <button type="submit" disabled={!newSlot}>Dodaj termin</button>
         </form>

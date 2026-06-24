@@ -83,6 +83,18 @@ input:focus {
 }
 input::placeholder { color: #6a6f80; }
 
+/* Input daty z własnym placeholderem (iOS nie pokazuje nic w pustym datetime-local) */
+.dt-field { position: relative; display: flex; flex: 1 1 auto; min-width: 0; }
+.dt-field > input { width: 100%; }
+/* Gdy puste i bez fokusu — ukryj natywny tekst (np. „dd.mm.rrrr" na desktopie) */
+.dt-field.dt-empty > input:not(:focus) { color: transparent; }
+.dt-placeholder {
+  position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+  color: #6a6f80; font-size: 1rem; pointer-events: none; white-space: nowrap;
+}
+/* Przy fokusie chowamy nakładkę, by nie nachodziła na natywne pola */
+.dt-field.dt-empty > input:focus ~ .dt-placeholder { opacity: 0; }
+
 .field { margin-bottom: 16px; }
 
 button {

@@ -10,6 +10,7 @@ import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import GlassBackground from '@/components/GlassBackground';
+import DateTimeInput from '@/components/DateTimeInput';
 import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
 
 function fmtDate(iso: string): string {
@@ -278,12 +279,10 @@ export default function Home() {
 
             <div className="field">
               <label htmlFor="startsAt">Data i godzina</label>
-              <input
+              <DateTimeInput
                 id="startsAt"
-                type="datetime-local"
                 value={startsAt}
                 onChange={(e) => setStartsAt(e.target.value)}
-                style={{ flex: 1, minWidth: 200 }}
                 required
               />
             </div>
@@ -398,12 +397,10 @@ export default function Home() {
                   </div>,
                   <div className="field" key="date">
                     <label htmlFor="startsAt">Data i godzina</label>
-                    <input
+                    <DateTimeInput
                       id="startsAt"
-                      type="datetime-local"
                       value={startsAt}
                       onChange={(e) => setStartsAt(e.target.value)}
-                      style={{ flex: 1, minWidth: 200 }}
                       required
                     />
                   </div>,
