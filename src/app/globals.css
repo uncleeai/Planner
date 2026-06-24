@@ -590,15 +590,21 @@ img.avatar { display: inline-block; }
 
 /* Wideo w tle (Apple Glassmorphism Video Background) */
 .glass-video {
-  transform: scale(1.3);
+  /* translateZ(0) promuje wideo na własną warstwę GPU — rozmycie kompozytuje się
+     taniej i nie wymusza przerysowań treści nad nim. */
+  transform: translateZ(0) scale(1.3);
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(60px);
+  /* Nieco mniejszy promień rozmycia (było 60px) — przy scale 1.3 i opacity 0.5
+     wygląd praktycznie ten sam, a koszt na iOS zauważalnie niższy. */
+  filter: blur(44px);
   opacity: 0.5;
   z-index: 0;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .glass-grain {
@@ -755,6 +761,9 @@ img.avatar { display: inline-block; }
   /* Zaokrąglone przycięcie rodzica — inaczej prostokątny clip + szklany blur karty
      daje kwadratowy róg wystający spod zaokrąglenia */
   border-radius: var(--radius);
+  /* Ogranicz przeliczanie layoutu/malowania do tego poddrzewa — animacja
+     grid-template-rows nie reflowuje wtedy całej listy wypadów pod spodem. */
+  contain: layout paint;
   margin-top: 0;
   margin-bottom: 0;
 }

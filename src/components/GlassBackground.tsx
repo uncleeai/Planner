@@ -1,6 +1,11 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
 
-// Tło „Liquid Glass" w stylu Apple — wyciszone, zoptymalizowane wideo + rozmycie i nasycenie w CSS.
+// Tło „Liquid Glass" — wyciszone wideo + rozmycie/nasycenie w CSS.
+// Pętla natywna (loop) zamiast ręcznego cofania `currentTime` co klatkę — to ostatnie
+// było bardzo kosztowne na iOS (per-klatkowy seek = ciągłe dekodowanie, zabierało wątek
+// główny innym animacjom). Pauzujemy też wideo, gdy karta jest w tle.
 export default function GlassBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -8,48 +13,15 @@ export default function GlassBackground() {
     const video = videoRef.current;
     if (!video) return;
 
-    // Wyłączamy wbudowany loop, aby kontrolować kierunek za pomocą JavaScript
-    video.loop = false;
+    const tryPlay = () => video.play().catch(() => {});
+    tryPlay(); // niektóre Safari nie startują autoplay bez jawnego play()
 
-    let direction = 1; // 1 = w przód, -1 = w tył
-    let lastTime = performance.now();
-    let frameId: number;
-
-    const updatePlay = (now: number) => {
-      const delta = (now - lastTime) / 1000;
-      lastTime = now;
-
-      if (video.duration) {
-        if (direction === 1) {
-          // Odtwarzanie w przód: pozwalamy przeglądarce odtwarzać naturalnie
-          if (video.paused) {
-            video.play().catch(() => {});
-          }
-          // Gdy zbliżamy się do końca, zmieniamy kierunek
-          if (video.currentTime >= video.duration - 0.1) {
-            direction = -1;
-            video.pause();
-          }
-        } else {
-          // Odtwarzanie w tył: cofamy currentTime o delta czasowy
-          let target = video.currentTime - delta;
-          if (target <= 0.1) {
-            target = 0.1;
-            direction = 1;
-            video.play().catch(() => {});
-          }
-          video.currentTime = target;
-        }
-      }
-
-      frameId = requestAnimationFrame(updatePlay);
+    const onVisibility = () => {
+      if (document.hidden) video.pause();
+      else tryPlay();
     };
-
-    frameId = requestAnimationFrame(updatePlay);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
   return (
@@ -59,7 +31,9 @@ export default function GlassBackground() {
         src="/BG/dark abstract.mp4"
         autoPlay
         muted
+        loop
         playsInline
+        preload="auto"
         className="glass-video"
       />
       <div className="glass-grain" />

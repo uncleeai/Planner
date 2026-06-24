@@ -8,7 +8,6 @@ import { getConfirmedSlot } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
-import GlassBackground from '@/components/GlassBackground';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 
@@ -244,12 +243,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return members.filter((m) => !voted.has(m.id)).map((m) => m.display_name);
   }, [members, votes]);
 
-  if (loading) return <main className="glass-page"><GlassBackground /><p className="muted">Wczytuję…</p></main>;
+  if (loading) return <main className="glass-page"><p className="muted">Wczytuję…</p></main>;
 
   if (notFound) {
     return (
       <main className="glass-page">
-        <GlassBackground />
         <h1>Nie znaleziono</h1>
         <p className="lead">Ten wypad nie istnieje albo link jest nieprawidłowy.</p>
         <Link href="/" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate('/', 'back'); }}><button className="ghost">Wróć</button></Link>
@@ -265,7 +263,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main className="glass-page">
-      <GlassBackground />
       <Link
         href="/"
         className="back-link"

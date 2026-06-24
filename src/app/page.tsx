@@ -8,7 +8,6 @@ import { getConfirmedSlot } from '@/lib/types';
 import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
-import GlassBackground from '@/components/GlassBackground';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
@@ -213,7 +212,6 @@ export default function Home() {
 
   return (
     <main className="glass-page">
-      <GlassBackground />
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
         {/* Logo */}
         <div style={{
