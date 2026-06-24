@@ -2,7 +2,6 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getConfirmedSlot } from '@/lib/types';
@@ -10,8 +9,8 @@ import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
 import GlassBackground from '@/components/GlassBackground';
-import PageTransition from '@/components/PageTransition';
 import DateTimeInput from '@/components/DateTimeInput';
+import { useTransitionNavigate } from '@/lib/transition';
 
 // Docinki dla tych, co jeszcze się nie zapisali — losowane przy każdym wejściu.
 const NAG_TEXTS = [
@@ -40,7 +39,7 @@ function formatSlot(iso: string): string {
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
-  const router = useRouter();
+  const navigate = useTransitionNavigate();
   const { userId, displayName } = useAuth();
 
   const [event, setEvent] = useState<EventRow | null>(null);
@@ -198,7 +197,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       window.alert('Nie udało się usunąć wypadu.');
       return;
     }
-    router.push('/');
+    navigate('/', 'back');
   }
 
   const stats = useMemo(() => {
@@ -253,7 +252,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <GlassBackground />
         <h1>Nie znaleziono</h1>
         <p className="lead">Ten wypad nie istnieje albo link jest nieprawidłowy.</p>
-        <Link href="/" transitionTypes={['nav-back']}><button className="ghost">Wróć</button></Link>
+        <Link href="/" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate('/', 'back'); }}><button className="ghost">Wróć</button></Link>
       </main>
     );
   }
@@ -267,8 +266,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   return (
     <main className="glass-page">
       <GlassBackground />
-      <PageTransition>
-      <Link href="/" className="back-link" transitionTypes={['nav-back']}>‹ Wszystkie wypady</Link>
+      <Link
+        href="/"
+        className="back-link"
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+          e.preventDefault();
+          navigate('/', 'back');
+        }}
+      >
+        ‹ Wszystkie wypady
+      </Link>
 
       <header className="app-header">
         <h1 className="large-title">{event?.title}</h1>
@@ -416,7 +424,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </button>
         </div>
       </div>
-      </PageTransition>
     </main>
   );
 }

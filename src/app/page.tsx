@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getConfirmedSlot } from '@/lib/types';
@@ -10,8 +9,8 @@ import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import GlassBackground from '@/components/GlassBackground';
-import PageTransition from '@/components/PageTransition';
 import DateTimeInput from '@/components/DateTimeInput';
+import { useTransitionNavigate } from '@/lib/transition';
 import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
 
 function fmtDate(iso: string): string {
@@ -33,7 +32,7 @@ type Agg = { voters: Person[]; percent: number; dateIso: string | null };
 const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null };
 
 export default function Home() {
-  const router = useRouter();
+  const navigate = useTransitionNavigate();
   const { userId, displayName } = useAuth();
 
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -119,7 +118,7 @@ export default function Home() {
       });
     }
 
-    router.push(`/event/${data.id}`, { transitionTypes: ['nav-forward'] });
+    navigate(`/event/${data.id}`, 'forward');
   }
 
   const { open, upcoming, past } = useMemo(() => {
@@ -215,7 +214,6 @@ export default function Home() {
   return (
     <main className="glass-page">
       <GlassBackground />
-      <PageTransition>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
         {/* Logo */}
         <div style={{
@@ -448,7 +446,6 @@ export default function Home() {
           <span>Im więcej osób da znać, tym łatwiej trafić w dobry termin.</span>
         </div>
       )}
-      </PageTransition>
     </main>
   );
 }
@@ -478,8 +475,19 @@ function Section({
 }
 
 function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'past' }) {
+  const navigate = useTransitionNavigate();
+  const href = `/event/${ev.id}`;
   return (
-    <Link href={`/event/${ev.id}`} className="event-rich" transitionTypes={['nav-forward']}>
+    <Link
+      href={href}
+      className="event-rich"
+      onClick={(e) => {
+        // Pozwól na otwieranie w nowej karcie (Cmd/Ctrl/środkowy przycisk); inaczej animowany slide.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        navigate(href, 'forward');
+      }}
+    >
       <div className="event-rich-head">
         <span className="event-rich-title">{ev.title}</span>
         <IconChevron size={18} className="row-chevron" />

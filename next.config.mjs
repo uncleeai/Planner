@@ -1,9 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    // Włącza integrację React View Transitions — animacje przejść między stronami.
-    viewTransition: true,
-  },
-};
+const nextConfig = {};
 
 export default nextConfig;
