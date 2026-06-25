@@ -789,33 +789,20 @@ body.login-active .glass-bg { display: none; }
   pointer-events: none;
 }
 
-/* ===== Przejścia między stronami (iOS-owy slide) ===== */
-/* Kierunek niesie atrybut data-vt na <html> (ustawiany w TransitionProvider).
-   Animujemy snapshoty całej strony: ::view-transition-old/new(root). */
-:root::view-transition-group(root) { animation-duration: 380ms; }
-
-/* Wejście „w głąb" (forward): stara jedzie lekko w lewo, nowa wjeżdża z prawej (na wierzchu). */
-:root[data-vt="forward"]::view-transition-old(root) {
-  animation: 380ms cubic-bezier(0.32, 0.72, 0, 1) both vt-out-left;
-}
-:root[data-vt="forward"]::view-transition-new(root) {
+/* ===== Przejścia między stronami (crossfade) ===== */
+/* Nowa strona płynnie pojawia się nad starą (opacity) — bez przesuwania, więc nie ma
+   artefaktów pozycyjnych ani wrażliwości na scroll, a ewentualny koszt zrobienia
+   snapshotu jest praktycznie niewidoczny (nic się nie przesuwa). Strony są
+   nieprzezroczyste (ciemne tło), więc przenikanie jest czyste. Kierunek (data-vt)
+   nie jest tu używany. */
+:root::view-transition-group(root) { animation-duration: 260ms; }
+:root::view-transition-old(root) { animation: none; }
+:root::view-transition-new(root) {
   z-index: 2;
-  animation: 380ms cubic-bezier(0.32, 0.72, 0, 1) both vt-in-right;
+  animation: 260ms ease both vt-fade-in;
 }
 
-/* Powrót (back): bieżąca strona zjeżdża w prawo (na wierzchu) i odsłania poprzednią z lewej. */
-:root[data-vt="back"]::view-transition-old(root) {
-  z-index: 2;
-  animation: 380ms cubic-bezier(0.32, 0.72, 0, 1) both vt-out-right;
-}
-:root[data-vt="back"]::view-transition-new(root) {
-  animation: 380ms cubic-bezier(0.32, 0.72, 0, 1) both vt-in-left;
-}
-
-@keyframes vt-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@keyframes vt-in-left { from { transform: translateX(-25%); } to { transform: translateX(0); } }
-@keyframes vt-out-left { from { transform: translateX(0); } to { transform: translateX(-25%); } }
-@keyframes vt-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes vt-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Szanuj „ogranicz ruch" — bez przesuwania, natychmiastowa zamiana. */
 @media (prefers-reduced-motion: reduce) {
