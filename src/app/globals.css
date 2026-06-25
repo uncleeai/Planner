@@ -622,32 +622,35 @@ img.avatar { display: inline-block; }
 }
 
 /* Tło „aurora" — wielowarstwowy gradient z blend-mode (zamiast wideo).
-   Zmienne --posX/--posY (rejestrowane przez @property, by dało się je animować)
-   przesuwają ogniska gradientów — dwie animacje alternate o różnych czasach dają
-   organiczny, samoistny ruch bez przeskoku i bez udziału myszki. */
-@property --posX { syntax: '<number>'; inherits: false; initial-value: 0; }
-@property --posY { syntax: '<number>'; inherits: false; initial-value: 0; }
-
+   Gradient statyczny + mocny blur (liczony raz), a ruch idzie przez translate/scale
+   (kompozytowane na GPU) — samoistny, bezszwowy dryf, tanio. Mocne rozmycie maskuje
+   „ściśnięcie" gradientów na wąskim ekranie telefonu. */
 .glass-aurora {
   position: absolute;
-  inset: 0;
+  inset: -25%;
   z-index: 0;
-  opacity: 0.7;
-  --x: calc(var(--posX, 0) * 1px);
-  --y: calc(var(--posY, 0) * 1px);
+  opacity: 0.45;
+  filter: blur(80px);
   background-image:
     linear-gradient(115deg, rgb(211 255 215), rgb(0 0 0)),
-    radial-gradient(90% 100% at calc(50% + var(--x)) calc(0% + var(--y)), rgb(200 200 200), rgb(22 0 45)),
-    radial-gradient(100% 100% at calc(80% - var(--x)) calc(0% - var(--y)), rgb(250 255 0), rgb(36 0 0)),
-    radial-gradient(150% 210% at calc(100% + var(--x)) calc(0% + var(--y)), rgb(20 175 125), rgb(0 10 255)),
-    radial-gradient(100% 100% at calc(100% - var(--x)) calc(30% - var(--y)), rgb(255 77 0), rgb(0 200 255)),
+    radial-gradient(90% 100% at 50% 0%, rgb(200 200 200), rgb(22 0 45)),
+    radial-gradient(100% 100% at 80% 0%, rgb(250 255 0), rgb(36 0 0)),
+    radial-gradient(150% 210% at 100% 0%, rgb(20 175 125), rgb(0 10 255)),
+    radial-gradient(100% 100% at 100% 30%, rgb(255 77 0), rgb(0 200 255)),
     linear-gradient(60deg, rgb(255 0 0), rgb(120 86 255));
   background-blend-mode: overlay, overlay, difference, difference, difference, normal;
-  animation: aurora-x 19s ease-in-out infinite alternate,
-             aurora-y 27s ease-in-out infinite alternate;
+  will-change: transform;
+  animation: aurora-drift 26s ease-in-out infinite alternate,
+             aurora-breathe 18s ease-in-out infinite alternate;
 }
-@keyframes aurora-x { from { --posX: -150; } to { --posX: 150; } }
-@keyframes aurora-y { from { --posY: -100; } to { --posY: 100; } }
+@keyframes aurora-drift {
+  from { translate: -5% -3%; }
+  to   { translate: 5% 4%; }
+}
+@keyframes aurora-breathe {
+  from { scale: 1.08; }
+  to   { scale: 1.24; }
+}
 @media (prefers-reduced-motion: reduce) {
   .glass-aurora { animation: none; }
 }
