@@ -789,27 +789,19 @@ body.login-active .glass-bg { display: none; }
   pointer-events: none;
 }
 
-/* ===== Przejścia między stronami (crossfade) ===== */
-/* Nowa strona płynnie pojawia się nad starą (opacity) — bez przesuwania, więc nie ma
-   artefaktów pozycyjnych ani wrażliwości na scroll, a ewentualny koszt zrobienia
-   snapshotu jest praktycznie niewidoczny (nic się nie przesuwa). Strony są
-   nieprzezroczyste (ciemne tło), więc przenikanie jest czyste. Kierunek (data-vt)
-   nie jest tu używany. */
-:root::view-transition-group(root) { animation-duration: 260ms; }
-:root::view-transition-old(root) { animation: none; }
-:root::view-transition-new(root) {
-  z-index: 2;
-  animation: 260ms ease both vt-fade-in;
+/* ===== Wejście strony ===== */
+/* Bez snapshotów View Transitions (te kotwiczyły się do góry dokumentu przy
+   przewiniętej stronie → przeskok/stutter na starcie). Nowa strona po prostu
+   animuje się przy zamontowaniu: lekki unos + pojawienie. Czysty transform/opacity
+   na jednym elemencie — odporne na scroll, zero kosztu „zdjęcia" ekranu. */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
 }
+main { animation: page-in 0.26s cubic-bezier(0.32, 0.72, 0, 1) both; }
 
-@keyframes vt-fade-in { from { opacity: 0; } to { opacity: 1; } }
-
-/* Szanuj „ogranicz ruch" — bez przesuwania, natychmiastowa zamiana. */
 @media (prefers-reduced-motion: reduce) {
-  :root::view-transition-old(root),
-  :root::view-transition-new(root) {
-    animation: none !important;
-  }
+  main { animation: none; }
 }
 
 /* Animacja rozwijania formularza nowego wypadu */
