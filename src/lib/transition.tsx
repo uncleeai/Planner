@@ -18,6 +18,11 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
 
   const navigate = useCallback<NavigateFn>(
     (href) => {
+      // Reset scrolla SYNCHRONICZNIE, zanim wystartuje nawigacja. Inaczej krótsza strona
+      // wypadu montuje się, gdy okno jest jeszcze przewinięte na pozycję z listy — przez
+      // klatkę widać pustkę poniżej treści (a na iOS `position: fixed` tło potrafi mignąć
+      // na czarno przy tym reflowie), po czym scroll „przeskakuje" na górę.
+      if (typeof window !== 'undefined') window.scrollTo(0, 0);
       router.push(href);
     },
     [router],
