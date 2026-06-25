@@ -83,13 +83,18 @@ export default function Home() {
     load();
     const channel = supabase
       .channel('dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load())
       .subscribe();
+    // Zmiany w `events` łapie JEDNA globalna subskrypcja (NewEventToast) i rozgłasza je
+    // tym zdarzeniem. Dwa kanały Realtime na tej samej tabeli gubiły dostawy (toast
+    // łapał tylko pierwszy wypad), więc dashboard nie subskrybuje `events` osobno.
+    const onEvents = () => load();
+    window.addEventListener('planner:events-changed', onEvents);
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('planner:events-changed', onEvents);
     };
   }, [load]);
 

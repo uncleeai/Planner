@@ -4,9 +4,11 @@
 //
 // Wdrożenie:
 //   supabase functions deploy notify-new-event --no-verify-jwt
+//   (albo wklej kod w panelu: Edge Functions → notify-new-event → Code → Deploy)
 // Sekrety (Supabase → Edge Functions → Secrets):
-//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (np. mailto:ty@example.com),
-//   WEBHOOK_SECRET (dowolny losowy ciąg — ten sam ustaw w nagłówku webhooka).
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (np. mailto:ty@example.com).
+//   WEBHOOK_SECRET — OPCJONALNY. Jeśli ustawiony, webhook musi przysłać ten sam sekret
+//   w query param `?key=...` ALBO w nagłówku `x-webhook-secret`. Jeśli pusty — bez kontroli.
 // SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY są dostępne automatycznie.
 
 import webpush from 'npm:web-push@3.6.7';
@@ -34,9 +36,13 @@ type EventRecord = {
 type Sub = { endpoint: string; p256dh: string; auth: string };
 
 Deno.serve(async (req) => {
-  // Prosty sekret współdzielony — webhook musi przysłać ten sam nagłówek.
-  if (WEBHOOK_SECRET && req.headers.get('x-webhook-secret') !== WEBHOOK_SECRET) {
-    return new Response('unauthorized', { status: 401 });
+  // Opcjonalna ochrona: sekret w query param `?key=` lub nagłówku `x-webhook-secret`.
+  if (WEBHOOK_SECRET) {
+    const url = new URL(req.url);
+    const provided = url.searchParams.get('key') ?? req.headers.get('x-webhook-secret');
+    if (provided !== WEBHOOK_SECRET) {
+      return new Response('unauthorized', { status: 401 });
+    }
   }
 
   const payload = await req.json().catch(() => null);

@@ -173,6 +173,14 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 
 ## Pomysły na dalej (poza MVP)
 
+- **Opis wyjazdu.** Kolumna `description` już istnieje w tabeli `events` — wystarczy
+  podpiąć ją w UI (pole w formularzu „Nowy wypad" + wyświetlanie na stronie wypadu).
+- **Rozbudowane powiadomienia / przypomnienia.** Np. „za tydzień wyjazd" i „jutro
+  wyjazd" liczone od `confirmed_at` — Supabase Scheduled Function (pg_cron) raz dziennie
+  sprawdza nadchodzące ustalone wypady i wysyła push przez ten sam mechanizm VAPID.
+- **Ping od organizatora.** Twórca wypadu klika „przypomnij, żeby zagłosowali" → push
+  tylko do tych z paczki, którzy jeszcze nie oddali głosu (Edge Function liczy brakujących
+  jak `missingVoters` i wysyła do ich subskrypcji).
 - Logowanie przez Google (jedno kliknięcie) obok kodu e-mail; allowlista e-maili.
 - Komentarze przy wypadzie.
 - Ikony PNG (192/512) i `apple-touch-icon` dla pełnego wsparcia instalacji PWA.

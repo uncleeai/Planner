@@ -93,13 +93,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 function NewEventToast({ userId }: { userId: string }) {
   const [toast, setToast] = useState<{ id: string; title: string; by: string } | null>(null);
 
+  // JEDYNa subskrypcja Realtime na tabelę `events` w całej apce (zawsze zamontowana).
+  // Każdą zmianę rozgłasza zdarzeniem `planner:events-changed` (słucha go dashboard),
+  // a przy INSERT cudzego wypadu pokazuje toast. Dzięki temu nie ma drugiego kanału na
+  // tej samej tabeli, który gubił dostawy (toast łapał tylko pierwszy wypad).
   useEffect(() => {
     const channel = supabase
-      .channel('new-event-toast')
+      .channel('events-global')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'events' },
+        { event: '*', schema: 'public', table: 'events' },
         (payload) => {
+          window.dispatchEvent(new CustomEvent('planner:events-changed'));
+          if (payload.eventType !== 'INSERT') return;
           const ev = payload.new as EventRow;
           if (ev.created_by_user_id === userId) return; // własnych nie pokazujemy
           setToast({ id: ev.id, title: ev.title, by: ev.created_by ?? 'Ktoś' });
