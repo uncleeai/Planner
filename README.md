@@ -91,6 +91,43 @@ Wbudowana wysyłka maili Supabase jest limitowana (kilka/godz.) — dla paczki z
 wystarcza; docelowo można podpiąć własny SMTP. Sesja trzymana jest w przeglądarce
 i odświeżana automatycznie, więc logujesz się rzadko.
 
+## Powiadomienia (Web Push)
+
+Powiadomienie „ktoś dodał nowy wypad" działa nawet przy zamkniętej apce.
+
+- **Toast na żywo** (gdy apka jest otwarta) działa od razu, bez konfiguracji.
+- **Push systemowy** wymaga kroków niżej. Na iPhonie działa **tylko** w apce dodanej
+  do ekranu głównego (standalone, iOS 16.4+); w zwykłej karcie Safari — nie.
+
+Konfiguracja push:
+
+1. **Wygeneruj klucze VAPID** (raz):
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+2. **Klucz publiczny** dodaj do env (lokalnie i na Vercelu):
+   ```
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=BModerate...   # publiczny
+   ```
+3. **Uruchom `supabase/schema.sql`** — tworzy tabelę `push_subscriptions` + RLS.
+4. **Wdróż Edge Function** (Supabase CLI):
+   ```bash
+   supabase functions deploy notify-new-event --no-verify-jwt
+   ```
+5. **Sekrety funkcji** (*Edge Functions → Secrets*): `VAPID_PUBLIC_KEY`,
+   `VAPID_PRIVATE_KEY` (z kroku 1), `VAPID_SUBJECT` (np. `mailto:ty@example.com`) oraz
+   `WEBHOOK_SECRET` (dowolny losowy ciąg). `SUPABASE_URL` i `SUPABASE_SERVICE_ROLE_KEY`
+   są dostarczane automatycznie.
+6. **Database Webhook** (*Database → Webhooks → Create*): tabela `public.events`,
+   zdarzenie **Insert**, typ **HTTP Request → POST** na URL funkcji
+   (`https://<projekt>.functions.supabase.co/notify-new-event`), z nagłówkiem
+   `x-webhook-secret: <WEBHOOK_SECRET>`.
+7. W apce (dodanej do ekranu głównego): *Profil → Powiadomienia → włącz* i zaakceptuj
+   zgodę. Każdy robi to u siebie. Twórca wypadu nie dostaje powiadomienia o własnym.
+
+Bez kroku 2 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`) przełącznik powiadomień się nie pokazuje —
+działa wtedy sam toast na żywo.
+
 ## Utrzymanie i analityka
 
 ### Keepalive bazy (żeby Supabase nie zasypiało)
@@ -136,8 +173,6 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 
 ## Pomysły na dalej (poza MVP)
 
-- **Powiadomienia push** (Web Push / VAPID, darmowe). Działają na Androidzie;
-  na iPhonie tylko od iOS 16.4+ i pod warunkiem dodania strony do ekranu głównego.
 - Logowanie przez Google (jedno kliknięcie) obok kodu e-mail; allowlista e-maili.
 - Komentarze przy wypadzie.
 - Ikony PNG (192/512) i `apple-touch-icon` dla pełnego wsparcia instalacji PWA.

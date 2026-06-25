@@ -6,6 +6,13 @@ import { useAuth, signOut } from '@/lib/auth';
 import { useBackground } from '@/lib/background';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
+import {
+  isPushSupported,
+  isStandalone,
+  getPushSubscribed,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '@/lib/push';
 
 // Avatar bieżącego użytkownika w rogu; klik → wyśrodkowany modal: zdjęcie/emoji, nick, wyloguj.
 export default function ProfileMenu() {
@@ -19,14 +26,42 @@ export default function ProfileMenu() {
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Powiadomienia push (o nowych wypadach).
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushStandalone, setPushStandalone] = useState(true);
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+
   // Po otwarciu modala zsynchronizuj pole nicku z aktualną nazwą.
   useEffect(() => {
     if (open) {
       setName(displayName);
       setSavedName(false);
       setError('');
+      setPushSupported(isPushSupported());
+      setPushStandalone(isStandalone());
+      getPushSubscribed().then(setPushOn);
     }
   }, [open, displayName]);
+
+  async function togglePush() {
+    if (pushBusy) return;
+    setPushBusy(true);
+    setError('');
+    try {
+      if (pushOn) {
+        await unsubscribeFromPush();
+        setPushOn(false);
+      } else {
+        await subscribeToPush(userId);
+        setPushOn(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się zmienić powiadomień.');
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -118,6 +153,37 @@ export default function ProfileMenu() {
                 <span className="switch-knob" />
               </button>
             </div>
+
+            {pushSupported ? (
+              <div className="setting-row">
+                <div className="setting-text">
+                  <span className="setting-title">Powiadomienia</span>
+                  <span className="setting-sub">Gdy ktoś doda nowy wypad</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={pushOn}
+                  aria-label="Powiadomienia"
+                  disabled={pushBusy}
+                  className={`switch${pushOn ? ' on' : ''}`}
+                  onClick={togglePush}
+                >
+                  <span className="switch-knob" />
+                </button>
+              </div>
+            ) : (
+              !pushStandalone && (
+                <div className="setting-row">
+                  <div className="setting-text">
+                    <span className="setting-title">Powiadomienia</span>
+                    <span className="setting-sub">
+                      Dodaj apkę do ekranu głównego, żeby je włączyć
+                    </span>
+                  </div>
+                </div>
+              )
+            )}
 
             <div className="field" style={{ marginBottom: 12 }}>
               <label htmlFor="nick">Nick</label>

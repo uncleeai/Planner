@@ -38,9 +38,12 @@ Guidance for AI assistants (and humans) working in this repository.
 ├── tsconfig.json                 # Konfiguracja TypeScript (alias @/* → src/*)
 ├── .env.example                  # Wzór zmiennych środowiskowych (skopiuj do .env.local)
 ├── supabase/
-│   └── schema.sql                # Schemat bazy + RLS + publikacja Realtime
+│   ├── schema.sql                # Schemat bazy + RLS + publikacja Realtime
+│   └── functions/
+│       └── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
+│   ├── sw.js                     # Service worker (Web Push: push + notificationclick)
 │   └── icon.svg                  # Ikona aplikacji
 └── src/
     ├── app/
@@ -59,6 +62,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar) + hook useAuth
         ├── slotPresets.ts        # Szybkie presety terminów (chipy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
+        ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
         └── types.ts              # Typy: EventRow, Slot, Vote, Profile, Availability
 ```
 
@@ -87,6 +91,11 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   nie ma dostępu do `auth.users`.
 - **Storage** — bucket `avatars` (publiczny) na zdjęcia profilowe; każdy zarządza tylko swoim
   folderem `<uid>/...` (RLS w `schema.sql`). Upload + skalowanie w `src/lib/avatars.ts`.
+- **push_subscriptions** — subskrypcje Web Push (`endpoint` jako PK + `user_id` + klucze
+  `p256dh`/`auth`). Klient zarządza tylko swoimi (RLS); Edge Function `notify-new-event`
+  (rola service_role) rozsyła push o nowym wypadzie do wszystkich poza twórcą. Powiadomienia
+  na iOS tylko w PWA dodanym do ekranu głównego (16.4+). Toast „na żywo" przy otwartej apce
+  jest w `auth.tsx` (Realtime na INSERT `events`).
 - Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
   przy głosach/wypadach zapisujemy dodatkowo migawkę nazwy.
 

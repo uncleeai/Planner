@@ -1,12 +1,14 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 import { useBackground } from '@/lib/background';
+import type { EventRow } from '@/lib/types';
 
 type AuthCtx = { userId: string; displayName: string; avatar: string };
 
@@ -79,7 +81,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ userId: session.user.id, displayName, avatar }}>{children}</Ctx.Provider>
+    <Ctx.Provider value={{ userId: session.user.id, displayName, avatar }}>
+      <NewEventToast userId={session.user.id} />
+      {children}
+    </Ctx.Provider>
+  );
+}
+
+// Toast na żywo, gdy ktoś inny doda nowy wypad — działa, gdy apka jest otwarta
+// (uzupełnia powiadomienia push, które docierają też przy zamkniętej apce).
+function NewEventToast({ userId }: { userId: string }) {
+  const [toast, setToast] = useState<{ id: string; title: string; by: string } | null>(null);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('new-event-toast')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'events' },
+        (payload) => {
+          const ev = payload.new as EventRow;
+          if (ev.created_by_user_id === userId) return; // własnych nie pokazujemy
+          setToast({ id: ev.id, title: ev.title, by: ev.created_by ?? 'Ktoś' });
+          window.setTimeout(() => setToast((t) => (t && t.id === ev.id ? null : t)), 6000);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  if (!toast) return null;
+  return (
+    <Link href={`/event/${toast.id}`} className="toast" onClick={() => setToast(null)}>
+      🎉 <strong>{toast.by}</strong> dodał nowy wypad: {toast.title}
+    </Link>
   );
 }
 

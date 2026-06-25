@@ -775,6 +775,39 @@ body.login-active .glass-bg { display: none; }
   pointer-events: none;
 }
 
+/* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 200;
+  max-width: min(92%, 460px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px;
+  background: rgba(13, 13, 17, 0.9);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: toast-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.toast strong { font-weight: 600; }
+.toast:hover { border-color: var(--primary-hover); text-decoration: none; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 14px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
 /* ===== Przejścia między stronami (iOS-owy slide) ===== */
 /* Kierunek niesie atrybut data-vt na <html> (ustawiany w TransitionProvider).
    Animujemy snapshoty całej strony: ::view-transition-old/new(root). */

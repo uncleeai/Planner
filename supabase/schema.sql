@@ -146,6 +146,32 @@ create policy "profiles insert" on public.profiles for insert to authenticated
 create policy "profiles update" on public.profiles for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
+-- Subskrypcje Web Push (powiadomienia o nowych wypadach). Jeden wiersz = jedno
+-- urządzenie/przeglądarka (klucz: endpoint). Wysyłką zajmuje się Edge Function
+-- `notify-new-event` (rola service_role omija RLS); klient zarządza tylko swoimi.
+create table if not exists public.push_subscriptions (
+  endpoint   text primary key,
+  user_id    uuid references auth.users(id) on delete cascade,
+  p256dh     text not null,
+  auth       text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists push_subscriptions_user_idx on public.push_subscriptions(user_id);
+
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "push read"   on public.push_subscriptions;
+drop policy if exists "push insert" on public.push_subscriptions;
+drop policy if exists "push update" on public.push_subscriptions;
+drop policy if exists "push delete" on public.push_subscriptions;
+create policy "push read"   on public.push_subscriptions for select to authenticated
+  using (user_id = auth.uid());
+create policy "push insert" on public.push_subscriptions for insert to authenticated
+  with check (user_id = auth.uid());
+create policy "push update" on public.push_subscriptions for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "push delete" on public.push_subscriptions for delete to authenticated
+  using (user_id = auth.uid());
+
 -- Realtime: aktualizacje na żywo (dashboard wypadów, terminy, głosy, paczka).
 -- alter publication ... add table nie jest idempotentne, więc dodajemy warunkowo.
 do $$
