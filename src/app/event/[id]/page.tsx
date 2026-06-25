@@ -13,14 +13,18 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'no', label: 'Nie', cls: 'active-no' },
 ];
 
+// Jedna instancja Intl na moduł (zamiast `toLocaleString`, które buduje formater
+// przy każdym wywołaniu) — woła się dla każdego slotu przy każdym renderze.
+const slotFmt = new Intl.DateTimeFormat('pl-PL', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'long',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 function formatSlot(iso: string): string {
-  return new Date(iso).toLocaleString('pl-PL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return slotFmt.format(new Date(iso));
 }
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,22 +64,61 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     load();
 
+    // Aplikujemy zmiany realtime przyrostowo do stanu — zamiast pełnego
+    // przeładowania (4 zapytania + przerysowanie całości) przy każdym głosie
+    // kogokolwiek z paczki. Na komórce to gros odczuwalnej różnicy.
     const channel = supabase
       .channel(`event-${eventId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'slots', filter: `event_id=eq.${eventId}` },
-        () => load(),
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const id = (payload.old as Slot).id;
+            setSlots((prev) => prev.filter((s) => s.id !== id));
+            setVotes((prev) => prev.filter((v) => v.slot_id !== id));
+          } else {
+            const row = payload.new as Slot;
+            setSlots((prev) =>
+              [...prev.filter((s) => s.id !== row.id), row].sort(
+                (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+              ),
+            );
+          }
+        },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'votes', filter: `event_id=eq.${eventId}` },
-        () => load(),
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const id = (payload.old as Vote).id;
+            setVotes((prev) => prev.filter((v) => v.id !== id));
+          } else {
+            const row = payload.new as Vote;
+            // Dopasowanie po (slot_id, user_id) podmienia też wpis optymistyczny.
+            setVotes((prev) => {
+              const i = prev.findIndex(
+                (v) => v.slot_id === row.slot_id && v.user_id === row.user_id,
+              );
+              if (i === -1) return [...prev, row];
+              const next = prev.slice();
+              next[i] = row;
+              return next;
+            });
+          }
+        },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
-        () => load(),
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            setNotFound(true);
+          } else {
+            setEvent(payload.new as EventRow);
+          }
+        },
       )
       .subscribe();
 

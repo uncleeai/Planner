@@ -1,20 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
 import type { EventRow } from '@/lib/types';
 
+// Jedna instancja Intl na moduł — `toLocaleString` budowałby formater przy
+// każdym wywołaniu (drogie na iOS), a renderujemy go dla każdej karty.
+const dateFmt = new Intl.DateTimeFormat('pl-PL', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'long',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('pl-PL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return dateFmt.format(new Date(iso));
 }
 
 export default function Home() {
@@ -205,7 +209,9 @@ export default function Home() {
   );
 }
 
-function Timeline({ title, events, muted }: { title: string; events: EventRow[]; muted?: boolean }) {
+// Memoizowane: przy rozwijaniu formularza „Nowy wypad" czy pisaniu w nim
+// propsy osi czasu się nie zmieniają, więc React pomija jej przerysowanie.
+const Timeline = memo(function Timeline({ title, events, muted }: { title: string; events: EventRow[]; muted?: boolean }) {
   if (events.length === 0) return null;
   return (
     <section className="mt">
@@ -227,4 +233,4 @@ function Timeline({ title, events, muted }: { title: string; events: EventRow[];
       ))}
     </section>
   );
-}
+});
