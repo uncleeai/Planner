@@ -294,7 +294,7 @@ export default function Home() {
             </div>
 
             {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-            <button type="submit" disabled={!title.trim() || !startsAt || busy}>
+            <button type="submit" disabled={!title.trim() || !startsAt || busy} style={{ width: '100%' }}>
               {busy ? 'Tworzę…' : 'Utwórz wypad'}
             </button>
           </form>
