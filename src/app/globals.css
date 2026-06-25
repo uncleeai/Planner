@@ -614,6 +614,34 @@ img.avatar { display: inline-block; }
 /* ===== Liquid Glass (dashboard) ===== */
 .glass-page { position: relative; z-index: 1; }
 
+/* Ekran logowania: box wyśrodkowany w pionie, bez nagłówka „Planner". */
+.auth-screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* svh, by uwzględnić pasek przeglądarki na mobile i nie powodować scrolla. */
+  min-height: 78svh;
+}
+.auth-screen .card { margin-bottom: 16px; position: relative; z-index: 1; }
+
+/* Tło wideo wyłącznie na ekranie logowania (komponent LoginBackground). Ciemna,
+   nieprzezroczysta baza zakrywa to, co pod spodem; wideo rozmyte/wyciszone jak
+   dawne globalne tło. Karta logowania frostuje je przez backdrop-filter. */
+.login-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: #050505;
+}
+.login-bg video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover;
+  /* Własna warstwa GPU; scale maskuje krawędzie po rozmyciu. */
+  transform: translateZ(0) scale(1.3);
+  filter: blur(44px);
+  opacity: 0.5;
+}
+/* Na ekranie logowania chowamy globalną aurorę — zostaje samo wideo. */
+body.login-active .glass-bg { display: none; }
+
 .glass-bg {
   /* Globalne tło na z-index:0 (nad nieprzezroczystym tłem body); cała treść siedzi
      w .container z z-index:1, więc jest nad aurorą. */

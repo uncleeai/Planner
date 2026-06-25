@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
+import { useBackground } from '@/lib/background';
 
 type AuthCtx = { userId: string; displayName: string; avatar: string };
 
@@ -86,6 +87,41 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+// Tło wideo tylko na ekranie logowania (świadoma decyzja: krótka chwila, jedna
+// karta). Globalną aurorę chowamy klasą na <body>, żeby nie liczyć dwóch teł naraz.
+// Szanuje przełącznik tła (gdy wyłączone — czyste ciemne tło, bez dekodowania wideo).
+function LoginBackground() {
+  const { enabled } = useBackground();
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    document.body.classList.add('login-active');
+    return () => document.body.classList.remove('login-active');
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const tryPlay = () => video.play().catch(() => {});
+    tryPlay(); // niektóre Safari nie startują autoplay bez jawnego play()
+    const onVisibility = () => {
+      if (document.hidden) video.pause();
+      else tryPlay();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [enabled]);
+
+  if (!enabled) return null;
+
+  return (
+    <div className="login-bg" aria-hidden="true">
+      <video ref={videoRef} src="/BG/dark abstract.mp4" autoPlay muted loop playsInline preload="auto" />
+    </div>
+  );
+}
+
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -153,10 +189,8 @@ function LoginForm() {
   }
 
   return (
-    <main>
-      <h1>Planner</h1>
-      <p className="lead">Zaloguj się, żeby głosy i ustalenia były naprawdę Twoje.</p>
-
+    <main className="glass-page auth-screen">
+      <LoginBackground />
       {!sent ? (
         <form className="card" onSubmit={sendCode}>
           <h2>Logowanie</h2>
