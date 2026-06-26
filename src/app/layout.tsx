@@ -8,7 +8,7 @@ import GlassBackground from '@/components/GlassBackground';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Wypad.exe — ustalajcie terminy bez chaosu',
+  title: 'Wypad.exe',
   description: 'Zaproponuj terminy wypadu, zobacz kto wchodzi i który termin prowadzi — na żywo.',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Wypad.exe' },
