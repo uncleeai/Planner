@@ -1053,10 +1053,13 @@ body.login-active .glass-bg { display: none; }
    Teraz nawigacja to zwykły router.push (NIGDY nie zawiedzie), a nowa strona animuje
    się przy zamontowaniu czystym CSS na <main> — odporne na każde urządzenie, bez wyścigów. */
 @keyframes page-in {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateX(48px); }
   to   { opacity: 1; transform: none; }
 }
-main { animation: page-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both; }
+main { animation: page-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both; }
+/* Nowa strona wjeżdża z prawej — przycięcie poziomu zapobiega bocznemu scrollowi
+   podczas animacji (brak position: sticky, więc bezpieczne). */
+.container { overflow-x: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   main { animation: none; }
