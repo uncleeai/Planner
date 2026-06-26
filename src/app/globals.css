@@ -86,6 +86,27 @@ input:focus {
 }
 input::placeholder { color: #6a6f80; }
 
+textarea {
+  width: 100%;
+  padding: 13px 15px;
+  background: var(--card-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 84px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(91, 87, 242, 0.25);
+}
+textarea::placeholder { color: #6a6f80; }
+
 /* Input daty z własnym placeholderem (iOS nie pokazuje nic w pustym datetime-local) */
 .dt-field { position: relative; display: flex; width: 100%; }
 .dt-field > input { width: 100%; text-align: center; }
@@ -463,6 +484,19 @@ img.avatar { display: inline-block; }
 .profile-trigger:hover { background: none; }
 .profile-trigger:active { transform: scale(0.94); }
 
+/* Przycisk ustawień (koło zębate) obok avatara */
+.settings-trigger {
+  width: 38px; height: 38px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.settings-trigger:hover { background: #262833; color: var(--text); border-color: var(--border-strong); }
+.settings-trigger:active { transform: scale(0.94); }
+
 /* Modal profilu (wyśrodkowany, rozmyte tło) */
 .profile-overlay {
   position: fixed; inset: 0; z-index: 100;
@@ -773,6 +807,19 @@ body.login-active .glass-bg { display: none; }
   height: 1px;
   background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.25), transparent);
   pointer-events: none;
+}
+
+/* Opis wypadu na stronie wydarzenia */
+.event-description {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  white-space: pre-line;
 }
 
 /* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */

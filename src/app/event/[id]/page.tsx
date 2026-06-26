@@ -308,6 +308,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         )}
       </header>
 
+      {event?.description && (
+        <p className="event-description">{event.description}</p>
+      )}
+
       {slots.length > 0 && (
         <div className="vote-status">
           <div className="vote-status-row">

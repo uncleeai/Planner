@@ -8,6 +8,7 @@ import { getConfirmedSlot } from '@/lib/types';
 import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
+import SettingsMenu from '@/components/SettingsMenu';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
@@ -46,6 +47,7 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [description, setDescription] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -109,6 +111,7 @@ export default function Home() {
       .insert({
         title: title.trim(),
         location: location.trim() || null,
+        description: description.trim() || null,
         created_by: displayName,
         created_by_user_id: userId,
       })
@@ -253,7 +256,10 @@ export default function Home() {
           </div>
         </div>
 
-        <ProfileMenu />
+        <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+          <SettingsMenu />
+          <ProfileMenu />
+        </div>
       </header>
 
       {events.length > 0 && (
@@ -285,6 +291,17 @@ export default function Home() {
                 placeholder="np. u Kuby, Zakopane…"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="description">Opis (opcjonalnie)</label>
+              <textarea
+                id="description"
+                placeholder="np. co bierzemy, plan, szczegóły…"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
               />
             </div>
 
@@ -404,6 +421,16 @@ export default function Home() {
                       placeholder="np. u Kuby, Zakopane…"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
+                    />
+                  </div>,
+                  <div className="field" key="desc">
+                    <label htmlFor="description">Opis (opcjonalnie)</label>
+                    <textarea
+                      id="description"
+                      placeholder="np. co bierzemy, plan, szczegóły…"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={3}
                     />
                   </div>,
                   <div className="field" key="date">
