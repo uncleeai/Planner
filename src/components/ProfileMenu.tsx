@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
+import { IconCamera, IconX } from '@/components/icons';
 
 // Avatar bieżącego użytkownika w rogu; klik → wyśrodkowany modal: zdjęcie/emoji, nick, wyloguj.
 export default function ProfileMenu() {
@@ -16,15 +17,17 @@ export default function ProfileMenu() {
   const [savedName, setSavedName] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const [localAvatar, setLocalAvatar] = useState(avatar);
 
-  // Po otwarciu modala zsynchronizuj pole nicku z aktualną nazwą.
+  // Po otwarciu modala zsynchronizuj pole nicku i awatara z aktualnymi danymi.
   useEffect(() => {
     if (open) {
       setName(displayName);
+      setLocalAvatar(avatar);
       setSavedName(false);
       setError('');
     }
-  }, [open, displayName]);
+  }, [open, displayName, avatar]);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -34,6 +37,7 @@ export default function ProfileMenu() {
     setError('');
     try {
       const url = await uploadAvatarImage(userId, file);
+      setLocalAvatar(url);
       await supabase.auth.updateUser({ data: { avatar: url } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się wgrać zdjęcia.');
@@ -42,26 +46,44 @@ export default function ProfileMenu() {
     }
   }
 
-  async function pickEmoji(emoji: string) {
-    setBusy(true);
+  function pickEmoji(emoji: string) {
+    setLocalAvatar(emoji);
+    setSavedName(false);
     setError('');
-    await supabase.auth.updateUser({ data: { avatar: emoji } });
-    setBusy(false);
   }
 
-  async function saveName() {
+  async function saveProfile() {
     const trimmed = name.trim();
-    if (!trimmed || trimmed === displayName || savingName) return;
+    if (!trimmed || savingName) return;
+    
+    const nameChanged = trimmed !== displayName;
+    const avatarChanged = localAvatar !== avatar;
+    if (!nameChanged && !avatarChanged) return;
+
     setSavingName(true);
     setError('');
-    const { error } = await supabase.auth.updateUser({ data: { display_name: trimmed } });
-    setSavingName(false);
-    if (error) {
-      setError(error.message);
-      return;
+
+    const updateData: Record<string, any> = {};
+    if (nameChanged) updateData.display_name = trimmed;
+    if (avatarChanged) updateData.avatar = localAvatar;
+
+    try {
+      const { error } = await supabase.auth.updateUser({ data: updateData });
+      if (error) {
+        setError(error.message);
+        setLocalAvatar(avatar);
+        return;
+      }
+      setSavedName(true);
+    } catch (err) {
+      setError('Nie udało się zapisać zmian profilu.');
+      setLocalAvatar(avatar);
+    } finally {
+      setSavingName(false);
     }
-    setSavedName(true);
   }
+
+  const hasChanges = (name.trim() !== displayName && name.trim() !== '') || localAvatar !== avatar;
 
   return (
     <div className="profile-menu">
@@ -72,17 +94,19 @@ export default function ProfileMenu() {
       {open && (
         <div className="profile-overlay" onClick={() => setOpen(false)}>
           <div className="profile-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setOpen(false)} aria-label="Zamknij">✕</button>
+            <button className="modal-close" onClick={() => setOpen(false)} aria-label="Zamknij">
+              <IconX size={14} />
+            </button>
 
             <div className="avatar-xl-wrap">
-              <Avatar name={displayName} avatar={avatar} size={104} />
+              <Avatar name={displayName} avatar={localAvatar} size={104} />
               <button
                 className="avatar-camera"
                 disabled={busy}
                 onClick={() => fileRef.current?.click()}
                 aria-label="Zmień zdjęcie"
               >
-                {busy ? '…' : '📷'}
+                {busy ? '…' : <IconCamera size={16} />}
               </button>
             </div>
 
@@ -91,7 +115,7 @@ export default function ProfileMenu() {
                 <button
                   type="button"
                   key={a}
-                  className={`avatar-option${avatar === a ? ' selected' : ''}`}
+                  className={`avatar-option${localAvatar === a ? ' selected' : ''}`}
                   disabled={busy}
                   onClick={() => pickEmoji(a)}
                 >
@@ -115,8 +139,8 @@ export default function ProfileMenu() {
                 />
                 <button
                   className="ghost"
-                  disabled={savingName || !name.trim() || name.trim() === displayName}
-                  onClick={saveName}
+                  disabled={savingName || !name.trim() || !hasChanges}
+                  onClick={saveProfile}
                 >
                   {savingName ? 'Zapisuję…' : savedName ? 'Zapisano ✓' : 'Zapisz'}
                 </button>

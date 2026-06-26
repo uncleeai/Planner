@@ -12,7 +12,7 @@ import SettingsMenu from '@/components/SettingsMenu';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
-import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb } from '@/components/icons';
+import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb, IconMessageSquare } from '@/components/icons';
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pl-PL', {
@@ -28,9 +28,38 @@ function fmtTime(iso: string): string {
 function progressColor(p: number): string {
   return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
 }
+function getMinDateTime(): string {
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+}
 
 type Agg = { voters: Person[]; percent: number; dateIso: string | null };
 const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null };
+
+const MAJOR_QUOTES = [
+  "„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”",
+  "„Piwko to jest jak rosół…”",
+  "„Nie ma takiego czegoś, żeby było coś…”",
+  "„Ugułem trzeba być sobom”",
+  "„Czego ty krzyczysz? Czego ty krzyczysz kurwa, Knurze!”",
+  "„Pozbędziesz się mnie ja... i tak będę się wyprowadzał. Proszę mnie wymeldować!”",
+  "„Niektóre firmy upadają, bo mają upadek. I jest wzlot.”",
+  "„Można to zabrońnić!”",
+  "„Pierdolę tego Loluzelskiego!”",
+  "„Tak halo?”",
+  "„O, bąka puściłem, na Sławka.”",
+  "„Jesteś CHUJEM!” - Major o swojej narzeczonej",
+  "„SRAAAADEK! Ty jebana kurwa komunistyczny chuju gruba gruba. Kurwo.”",
+  "Odpierdol się od Mickiewicza.",
+  "W którym lesie ty byłeś? Gdzie schowałeś SUOMĘ? No, SUOMĘ. (…) Żujesz jakąś SUOME?",
+  "\"Ciekawe czym oni srają? Indiani. Jodłą chyba. Jak myślisz? Czym oni srają? Może bananami, bo tam ciepło jest.\"",
+  "\"Pierdolę tych indianów. Te żarcie, ugułem, jak to się mówi. Indiańskie. Krowy. Dojne.\"",
+  "\"Mój siurek czeka na te gniazdo. Żeby wciskać, i chlapać w tą i z powrotem. Żeby ona była nonstop mokra. Mokra, cała wilgotna - żeby była nonstop zadowolona.\"",
+  "\"Ptasibrzuch jestem!\"",
+  "„Rodzina twoja poumierała…”",
+  "„Muszę mieć lepszą wiadomość!”"
+];
 
 export default function Home() {
   const navigate = useTransitionNavigate();
@@ -43,6 +72,27 @@ export default function Home() {
   const [votes, setVotes] = useState<Vote[]>(() => cached?.votes ?? []);
   const [profiles, setProfiles] = useState<Profile[]>(() => cached?.profiles ?? []);
   const [loading, setLoading] = useState(() => !cached);
+
+  const [quote, setQuote] = useState('');
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    const q = MAJOR_QUOTES[Math.floor(Math.random() * MAJOR_QUOTES.length)];
+    setQuote(q);
+  }, []);
+
+  const handleNextQuote = () => {
+    if (MAJOR_QUOTES.length <= 1) return;
+    setFade(false);
+    setTimeout(() => {
+      let nextQuote = quote;
+      while (nextQuote === quote) {
+        nextQuote = MAJOR_QUOTES[Math.floor(Math.random() * MAJOR_QUOTES.length)];
+      }
+      setQuote(nextQuote);
+      setFade(true);
+    }, 150);
+  };
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
@@ -103,6 +153,12 @@ export default function Home() {
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !startsAt || busy) return;
+
+    if (new Date(startsAt).getTime() < Date.now() - 60000) {
+      setError('Data i godzina nie mogą być z przeszłości.');
+      return;
+    }
+
     setBusy(true);
     setError('');
 
@@ -249,7 +305,7 @@ export default function Home() {
         {/* Nazwa + powitanie */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff', lineHeight: 1.2 }}>
-            Planner
+            Wypad.exe
           </div>
           <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.3, marginTop: 1 }}>
             Hej, {displayName} 👋
@@ -277,7 +333,7 @@ export default function Home() {
               <input
                 id="title"
                 type="text"
-                placeholder="np. Piwo w piątek, wyjazd w góry…"
+                placeholder="np. Piwo w piątek, baskecik…"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 ref={titleInputRef}
@@ -288,7 +344,7 @@ export default function Home() {
               <input
                 id="location"
                 type="text"
-                placeholder="np. u Kuby, Zakopane…"
+                placeholder="np. u Kubusia, u twojej starej…"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
@@ -298,7 +354,7 @@ export default function Home() {
               <label htmlFor="description">Opis (opcjonalnie)</label>
               <textarea
                 id="description"
-                placeholder="np. co bierzemy, plan, szczegóły…"
+                placeholder="np. co bierzemy, plan xd, szczegóły…"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
@@ -312,6 +368,7 @@ export default function Home() {
                 value={startsAt}
                 onChange={(e) => setStartsAt(e.target.value)}
                 required
+                min={getMinDateTime()}
               />
             </div>
 
@@ -440,6 +497,7 @@ export default function Home() {
                       value={startsAt}
                       onChange={(e) => setStartsAt(e.target.value)}
                       required
+                      min={getMinDateTime()}
                     />
                   </div>,
                   error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
@@ -478,10 +536,15 @@ export default function Home() {
       <Section title="Nadchodzące" events={upcoming} agg={aggByEvent} variant="upcoming" />
       <Section title="Minione" events={past} agg={aggByEvent} variant="past" muted />
 
-      {!loading && events.length > 0 && (
-        <div className="tip-banner">
+      {!loading && events.length > 0 && quote && (
+        <div 
+          className="tip-banner" 
+          onClick={handleNextQuote}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+          title="Kliknij, aby wylosować kolejny cytat"
+        >
           <IconBulb size={20} className="tip-icon" />
-          <span>Im więcej osób da znać, tym łatwiej trafić w dobry termin.</span>
+          <span className={`quote-text ${fade ? 'fade-in' : 'fade-out'}`}>{quote}</span>
         </div>
       )}
     </main>

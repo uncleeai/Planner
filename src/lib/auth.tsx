@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (!isSupabaseConfigured) {
     return (
       <main>
-        <h1>Planner</h1>
+        <h1>Wypad.exe</h1>
         <SetupBanner />
       </main>
     );
@@ -298,7 +298,8 @@ function LoginForm() {
         </form>
       )}
 
-      {isPreview && (
+      {/* Guzik gościa tymczasowo wyłączony */}
+      {false && isPreview && (
         <button
           type="button"
           className="ghost mt"
@@ -362,7 +363,7 @@ function SetupForm({
 
   return (
     <main>
-      <h1>Planner</h1>
+      <h1>Wypad.exe</h1>
       <form className="card" onSubmit={save}>
         <h2>Twój profil</h2>
         <p className="small muted">Tę nazwę i awatar zobaczą inni przy Twoich głosach.</p>

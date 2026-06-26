@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useBackground } from '@/lib/background';
-import { IconGear } from '@/components/icons';
+import { IconGear, IconX } from '@/components/icons';
 import {
   isPushSupported,
   isStandalone,
@@ -60,7 +60,9 @@ export default function SettingsMenu() {
       {open && (
         <div className="profile-overlay" onClick={() => setOpen(false)}>
           <div className="profile-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setOpen(false)} aria-label="Zamknij">✕</button>
+            <button className="modal-close" onClick={() => setOpen(false)} aria-label="Zamknij">
+              <IconX size={14} />
+            </button>
 
             <h2 style={{ margin: '4px 0 18px' }}>Ustawienia</h2>
 

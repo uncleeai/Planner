@@ -1,6 +1,6 @@
 {
-  "name": "Planner",
-  "short_name": "Planner",
+  "name": "Wypad.exe",
+  "short_name": "Wypad.exe",
   "description": "Ustalajcie wspólne terminy bez chaosu.",
   "start_url": "/",
   "scope": "/",

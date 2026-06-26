@@ -7,19 +7,11 @@ import { useAuth } from '@/lib/auth';
 import { getConfirmedSlot } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
-import { IconPin, IconCalendar, IconCheck } from '@/components/icons';
+import { IconPin, IconCalendar, IconCheck, IconChevronLeft } from '@/components/icons';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
 
-// Docinki dla tych, co jeszcze się nie zapisali — losowane przy każdym wejściu.
-const NAG_TEXTS = [
-  'Te cweluchy się nie piszą',
-  'Olali temat',
-  'Cisza w eterze od',
-  'Wciąż się obijają',
-  'Mają to w nosie',
-];
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'Wchodzę', cls: 'active-yes' },
@@ -35,6 +27,11 @@ function formatSlot(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+function getMinDateTime(): string {
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -54,6 +51,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [notFound, setNotFound] = useState(false);
 
   const [newSlot, setNewSlot] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
 
   // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
   // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
@@ -155,6 +153,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   async function addSlot(e: React.FormEvent) {
     e.preventDefault();
     if (!newSlot) return;
+    if (new Date(newSlot).getTime() < Date.now() - 60000) {
+      alert('Nie można dodać terminu z przeszłości.');
+      return;
+    }
     await insertSlot(newSlot);
     setNewSlot('');
   }
@@ -227,11 +229,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }, [slots, votes, userId]);
 
   const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
+  const isTie = useMemo(() => stats.filter((s) => s.yes > 0 && s.yes === maxYes).length > 1, [stats, maxYes]);
 
   const { confirmedSlotId, confirmedAt } = useMemo(() => {
     const { slotId, confirmedAt } = getConfirmedSlot(slots, votes);
     return { confirmedSlotId: slotId, confirmedAt };
   }, [slots, votes]);
+
+  const [lastConfirmedAt, setLastConfirmedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (confirmedAt) {
+      setLastConfirmedAt(confirmedAt);
+    }
+  }, [confirmedAt]);
 
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
@@ -247,8 +258,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return Array.from(seen.values());
   }, [votes, profileById]);
 
-  // Docinek losowany raz na zamontowanie strony (nie miga przy live-update).
-  const nag = useMemo(() => NAG_TEXTS[Math.floor(Math.random() * NAG_TEXTS.length)], []);
 
   // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
   const missingVoters = useMemo(() => {
@@ -278,14 +287,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     <main className="glass-page">
       <Link
         href="/"
-        className="back-link"
+        className="back-btn-round"
         onClick={(e) => {
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
           e.preventDefault();
           navigate('/', 'back');
         }}
+        aria-label="Wróć"
       >
-        ‹ Wszystkie wypady
+        <IconChevronLeft size={20} />
       </Link>
 
       <header className="app-header">
@@ -299,20 +309,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             {event?.created_by && <span>Organizuje {event.created_by}</span>}
           </div>
         )}
-        {confirmedAt && (
+        <div className={`confirmed-inline-wrapper${confirmedAt && !isTie ? ' show' : ''}`}>
           <div className="confirmed-inline">
-            <IconCalendar size={15} />
-            <span className="confirmed-date">{formatSlot(confirmedAt)}</span>
-            <span className="confirmed-tag"><IconCheck size={12} /> Na czele</span>
+            {lastConfirmedAt && (
+              <>
+                <IconCalendar size={15} />
+                <span className="confirmed-date">{formatSlot(lastConfirmedAt)}</span>
+                <span className="confirmed-tag"><IconCheck size={12} /> Na czele</span>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </header>
 
       {event?.description && (
         <p className="event-description">{event.description}</p>
       )}
 
-      {slots.length > 0 && (
+      {slots.length > 0 && missingVoters.length > 0 && (
         <div className="vote-status">
           <div className="vote-status-row">
             {votedCount > 0 && <AvatarStack people={participantsPeople} size={26} />}
@@ -334,14 +348,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           )}
 
           {memberCount > 0 && (
-            missingVoters.length > 0 ? (
-              <p className="vote-missing">
-                {nag}: {missingVoters.slice(0, 5).join(', ')}
-                {missingVoters.length > 5 && ` …i ${missingVoters.length - 5} innych`}
-              </p>
-            ) : (
-              <p className="vote-missing all-in">✅ Cała paczka dała znać</p>
-            )
+            <p className="vote-missing">
+              Cweluchy: {missingVoters.slice(0, 5).join(', ')}
+              {missingVoters.length > 5 && ` …i ${missingVoters.length - 5} innych`}
+            </p>
           )}
         </div>
       )}
@@ -353,21 +363,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         )}
 
         {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
-          const isConfirmed = confirmedSlotId === slot.id;
           const isBest = yes > 0 && yes === maxYes;
+          const showBestBadge = isBest && !isTie;
+          const showTieBadge = isBest && isTie;
           const canDelete = isOrganizer || slot.created_by_user_id === userId;
           return (
           <div
             key={slot.id}
-            className={`slot${isConfirmed ? ' confirmed' : isBest ? ' winner' : ''}`}
+            className={`slot${showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
           >
             <div className="slot-head">
               <span className="slot-date">{formatSlot(slot.starts_at)}</span>
-              {isConfirmed ? (
-                <span className="badge">na czele</span>
-              ) : (
-                isBest && <span className="badge badge-open">remis</span>
-              )}
+              {showBestBadge && <span className="badge">na czele</span>}
+              {showTieBadge && <span className="badge badge-open">remis</span>}
               {canDelete && (
                 <>
                   <span className="spacer" />
@@ -389,17 +397,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <span className="no">✗ {no}</span>
             </div>
 
-            <div className="choices">
-              {CHOICES.map((c) => (
-                <button
-                  key={c.value}
-                  className={mine === c.value ? c.cls : ''}
-                  onClick={() => vote(slot.id, c.value)}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
+            {(() => {
+              const selectedIndex = CHOICES.findIndex((c) => c.value === mine);
+              return (
+                <div className={`choices ${selectedIndex !== -1 ? `active-index-${selectedIndex}` : 'no-active'}`}>
+                  <div className="choices-slider" />
+                  {CHOICES.map((c) => (
+                    <button
+                      key={c.value}
+                      className={mine === c.value ? `${c.cls} active` : ''}
+                      onClick={() => vote(slot.id, c.value)}
+                      style={{ position: 'relative', zIndex: 1 }}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
 
             {slotVotes.length > 0 && (
               <div className="voters">
@@ -407,11 +422,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   const prof = v.user_id ? profileById.get(v.user_id) : undefined;
                   const name = prof?.display_name ?? v.participant_name;
                   return (
-                    <span key={v.id} className="voter-chip">
-                      <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
+                    <span key={v.id} className={`voter-chip ${v.availability}`}>
+                      <Avatar name={name} avatar={prof?.avatar ?? null} size={16} />
                       <span className="name">{name}</span>
-                      {' '}
-                      {v.availability === 'yes' ? '✓' : v.availability === 'maybe' ? '~' : '✗'}
                     </span>
                   );
                 })}
@@ -423,21 +436,50 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
 
 
-        <form className="add-slot-form mt" onSubmit={addSlot}>
-          <DateTimeInput
-            value={newSlot}
-            onChange={(e) => setNewSlot(e.target.value)}
-            placeholder="Wybierz datę i godzinę"
-          />
-          <button type="submit" disabled={!newSlot}>Dodaj termin</button>
-        </form>
-
-        <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <button type="button" className="ghost danger" style={{ width: '100%' }} onClick={deleteEvent}>
-            Usuń wypad
+        <div className={`add-slot-wrapper${showAddForm ? ' open' : ''}`}>
+          <button
+            type="button"
+            className="add-slot-toggle"
+            onClick={() => setShowAddForm(true)}
+          >
+            + Dodaj propozycję terminu
           </button>
+          <div className="add-slot-form-container">
+            <form className="add-slot-form" onSubmit={async (e) => {
+              await addSlot(e);
+              setShowAddForm(false);
+            }}>
+              <DateTimeInput
+                value={newSlot}
+                onChange={(e) => setNewSlot(e.target.value)}
+                placeholder="Wybierz datę i godzinę"
+                min={getMinDateTime()}
+              />
+              <div className="add-slot-actions">
+                <button type="submit" disabled={!newSlot}>Dodaj</button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewSlot('');
+                  }}
+                >
+                  Anuluj
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
+
+      {isOrganizer && (
+        <div className="event-danger-zone">
+          <button type="button" className="danger-link" onClick={deleteEvent}>
+            Usuń ten wypad
+          </button>
+        </div>
+      )}
     </main>
   );
 }
