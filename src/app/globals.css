@@ -1058,8 +1058,9 @@ body.login-active .glass-bg { display: none; }
 }
 main { animation: page-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both; }
 /* Nowa strona wjeżdża z prawej — przycięcie poziomu zapobiega bocznemu scrollowi
-   podczas animacji (brak position: sticky, więc bezpieczne). */
-.container { overflow-x: hidden; }
+   podczas animacji. `clip` (nie `hidden`), żeby NIE zrobić z kontenera pionowego
+   scrollera (hidden wymusza overflow-y: auto wg spec CSS). */
+.container { overflow-x: clip; }
 
 @media (prefers-reduced-motion: reduce) {
   main { animation: none; }
