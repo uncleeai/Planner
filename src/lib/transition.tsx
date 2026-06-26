@@ -36,7 +36,10 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      if (!doc.startViewTransition || reduce) {
+      // Brak wsparcia / „ogranicz ruch" / przejście już trwa → zwykła nawigacja
+      // (resolveRef.current ≠ null oznacza trwające przejście — nie nakładamy drugiego,
+      // bo szybki podwójny tap potrafił dać slajd „z tego samego ekranu na ten sam").
+      if (!doc.startViewTransition || reduce || resolveRef.current) {
         router.push(href);
         return;
       }
@@ -47,13 +50,16 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
           new Promise<void>((resolve) => {
             resolveRef.current = resolve;
             router.push(href);
-            // Bezpiecznik: jeśli nawigacja nie zmieni ścieżki, nie wieszaj animacji.
+            // Bezpiecznik na wypadek, gdyby nawigacja nie zmieniła ścieżki (np. klik w
+            // bieżącą stronę). Hojny czas, bo na wolniejszym momencie iOS nawigacja do
+            // /event/... potrafi trwać >0,6 s — wtedy przedwczesny snapshot łapał wciąż
+            // stronę główną i animował „home → home". Normalnie zamyka to zmiana pathname.
             setTimeout(() => {
               if (resolveRef.current === resolve) {
                 resolveRef.current = null;
                 resolve();
               }
-            }, 600);
+            }, 2000);
           }),
       );
       transition.finished.finally(() => {
