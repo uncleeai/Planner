@@ -5,7 +5,7 @@ import { AuthProvider } from '@/lib/auth';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Planner — ustalajcie terminy bez chaosu',
+  title: 'Wypad.exe',
   description: 'Zaproponuj terminy wypadu, zbierz głosy znajomych i zobacz wynik na żywo.',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Planner' },
