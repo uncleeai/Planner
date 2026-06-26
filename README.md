@@ -128,6 +128,34 @@ Konfiguracja push:
 Bez kroku 2 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`) przełącznik powiadomień się nie pokazuje —
 działa wtedy sam toast na żywo.
 
+### Przypomnienia „nie dałeś znać" (cykliczny push)
+
+Osobna funkcja `notify-reminders` raz na jakiś czas wysyła push do osób, które ~24h
+po utworzeniu wypadu wciąż nie oddały głosu (a wypad ma termin w przyszłości). Każdy
+wypad jest przypominany **raz** (znacznik `events.reminded_at`).
+
+1. **Uruchom `supabase/schema.sql`** — dodaje kolumnę `events.reminded_at`.
+2. **Wdróż funkcję:**
+   ```bash
+   supabase functions deploy notify-reminders --no-verify-jwt
+   ```
+   (albo panel: *Edge Functions → Code → Deploy*, **Verify JWT = off**). Używa tych
+   samych sekretów VAPID co `notify-new-event`.
+3. **Włącz rozszerzenia** *Database → Extensions*: **`pg_cron`** i **`pg_net`**.
+4. **Zaplanuj zadanie** (*SQL Editor*) — odpala funkcję co godzinę:
+   ```sql
+   select cron.schedule(
+     'notify-reminders-hourly',
+     '0 * * * *',
+     $$ select net.http_post(
+          url := 'https://<projekt>.functions.supabase.co/notify-reminders',
+          headers := '{"Content-Type":"application/json"}'::jsonb
+        ); $$
+   );
+   ```
+   Jeśli ustawiłeś `WEBHOOK_SECRET`, dopisz do URL `?key=<sekret>`. Wyłączenie:
+   `select cron.unschedule('notify-reminders-hourly');`.
+
 ## Utrzymanie i analityka
 
 ### Keepalive bazy (żeby Supabase nie zasypiało)

@@ -41,6 +41,11 @@ alter table public.events
 alter table public.events
   add column if not exists created_by_user_id uuid references auth.users(id) on delete set null;
 
+-- Znacznik wysłania przypomnienia „nie dałeś znać" (Edge Function notify-reminders,
+-- odpalana cyklicznie przez pg_cron). Ustawiany raz na wypad, żeby nie spamować.
+alter table public.events
+  add column if not exists reminded_at timestamptz;
+
 -- Sprzątanie po wcześniejszym (porzuconym) pomyśle z „ekipami" — bezpieczne, jeśli nie istniały.
 alter table public.events drop column if exists group_id;
 drop table if exists public.groups cascade;

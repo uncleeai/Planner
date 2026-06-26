@@ -40,7 +40,8 @@ Guidance for AI assistants (and humans) working in this repository.
 ├── supabase/
 │   ├── schema.sql                # Schemat bazy + RLS + publikacja Realtime
 │   └── functions/
-│       └── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
+│       ├── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
+│       └── notify-reminders/     # Edge Function: cykliczny push „nie dałeś znać" (pg_cron)
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
 │   ├── sw.js                     # Service worker (Web Push: push + notificationclick)
@@ -81,7 +82,8 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
 
 - **events** — wypad; `id` jest kluczem w linku do wypadu. Organizator: `created_by`
   (nazwa, migawka) + `created_by_user_id` (konto). Ustalony termin: `confirmed_slot_id`
-  + `confirmed_at` (data zwycięskiego slotu).
+  + `confirmed_at` (data zwycięskiego slotu). `reminded_at` — znacznik wysłanego
+  przypomnienia „nie dałeś znać" (Edge Function `notify-reminders` + pg_cron).
 - **slots** — proponowany termin (`starts_at`) powiązany z wypadem.
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
