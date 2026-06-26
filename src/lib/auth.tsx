@@ -8,6 +8,7 @@ import SetupBanner from '@/components/SetupBanner';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 import { useBackground } from '@/lib/background';
+import { resyncPushSubscription } from '@/lib/push';
 import type { EventRow } from '@/lib/types';
 
 type AuthCtx = { userId: string; displayName: string; avatar: string };
@@ -58,6 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         { onConflict: 'id' },
       )
       .then(() => {});
+  }, [session]);
+
+  // Dosynchronizuj subskrypcję push do aktualnego konta (self-heal po zmianie konta
+  // lub wyczyszczeniu bazy) — po cichu, tylko jeśli przeglądarka już ma subskrypcję.
+  useEffect(() => {
+    if (!session) return;
+    resyncPushSubscription(session.user.id).catch(() => {});
   }, [session]);
 
   if (!isSupabaseConfigured) {

@@ -84,6 +84,28 @@ export async function subscribeToPush(userId: string): Promise<void> {
   if (error) throw error;
 }
 
+// Po cichu dosynchronizuj subskrypcję przeglądarki do bazy pod AKTUALNE konto.
+// Wołane przy logowaniu — bez proszenia o zgodę i bez rejestrowania SW od zera.
+// Naprawia rozjazd „przeglądarka ma subskrypcję, ale w bazie jej nie ma" (np. po
+// wyczyszczeniu bazy albo zalogowaniu na inne konto) — bez ręcznego przeklikiwania.
+export async function resyncPushSubscription(userId: string): Promise<void> {
+  if (!isPushSupported()) return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = await reg?.pushManager.getSubscription();
+  if (!sub) return; // brak subskrypcji w przeglądarce — użytkownik jej nie włączył
+  const json = sub.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+  await supabase.from('push_subscriptions').upsert(
+    {
+      endpoint: json.endpoint,
+      user_id: userId,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+    },
+    { onConflict: 'endpoint' },
+  );
+}
+
 // Wyłącz powiadomienia: usuń subskrypcję z bazy i z przeglądarki.
 export async function unsubscribeFromPush(): Promise<void> {
   const reg = await navigator.serviceWorker.getRegistration();
