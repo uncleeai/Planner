@@ -73,9 +73,7 @@ export default function SlotRangeInput({
               />
             </div>
             <div className="field">
-              <label htmlFor={`${idPrefix}-time`}>
-                Godzina spotkania <span className="opt">(opcj.)</span>
-              </label>
+              <label htmlFor={`${idPrefix}-time`}>Godzina (opcjonalnie)</label>
               <input
                 id={`${idPrefix}-time`}
                 type="time"
@@ -84,13 +82,14 @@ export default function SlotRangeInput({
               />
             </div>
           </div>
-          <p className="slot-range-hint">Bez godziny = cały dzień.</p>
         </>
       )}
 
-      <label className="slot-range-longer">
+      <label className="toggle-row">
+        <span className="toggle-label">Dłuższy wypad</span>
         <input
           type="checkbox"
+          className="toggle-input"
           checked={longer}
           onChange={(e) => {
             const on = e.target.checked;
@@ -99,7 +98,7 @@ export default function SlotRangeInput({
             if (!on) onChange({ ...value, doDate: '' });
           }}
         />
-        Dłuższy wypad (kilka dni)
+        <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
       </label>
     </div>
   );
