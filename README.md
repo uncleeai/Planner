@@ -201,14 +201,6 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 
 ## Pomysły na dalej (poza MVP)
 
-- **Terminy całodniowe / zakres dni.** Dziś slot to jeden moment (`starts_at`,
-  data + godzina). Dla wyjazdów wielodniowych (np. wakacje) przydałby się termin
-  „od–do" z opcjonalną godziną wyjazdu — np. „pt–niedz 11–13 lipca, wyjazd 16:00".
-  Wymaga dołożenia do tabeli `slots` kolumn `ends_at` (zakres) i/lub `all_day`
-  (flaga „cały dzień, bez godziny") plus obsługi w pickerze i w wyświetlaniu.
-- **Edycja wypadu.** Dziś wypad można tylko utworzyć albo usunąć — brakuje poprawiania
-  tytułu / miejsca / opisu (i ew. godziny terminu) po utworzeniu. UI + reuse istniejących
-  reguł RLS (edytuje organizator).
 - **Rozbudowane powiadomienia / przypomnienia.** Np. „za tydzień wyjazd" i „jutro
   wyjazd" liczone od `confirmed_at` — Supabase Scheduled Function (pg_cron) raz dziennie
   sprawdza nadchodzące ustalone wypady i wysyła push przez ten sam mechanizm VAPID.

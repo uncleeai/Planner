@@ -57,12 +57,14 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
+    │   ├── SlotRangeInput.tsx    # Wspólny input terminu: Od / Do / Godzina
     │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin…)
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── admin.ts              # E-maile adminów (właściciel) + isAdminEmail; trzymaj w synchronie z is_admin() w schema.sql
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
         ├── slotPresets.ts        # Szybkie presety terminów (chipy)
+        ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
         ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
@@ -86,7 +88,10 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (nazwa, migawka) + `created_by_user_id` (konto). Ustalony termin: `confirmed_slot_id`
   + `confirmed_at` (data zwycięskiego slotu). `reminded_at` — znacznik wysłanego
   przypomnienia „nie dałeś znać" (Edge Function `notify-reminders` + pg_cron).
-- **slots** — proponowany termin (`starts_at`) powiązany z wypadem.
+- **slots** — proponowany termin powiązany z wypadem: `starts_at` + opcjonalnie `ends_at`
+  (zakres dni) i `all_day` (cały dzień, bez godziny). Warianty: moment, cały dzień,
+  zakres dni, zakres z godziną wyjazdu. Budowanie z pól Od/Do/Godzina: `src/lib/slotInput.ts`;
+  formatowanie i logika końca terminu: `formatSlotRange` / `slotEndMs` w `src/lib/types.ts`.
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
 - **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name` + `avatar` (emoji

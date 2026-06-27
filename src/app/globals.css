@@ -517,6 +517,15 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   padding: 3px 8px 3px 6px; border-radius: 999px;
 }
 
+/* Input terminu: Od / Do / Godzina */
+.slot-range-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.slot-range-grid .field { margin: 0; }
+.slot-range-grid .field:last-child { grid-column: 1 / -1; }
+.slot-range-grid input[type="date"],
+.slot-range-grid input[type="time"] { color-scheme: dark; }
+.slot-range .opt { color: var(--muted); font-weight: 400; font-size: 0.85em; }
+.slot-range-hint { font-size: 0.78rem; color: var(--muted); margin: 8px 0 0; }
+
 /* Data w nagłówku jest klikalna — tapnięcie eksportuje termin do kalendarza (.ics) */
 .confirmed-inline.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .confirmed-inline.tappable:active { transform: scale(0.98); }

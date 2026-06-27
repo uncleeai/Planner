@@ -4,11 +4,12 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus } from '@/lib/types';
+import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
-import DateTimeInput from '@/components/DateTimeInput';
+import SlotRangeInput from '@/components/SlotRangeInput';
+import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
 import { addToCalendar } from '@/lib/calendar';
@@ -19,21 +20,6 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'maybe', label: 'Może', cls: 'active-maybe' },
   { value: 'no', label: 'Pas', cls: 'active-no' },
 ];
-
-function formatSlot(iso: string): string {
-  return new Date(iso).toLocaleString('pl-PL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-function getMinDateTime(): string {
-  const now = new Date();
-  const tzOffset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
-}
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
@@ -51,7 +37,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(!seedEvent);
   const [notFound, setNotFound] = useState(false);
 
-  const [newSlot, setNewSlot] = useState('');
+  const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
@@ -149,25 +135,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
   }, [eventId, load]);
 
-  async function insertSlot(localValue: string) {
-    if (!localValue) return;
-    await supabase.from('slots').insert({
-      event_id: eventId,
-      starts_at: new Date(localValue).toISOString(),
-      created_by: displayName,
-      created_by_user_id: userId,
-    });
-  }
-
   async function addSlot(e: React.FormEvent) {
     e.preventDefault();
-    if (!newSlot) return;
-    if (new Date(newSlot).getTime() < Date.now() - 60000) {
+    const times = buildSlotTimes(slotDraft);
+    if (!times) return;
+    // Termin nie może być z przeszłości (cały dzień „dziś" jest OK — liczymy koniec dnia).
+    if (slotEndMs(times) < Date.now() - 60000) {
       alert('Nie można dodać terminu z przeszłości.');
       return;
     }
-    await insertSlot(newSlot);
-    setNewSlot('');
+    await supabase.from('slots').insert({
+      event_id: eventId,
+      starts_at: times.starts_at,
+      ends_at: times.ends_at,
+      all_day: times.all_day,
+      created_by: displayName,
+      created_by_user_id: userId,
+    });
+    setSlotDraft(EMPTY_SLOT_RANGE);
   }
 
   async function deleteSlot(slotId: string) {
@@ -277,13 +262,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   // Eksport terminu do kalendarza (.ics). Wołany kliknięciem w datę w nagłówku.
-  function exportToCalendar(startIso: string) {
+  function exportToCalendar(slot: Slot) {
     addToCalendar({
       id: eventId,
       title: event?.title ?? 'Wypad',
       location: event?.location,
       description: event?.description,
-      startIso,
+      startIso: slot.starts_at,
+      endIso: slot.ends_at,
+      allDay: slot.all_day,
     });
   }
 
@@ -316,6 +303,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     if (headerDate) setLastHeaderDate(headerDate);
   }, [headerDate]);
+
+  // Slot pokazywany w nagłówku (do formatowania zakresu + eksportu kalendarza).
+  const headerSlotId = status.settled ? status.slotId : (!isTie ? status.leadingSlotId : null);
+  const headerSlot = useMemo(
+    () => (headerSlotId ? slots.find((s) => s.id === headerSlotId) ?? null : null),
+    [headerSlotId, slots],
+  );
+  const [lastHeaderSlot, setLastHeaderSlot] = useState<Slot | null>(null);
+  useEffect(() => {
+    if (headerSlot) setLastHeaderSlot(headerSlot);
+  }, [headerSlot]);
 
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
@@ -445,20 +443,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <div
             className={`confirmed-inline tappable${status.settled ? ' settled' : ''}`}
             role="button"
-            tabIndex={lastHeaderDate ? 0 : -1}
+            tabIndex={lastHeaderSlot ? 0 : -1}
             aria-label="Dodaj termin do kalendarza"
-            onClick={() => lastHeaderDate && exportToCalendar(lastHeaderDate)}
+            onClick={() => lastHeaderSlot && exportToCalendar(lastHeaderSlot)}
             onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ' ') && lastHeaderDate) {
+              if ((e.key === 'Enter' || e.key === ' ') && lastHeaderSlot) {
                 e.preventDefault();
-                exportToCalendar(lastHeaderDate);
+                exportToCalendar(lastHeaderSlot);
               }
             }}
           >
-            {lastHeaderDate && (
+            {lastHeaderSlot && (
               <>
                 <IconCalendarPlus size={15} />
-                <span className="confirmed-date">{formatSlot(lastHeaderDate)}</span>
+                <span className="confirmed-date">{formatSlotRange(lastHeaderSlot)}</span>
                 <span className="confirmed-tag">
                   <IconCheck size={12} />{' '}
                   {status.settled
@@ -526,7 +524,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
           >
             <div className="slot-head">
-              <span className="slot-date">{formatSlot(slot.starts_at)}</span>
+              <span className="slot-date">{formatSlotRange(slot)}</span>
               {isSettledSlot && <span className="badge">✓ Ustalony</span>}
               {showBestBadge && <span className="badge">na czele</span>}
               {showTieBadge && <span className="badge badge-open">remis</span>}
@@ -617,20 +615,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               await addSlot(e);
               setShowAddForm(false);
             }}>
-              <DateTimeInput
-                value={newSlot}
-                onChange={(e) => setNewSlot(e.target.value)}
-                placeholder="Wybierz datę i godzinę"
-                min={getMinDateTime()}
-              />
+              <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="new-slot" />
               <div className="add-slot-actions">
-                <button type="submit" disabled={!newSlot}>Dodaj</button>
+                <button type="submit" disabled={!slotDraft.od}>Dodaj</button>
                 <button
                   type="button"
                   className="ghost"
                   onClick={() => {
                     setShowAddForm(false);
-                    setNewSlot('');
+                    setSlotDraft(EMPTY_SLOT_RANGE);
                   }}
                 >
                   Anuluj

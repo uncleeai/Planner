@@ -29,6 +29,16 @@ create table if not exists public.slots (
 alter table public.slots
   add column if not exists created_by_user_id uuid references auth.users(id) on delete set null;
 
+-- Zakres dni i terminy całodniowe.
+--  ends_at = koniec zakresu (null = jeden dzień/moment).
+--  all_day = true → bez konkretnej godziny (cały dzień / kilka dni).
+-- Kombinacje: moment (all_day=false, ends_at=null), cały dzień (true, null),
+--  zakres dni (true, set), zakres z godziną wyjazdu (false, set).
+alter table public.slots
+  add column if not exists ends_at timestamptz;
+alter table public.slots
+  add column if not exists all_day boolean not null default false;
+
 -- Ustalony (zatwierdzony) termin wypadu — wskazuje wybrany slot i jego datę.
 alter table public.events
   add column if not exists confirmed_slot_id uuid references public.slots(id) on delete set null;

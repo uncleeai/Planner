@@ -10,12 +10,17 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-// Date → "YYYYMMDDTHHMMSSZ" (UTC) — format DTSTART/DTEND w iCalendar.
+// Date → "YYYYMMDDTHHMMSSZ" (UTC) — format DTSTART/DTEND z godziną w iCalendar.
 function toIcsUtc(d: Date): string {
   return (
     `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
     `T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
   );
+}
+
+// Date → "YYYYMMDD" (lokalna data) — dla terminów całodniowych (VALUE=DATE).
+function toIcsDateLocal(d: Date): string {
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 }
 
 // Escape pól TEXT wg RFC 5545: backslash, średnik, przecinek, nowa linia.
@@ -33,12 +38,13 @@ export type CalendarEvent = {
   location?: string | null;
   description?: string | null;
   startIso: string;
+  endIso?: string | null;
+  allDay?: boolean;
   durationMin?: number;
 };
 
 function buildIcs(ev: CalendarEvent): string {
   const start = new Date(ev.startIso);
-  const end = new Date(start.getTime() + (ev.durationMin ?? DEFAULT_DURATION_MIN) * 60000);
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -47,10 +53,25 @@ function buildIcs(ev: CalendarEvent): string {
     'BEGIN:VEVENT',
     `UID:${ev.id}-${start.getTime()}@wypad`,
     `DTSTAMP:${toIcsUtc(new Date())}`,
-    `DTSTART:${toIcsUtc(start)}`,
-    `DTEND:${toIcsUtc(end)}`,
-    `SUMMARY:${escapeText(ev.title)}`,
   ];
+
+  if (ev.allDay) {
+    // Termin całodniowy / kilkudniowy — DATE bez godziny. DTEND jest wyłączny (+1 dzień).
+    const endBase = ev.endIso ? new Date(ev.endIso) : new Date(ev.startIso);
+    const endExclusive = new Date(endBase);
+    endExclusive.setDate(endExclusive.getDate() + 1);
+    lines.push(
+      `DTSTART;VALUE=DATE:${toIcsDateLocal(start)}`,
+      `DTEND;VALUE=DATE:${toIcsDateLocal(endExclusive)}`,
+    );
+  } else {
+    const end = ev.endIso
+      ? new Date(ev.endIso)
+      : new Date(start.getTime() + (ev.durationMin ?? DEFAULT_DURATION_MIN) * 60000);
+    lines.push(`DTSTART:${toIcsUtc(start)}`, `DTEND:${toIcsUtc(end)}`);
+  }
+
+  lines.push(`SUMMARY:${escapeText(ev.title)}`);
   if (ev.location) lines.push(`LOCATION:${escapeText(ev.location)}`);
   if (ev.description) lines.push(`DESCRIPTION:${escapeText(ev.description)}`);
   lines.push('END:VEVENT', 'END:VCALENDAR');

@@ -4,44 +4,29 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus } from '@/lib/types';
+import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
 import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
-import DateTimeInput from '@/components/DateTimeInput';
+import SlotRangeInput from '@/components/SlotRangeInput';
+import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
-import { IconCalendar, IconClock, IconPin, IconChevron, IconBulb, IconMessageSquare } from '@/components/icons';
+import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare } from '@/components/icons';
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pl-PL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-}
 function progressColor(p: number): string {
   return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
-}
-function getMinDateTime(): string {
-  const now = new Date();
-  const tzOffset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
 type Agg = {
   voters: Person[];
   percent: number;
-  dateIso: string | null;      // data USTALONEGO terminu (dla „Nadchodzące/Minione")
-  leadingDate: string | null;  // prowadzący termin (podpowiedź w „W trakcie")
+  slot: Slot | null;           // USTALONY termin (do formatu zakresu/całodniowego)
+  leadingSlot: Slot | null;    // prowadzący termin (podpowiedź w „W trakcie")
   leadingYes: number;          // ile „Wchodzę" na prowadzący termin
 };
-const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null, leadingDate: null, leadingYes: 0 };
+const EMPTY_AGG: Agg = { voters: [], percent: 0, slot: null, leadingSlot: null, leadingYes: 0 };
 
 const MAJOR_QUOTES = [
   "„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”",
@@ -104,7 +89,7 @@ export default function Home() {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
-  const [startsAt, setStartsAt] = useState('');
+  const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -158,10 +143,11 @@ export default function Home() {
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !startsAt || busy) return;
+    const times = buildSlotTimes(slotDraft);
+    if (!title.trim() || !times || busy) return;
 
-    if (new Date(startsAt).getTime() < Date.now() - 60000) {
-      setError('Data i godzina nie mogą być z przeszłości.');
+    if (slotEndMs(times) < Date.now() - 60000) {
+      setError('Termin nie może być z przeszłości.');
       return;
     }
 
@@ -186,14 +172,14 @@ export default function Home() {
       return;
     }
 
-    if (startsAt) {
-      await supabase.from('slots').insert({
-        event_id: data.id,
-        starts_at: new Date(startsAt).toISOString(),
-        created_by: displayName,
-        created_by_user_id: userId,
-      });
-    }
+    await supabase.from('slots').insert({
+      event_id: data.id,
+      starts_at: times.starts_at,
+      ends_at: times.ends_at,
+      all_day: times.all_day,
+      created_by: displayName,
+      created_by_user_id: userId,
+    });
 
     navigate(`/event/${data.id}`, 'forward');
   }
@@ -228,17 +214,20 @@ export default function Home() {
       const evVotes = votesByEvent.get(ev.id) ?? [];
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
 
-      // Ustalony (ręcznie LUB wszyscy dali znać) → Nadchodzące / Odbyte wg daty.
+      // Ustalony (ręcznie LUB wszyscy dali znać) → Nadchodzące / Odbyte.
+      // Liczone od KOŃCA terminu (zakres/cały dzień trwa do końca ostatniego dnia).
       if (status.settled && status.date) {
         confirmedDateMap.set(ev.id, status.date);
-        if (new Date(status.date).getTime() >= now) upcoming.push(ev);
+        const settledSlot = evSlots.find((s) => s.id === status.slotId);
+        const endMs = settledSlot ? slotEndMs(settledSlot) : new Date(status.date).getTime();
+        if (endMs >= now) upcoming.push(ev);
         else past.push(ev);
         continue;
       }
 
-      // Nieustalony: czy jest jeszcze jakiś termin w przyszłości?
-      const latest = evSlots.reduce((m, s) => Math.max(m, new Date(s.starts_at).getTime()), 0);
-      const hasFuture = evSlots.some((s) => new Date(s.starts_at).getTime() > now);
+      // Nieustalony: czy jest jeszcze jakiś termin, który się nie skończył?
+      const latest = evSlots.reduce((m, s) => Math.max(m, slotEndMs(s)), 0);
+      const hasFuture = evSlots.some((s) => slotEndMs(s) > now);
 
       if (evSlots.length > 0 && !hasFuture) {
         // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono". Pokazujemy do 24h
@@ -302,11 +291,14 @@ export default function Home() {
         .slice()
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
-      const dateIso = status.settled ? status.date : null;
+      const slot = status.settled ? evSlots.find((s) => s.id === status.slotId) ?? null : null;
+      const leadingSlot = status.leadingSlotId
+        ? evSlots.find((s) => s.id === status.leadingSlotId) ?? null
+        : null;
       const leadingYes = status.leadingSlotId
         ? evVotes.filter((v) => v.slot_id === status.leadingSlotId && v.availability === 'yes').length
         : 0;
-      result.set(ev.id, { voters, percent, dateIso, leadingDate: status.leadingDate, leadingYes });
+      result.set(ev.id, { voters, percent, slot, leadingSlot, leadingYes });
     }
     return result;
   }, [events, slots, votes, profiles]);
@@ -391,18 +383,12 @@ export default function Home() {
             </div>
 
             <div className="field">
-              <label htmlFor="startsAt">Data i godzina</label>
-              <DateTimeInput
-                id="startsAt"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                required
-                min={getMinDateTime()}
-              />
+              <label>Termin</label>
+              <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
             </div>
 
             {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-            <button type="submit" disabled={!title.trim() || !startsAt || busy} style={{ width: '100%' }}>
+            <button type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
               {busy ? 'Tworzę…' : 'Utwórz wypad'}
             </button>
           </form>
@@ -520,17 +506,11 @@ export default function Home() {
                     />
                   </div>,
                   <div className="field" key="date">
-                    <label htmlFor="startsAt">Data i godzina</label>
-                    <DateTimeInput
-                      id="startsAt"
-                      value={startsAt}
-                      onChange={(e) => setStartsAt(e.target.value)}
-                      required
-                      min={getMinDateTime()}
-                    />
+                    <label>Termin</label>
+                    <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
                   </div>,
                   error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
-                  <button key="submit" type="submit" disabled={!title.trim() || !startsAt || busy} style={{ width: '100%' }}>
+                  <button key="submit" type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
                     {busy ? 'Tworzę…' : 'Utwórz wypad'}
                   </button>,
                   <button
@@ -633,14 +613,11 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
       <div className="event-meta-row">
         {variant === 'expired' ? (
           <span className="event-meta"><IconCalendar size={14} /> Termin minął</span>
-        ) : agg.dateIso ? (
-          <>
-            <span className="event-meta"><IconCalendar size={14} /> {fmtDate(agg.dateIso)}</span>
-            <span className="event-meta"><IconClock size={14} /> {fmtTime(agg.dateIso)}</span>
-          </>
-        ) : agg.leadingDate ? (
+        ) : agg.slot ? (
+          <span className="event-meta"><IconCalendar size={14} /> {formatSlotRange(agg.slot)}</span>
+        ) : agg.leadingSlot ? (
           <span className="event-meta">
-            <IconCalendar size={14} /> {fmtDate(agg.leadingDate)} prowadzi
+            <IconCalendar size={14} /> {formatSlotRange(agg.leadingSlot)} prowadzi
             {agg.leadingYes > 0 && ` · ${agg.leadingYes} wchodzi`}
           </span>
         ) : (
