@@ -38,7 +38,7 @@ function getMinDateTime(): string {
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
   const navigate = useTransitionNavigate();
-  const { userId, displayName } = useAuth();
+  const { userId, displayName, isAdmin } = useAuth();
 
   // Seed z cache dashboardu (jeśli wchodzimy z listy) — wypad pokazuje się natychmiast,
   // a load() poniżej i tak dociąga świeże dane i podpina realtime.
@@ -53,6 +53,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const [newSlot, setNewSlot] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
   // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
@@ -227,6 +235,37 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     load();
   }
 
+  function startEdit() {
+    if (!event) return;
+    setEditTitle(event.title ?? '');
+    setEditLocation(event.location ?? '');
+    setEditDescription(event.description ?? '');
+    setEditError('');
+    setEditing(true);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTitle.trim() || editBusy) return;
+    setEditBusy(true);
+    setEditError('');
+    const { error } = await supabase
+      .from('events')
+      .update({
+        title: editTitle.trim(),
+        location: editLocation.trim() || null,
+        description: editDescription.trim() || null,
+      })
+      .eq('id', eventId);
+    setEditBusy(false);
+    if (error) {
+      setEditError(error.message ?? 'Nie udało się zapisać zmian.');
+      return;
+    }
+    setEditing(false);
+    load();
+  }
+
   async function deleteEvent() {
     if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
     const { error } = await supabase.from('events').delete().eq('id', eventId);
@@ -311,7 +350,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  const isOrganizer = !event?.created_by_user_id || event.created_by_user_id === userId;
+  // Organizator wypadu LUB admin aplikacji (właściciel) — pełne uprawnienia zarządzania.
+  const isOrganizer = isAdmin || !event?.created_by_user_id || event.created_by_user_id === userId;
 
   const memberCount = members.length;
   const votedCount = participantsPeople.length;
@@ -332,6 +372,52 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <IconChevronLeft size={20} />
       </Link>
 
+      {editing && (
+        <form className="card" onSubmit={saveEdit}>
+          <h2>Edytuj wypad</h2>
+          <div className="field">
+            <label htmlFor="edit-title">Nazwa</label>
+            <input
+              id="edit-title"
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-location">Miejsce (opcjonalnie)</label>
+            <input
+              id="edit-location"
+              type="text"
+              placeholder="np. u Kuby, Zakopane…"
+              value={editLocation}
+              onChange={(e) => setEditLocation(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-description">Opis (opcjonalnie)</label>
+            <textarea
+              id="edit-description"
+              rows={3}
+              placeholder="np. co bierzemy, plan, szczegóły…"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+            />
+          </div>
+          {editError && <p className="small" style={{ color: 'var(--no)' }}>{editError}</p>}
+          <div className="row" style={{ gap: 8 }}>
+            <button type="submit" disabled={!editTitle.trim() || editBusy}>
+              {editBusy ? 'Zapisuję…' : 'Zapisz zmiany'}
+            </button>
+            <button type="button" className="ghost" onClick={() => setEditing(false)}>
+              Anuluj
+            </button>
+          </div>
+        </form>
+      )}
+
+      {!editing && (
       <header className="app-header">
         <h1 className="large-title">{event?.title}</h1>
         {(event?.location || event?.created_by) && (
@@ -374,8 +460,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </header>
+      )}
 
-      {event?.description && (
+      {!editing && event?.description && (
         <p className="event-description">{event.description}</p>
       )}
 
@@ -542,8 +629,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </div>
       </div>
 
-      {isOrganizer && (
+      {isOrganizer && !editing && (
         <div className="event-danger-zone">
+          <button type="button" className="ghost" onClick={startEdit}>
+            Edytuj wypad
+          </button>
           <button type="button" className="danger-link" onClick={deleteEvent}>
             Usuń ten wypad
           </button>

@@ -60,10 +60,12 @@ Guidance for AI assistants (and humans) working in this repository.
     │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin…)
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
-        ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar) + hook useAuth
+        ├── admin.ts              # E-maile adminów (właściciel) + isAdminEmail; trzymaj w synchronie z is_admin() w schema.sql
+        ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
         ├── slotPresets.ts        # Szybkie presety terminów (chipy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
+        ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
         └── types.ts              # Typy: EventRow, Slot, Vote, Profile, Availability
 ```
 
@@ -105,6 +107,10 @@ Realtime włączony dla `events`, `slots`, `votes`, `profiles` (publikacja `supa
 **RLS:** dostęp tylko dla zalogowanych (`authenticated`); każdy edytuje wyłącznie swoje
 rekordy (głos po `user_id`, ustalanie terminu tylko twórca wypadu). To realna ochrona
 przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodności.
+**Admin (właściciel):** funkcja `public.is_admin()` (rozpoznaje po e-mailu z JWT) daje
+uprawnienia organizatora na KAŻDYM wypadzie — edycja, ustalanie terminu, usuwanie wypadu
+i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql) **oraz**
+`src/lib/admin.ts` (UI). Po zmianie listy uruchom ponownie `schema.sql`.
 
 ## Development workflow
 

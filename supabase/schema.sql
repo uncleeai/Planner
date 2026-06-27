@@ -86,6 +86,21 @@ create table if not exists public.profiles (
 alter table public.profiles
   add column if not exists avatar text;
 
+-- Admin aplikacji (właściciel) — rozpoznawany po zweryfikowanym e-mailu z tokenu.
+-- Może działać jak organizator na KAŻDYM wypadzie (edycja, ustalanie terminu,
+-- usuwanie wypadu/terminów). E-mail z JWT jest pewny (weryfikowany przez Supabase
+-- Auth), więc nie da się podszyć. Trzymaj listę w synchronie z src/lib/admin.ts.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+as $$
+  select coalesce(
+    lower(auth.jwt() ->> 'email') = any (array['uncleeai@gmail.com']),
+    false
+  );
+$$;
+
 -- RLS: dostęp tylko dla zalogowanych; każdy edytuje wyłącznie swoje rekordy.
 alter table public.events   enable row level security;
 alter table public.slots    enable row level security;
@@ -117,10 +132,11 @@ create policy "events read"   on public.events for select to authenticated using
 create policy "events insert" on public.events for insert to authenticated
   with check (created_by_user_id = auth.uid());
 create policy "events update" on public.events for update to authenticated
-  using (created_by_user_id = auth.uid() or created_by_user_id is null)
-  with check (created_by_user_id = auth.uid() or created_by_user_id is null);
+  using (created_by_user_id = auth.uid() or created_by_user_id is null or public.is_admin())
+  with check (created_by_user_id = auth.uid() or created_by_user_id is null or public.is_admin());
+-- usuwa twórca, admin albo (zgodność) stare wypady bez właściciela.
 create policy "events delete" on public.events for delete to authenticated
-  using (true);
+  using (created_by_user_id = auth.uid() or created_by_user_id is null or public.is_admin());
 
 -- slots: każdy zalogowany czyta i może proponować termin; usunąć może autor lub organizator.
 create policy "slots read"   on public.slots for select to authenticated using (true);
@@ -129,6 +145,7 @@ create policy "slots delete" on public.slots for delete to authenticated
   using (
     created_by_user_id = auth.uid()
     or created_by_user_id is null
+    or public.is_admin()
     or exists (
       select 1 from public.events e
       where e.id = slots.event_id and e.created_by_user_id = auth.uid()

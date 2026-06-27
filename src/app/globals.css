@@ -1291,6 +1291,7 @@ main { animation: page-in 0.3s ease both; }
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 16px;
 }
 
 .danger-link {

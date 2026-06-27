@@ -9,9 +9,10 @@ import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 import { useBackground } from '@/lib/background';
 import { resyncPushSubscription } from '@/lib/push';
+import { isAdminEmail } from '@/lib/admin';
 import type { EventRow } from '@/lib/types';
 
-type AuthCtx = { userId: string; displayName: string; avatar: string };
+type AuthCtx = { userId: string; displayName: string; avatar: string; isAdmin: boolean };
 
 const Ctx = createContext<AuthCtx | null>(null);
 
@@ -88,8 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return <SetupForm userId={session.user.id} initialName={displayName} initialAvatar={avatar} />;
   }
 
+  const isAdmin = isAdminEmail(session.user.email);
+
   return (
-    <Ctx.Provider value={{ userId: session.user.id, displayName, avatar }}>
+    <Ctx.Provider value={{ userId: session.user.id, displayName, avatar, isAdmin }}>
       <NewEventToast userId={session.user.id} />
       {children}
     </Ctx.Provider>
