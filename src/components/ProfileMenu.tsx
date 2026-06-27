@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
 import { Avatar } from '@/components/Avatar';
@@ -91,7 +92,7 @@ export default function ProfileMenu() {
         <Avatar name={displayName} avatar={avatar} size={38} />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="profile-overlay" onClick={() => setOpen(false)}>
           <div className="profile-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setOpen(false)} aria-label="Zamknij">
@@ -153,7 +154,8 @@ export default function ProfileMenu() {
               Wyloguj
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />

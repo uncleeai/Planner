@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/lib/auth';
 import { useBackground } from '@/lib/background';
 import { IconGear, IconX } from '@/components/icons';
@@ -57,7 +58,7 @@ export default function SettingsMenu() {
         <IconGear size={20} />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="profile-overlay" onClick={() => setOpen(false)}>
           <div className="profile-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setOpen(false)} aria-label="Zamknij">
@@ -116,7 +117,8 @@ export default function SettingsMenu() {
 
             {error && <p className="small" style={{ color: 'var(--no)', margin: '4px 0 0' }}>{error}</p>}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
