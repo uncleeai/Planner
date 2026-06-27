@@ -32,6 +32,12 @@ export const IconCalendarPlus = (p: IconProps) => (
     <path d="M12 13v6M9 16h6" />
   </Svg>
 );
+export const IconPencil = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </Svg>
+);
 export const IconClock = (p: IconProps) => (
   <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>
 );

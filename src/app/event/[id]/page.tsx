@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { getEventStatus } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
-import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft } from '@/components/icons';
+import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
@@ -419,7 +419,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {!editing && (
       <header className="app-header">
-        <h1 className="large-title">{event?.title}</h1>
+        <div className="title-row">
+          <h1 className="large-title">{event?.title}</h1>
+          {isOrganizer && (
+            <button
+              type="button"
+              className="title-edit-btn"
+              onClick={startEdit}
+              aria-label="Edytuj wypad"
+            >
+              <IconPencil size={17} />
+            </button>
+          )}
+        </div>
         {(event?.location || event?.created_by) && (
           <div className="event-submeta">
             {event?.location && (
@@ -631,9 +643,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {isOrganizer && !editing && (
         <div className="event-danger-zone">
-          <button type="button" className="ghost" onClick={startEdit}>
-            Edytuj wypad
-          </button>
           <button type="button" className="danger-link" onClick={deleteEvent}>
             Usuń ten wypad
           </button>

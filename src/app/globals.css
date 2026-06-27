@@ -347,6 +347,23 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .app-header { margin-bottom: 18px; }
 .large-title { font-size: 2rem; font-weight: 700; letter-spacing: -0.022em; margin: 0 0 2px; }
 
+/* Tytuł + ikona edycji obok */
+.title-row { display: flex; align-items: center; gap: 10px; }
+.title-row .large-title { min-width: 0; }
+.title-edit-btn {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
+  border-radius: 999px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.title-edit-btn:hover { color: var(--text); background: #262833; border-color: var(--border-strong); }
+.title-edit-btn:active { transform: scale(0.94); }
+
 /* Nagłówki sekcji (jak grupy w Ustawieniach iOS) */
 .section-label {
   font-size: 0.78rem;
