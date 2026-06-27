@@ -383,7 +383,6 @@ export default function Home() {
             </div>
 
             <div className="field">
-              <label>Termin</label>
               <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
             </div>
 
@@ -506,7 +505,6 @@ export default function Home() {
                     />
                   </div>,
                   <div className="field" key="date">
-                    <label>Termin</label>
                     <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
                   </div>,
                   error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,

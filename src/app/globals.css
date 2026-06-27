@@ -548,7 +548,16 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .slot-range input::-webkit-date-and-time-value { text-align: left; }
 .slot-range input::-webkit-calendar-picker-indicator { margin-left: auto; opacity: 0.5; }
 .slot-range .opt { color: var(--muted); font-weight: 400; font-size: 0.85em; }
-.slot-range-hint { font-size: 0.78rem; color: var(--muted); margin: 8px 0 0; }
+.slot-range-hint { font-size: 0.78rem; color: var(--muted); margin: 8px 2px 0; }
+.slot-range-longer {
+  display: flex; align-items: center; gap: 9px;
+  margin-top: 12px; padding: 2px;
+  font-size: 0.9rem; color: var(--text); cursor: pointer;
+}
+.slot-range-longer input[type="checkbox"] {
+  width: 18px; height: 18px; min-height: 0; flex-shrink: 0;
+  accent-color: var(--primary); cursor: pointer;
+}
 
 /* Data w nagłówku jest klikalna — tapnięcie eksportuje termin do kalendarza (.ics) */
 .confirmed-inline.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
