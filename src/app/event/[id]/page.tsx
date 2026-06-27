@@ -352,23 +352,29 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </div>
       </header>
 
-      {status.settled && status.date && (
-        <button
-          type="button"
-          className="ghost cal-export"
-          onClick={() =>
-            addToCalendar({
-              id: eventId,
-              title: event?.title ?? 'Wypad',
-              location: event?.location,
-              description: event?.description,
-              startIso: status.date!,
-            })
-          }
-        >
-          <IconCalendar size={15} /> Dodaj do kalendarza
-        </button>
-      )}
+      {/* TODO: na czas testów guzik widać też przy nieustalonym terminie.
+          Docelowo pokazywać tylko gdy status.settled. */}
+      {(() => {
+        const calDate = status.date ?? status.leadingDate ?? slots[0]?.starts_at ?? null;
+        if (!calDate) return null;
+        return (
+          <button
+            type="button"
+            className="ghost cal-export"
+            onClick={() =>
+              addToCalendar({
+                id: eventId,
+                title: event?.title ?? 'Wypad',
+                location: event?.location,
+                description: event?.description,
+                startIso: calDate,
+              })
+            }
+          >
+            <IconCalendar size={15} /> Dodaj do kalendarza
+          </button>
+        );
+      })()}
 
       {event?.description && (
         <p className="event-description">{event.description}</p>
