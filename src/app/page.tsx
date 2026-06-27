@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getConfirmedSlot } from '@/lib/types';
+import { getEventStatus } from '@/lib/types';
 import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
@@ -34,8 +34,14 @@ function getMinDateTime(): string {
   return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
-type Agg = { voters: Person[]; percent: number; dateIso: string | null };
-const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null };
+type Agg = {
+  voters: Person[];
+  percent: number;
+  dateIso: string | null;      // data USTALONEGO terminu (dla „Nadchodzące/Minione")
+  leadingDate: string | null;  // prowadzący termin (podpowiedź w „W trakcie")
+  leadingYes: number;          // ile „Wchodzę" na prowadzący termin
+};
+const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null, leadingDate: null, leadingYes: 0 };
 
 const MAJOR_QUOTES = [
   "„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”",
@@ -212,17 +218,20 @@ export default function Home() {
     }
 
     const confirmedDateMap = new Map<string, string>();
+    const memberIds = profiles.map((p) => p.id);
 
     for (const ev of events) {
       const evSlots = slotsByEvent.get(ev.id) ?? [];
       const evVotes = votesByEvent.get(ev.id) ?? [];
-      const { confirmedAt } = getConfirmedSlot(evSlots, evVotes);
+      const status = getEventStatus(ev, evSlots, evVotes, memberIds);
 
-      if (!confirmedAt) {
+      // „W trakcie" dopóki nie ustalone (ręcznie LUB wszyscy dali znać). Jeden głos
+      // „Wchodzę" już NIE przenosi wypadu do „Nadchodzące".
+      if (!status.settled || !status.date) {
         open.push(ev);
       } else {
-        confirmedDateMap.set(ev.id, confirmedAt);
-        if (new Date(confirmedAt).getTime() >= now) {
+        confirmedDateMap.set(ev.id, status.date);
+        if (new Date(status.date).getTime() >= now) {
           upcoming.push(ev);
         } else {
           past.push(ev);
@@ -243,7 +252,7 @@ export default function Home() {
     });
 
     return { open, upcoming, past };
-  }, [events, slots, votes]);
+  }, [events, slots, votes, profiles]);
 
   const aggByEvent = useMemo(() => {
     const profileById = new Map(profiles.map((p) => [p.id, p]));
@@ -260,6 +269,7 @@ export default function Home() {
       votesBy.set(v.event_id, arr);
     }
     const memberCount = profiles.length;
+    const memberIds = profiles.map((p) => p.id);
     const result = new Map<string, Agg>();
     for (const ev of events) {
       const seen = new Map<string, Person>();
@@ -275,9 +285,12 @@ export default function Home() {
       const evSlots = (slotsBy.get(ev.id) ?? [])
         .slice()
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-      const { confirmedAt } = getConfirmedSlot(evSlots, evVotes);
-      const dateIso = confirmedAt ?? evSlots[0]?.starts_at ?? null;
-      result.set(ev.id, { voters, percent, dateIso });
+      const status = getEventStatus(ev, evSlots, evVotes, memberIds);
+      const dateIso = status.settled ? status.date : null;
+      const leadingYes = status.leadingSlotId
+        ? evVotes.filter((v) => v.slot_id === status.leadingSlotId && v.availability === 'yes').length
+        : 0;
+      result.set(ev.id, { voters, percent, dateIso, leadingDate: status.leadingDate, leadingYes });
     }
     return result;
   }, [events, slots, votes, profiles]);
@@ -606,6 +619,11 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
             <span className="event-meta"><IconCalendar size={14} /> {fmtDate(agg.dateIso)}</span>
             <span className="event-meta"><IconClock size={14} /> {fmtTime(agg.dateIso)}</span>
           </>
+        ) : agg.leadingDate ? (
+          <span className="event-meta">
+            <IconCalendar size={14} /> {fmtDate(agg.leadingDate)} prowadzi
+            {agg.leadingYes > 0 && ` · ${agg.leadingYes} wchodzi`}
+          </span>
         ) : (
           <span className="event-meta"><IconCalendar size={14} /> Zbieramy terminy</span>
         )}

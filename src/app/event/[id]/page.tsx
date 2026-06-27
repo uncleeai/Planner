@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getConfirmedSlot } from '@/lib/types';
+import { getEventStatus } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendar, IconCheck, IconChevronLeft } from '@/components/icons';
@@ -202,7 +202,29 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     }
   }
 
-  // confirmed_slot_id and confirmed_at are now computed dynamically on the client
+  // Ręczne ustalenie terminu przez organizatora (ma pierwszeństwo nad automatem).
+  async function confirmSlot(slot: Slot) {
+    const { error } = await supabase
+      .from('events')
+      .update({ confirmed_slot_id: slot.id, confirmed_at: slot.starts_at })
+      .eq('id', eventId);
+    if (error) {
+      window.alert('Nie udało się ustalić terminu.');
+      return;
+    }
+    load();
+  }
+  async function unconfirmSlot() {
+    const { error } = await supabase
+      .from('events')
+      .update({ confirmed_slot_id: null, confirmed_at: null })
+      .eq('id', eventId);
+    if (error) {
+      window.alert('Nie udało się odznaczyć terminu.');
+      return;
+    }
+    load();
+  }
 
   async function deleteEvent() {
     if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
@@ -231,18 +253,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
   const isTie = useMemo(() => stats.filter((s) => s.yes > 0 && s.yes === maxYes).length > 1, [stats, maxYes]);
 
-  const { confirmedSlotId, confirmedAt } = useMemo(() => {
-    const { slotId, confirmedAt } = getConfirmedSlot(slots, votes);
-    return { confirmedSlotId: slotId, confirmedAt };
-  }, [slots, votes]);
+  const memberIds = useMemo(() => members.map((m) => m.id), [members]);
+  const status = useMemo(
+    () => getEventStatus(event ?? { confirmed_slot_id: null, confirmed_at: null }, slots, votes, memberIds),
+    [event, slots, votes, memberIds],
+  );
 
-  const [lastConfirmedAt, setLastConfirmedAt] = useState<string | null>(null);
-
+  // Data w nagłówku: ustalony termin; a jeśli nieustalony — prowadzący (gdy nie remis).
+  const headerDate = status.settled ? status.date : (!isTie ? status.leadingDate : null);
+  const [lastHeaderDate, setLastHeaderDate] = useState<string | null>(null);
   useEffect(() => {
-    if (confirmedAt) {
-      setLastConfirmedAt(confirmedAt);
-    }
-  }, [confirmedAt]);
+    if (headerDate) setLastHeaderDate(headerDate);
+  }, [headerDate]);
 
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
@@ -309,13 +331,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             {event?.created_by && <span>Organizuje {event.created_by}</span>}
           </div>
         )}
-        <div className={`confirmed-inline-wrapper${confirmedAt && !isTie ? ' show' : ''}`}>
-          <div className="confirmed-inline">
-            {lastConfirmedAt && (
+        <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
+          <div className={`confirmed-inline${status.settled ? ' settled' : ''}`}>
+            {lastHeaderDate && (
               <>
                 <IconCalendar size={15} />
-                <span className="confirmed-date">{formatSlot(lastConfirmedAt)}</span>
-                <span className="confirmed-tag"><IconCheck size={12} /> Na czele</span>
+                <span className="confirmed-date">{formatSlot(lastHeaderDate)}</span>
+                <span className="confirmed-tag">
+                  <IconCheck size={12} />{' '}
+                  {status.settled
+                    ? status.source === 'auto'
+                      ? 'Ustalone · wszyscy dali znać'
+                      : 'Ustalone'
+                    : 'Na czele'}
+                </span>
               </>
             )}
           </div>
@@ -364,16 +393,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
         {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
           const isBest = yes > 0 && yes === maxYes;
-          const showBestBadge = isBest && !isTie;
-          const showTieBadge = isBest && isTie;
+          const isSettledSlot = status.settled && status.slotId === slot.id;
+          const showBestBadge = !isSettledSlot && isBest && !isTie;
+          const showTieBadge = !isSettledSlot && isBest && isTie;
           const canDelete = isOrganizer || slot.created_by_user_id === userId;
           return (
           <div
             key={slot.id}
-            className={`slot${showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
+            className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
           >
             <div className="slot-head">
               <span className="slot-date">{formatSlot(slot.starts_at)}</span>
+              {isSettledSlot && <span className="badge">✓ Ustalony</span>}
               {showBestBadge && <span className="badge">na czele</span>}
               {showTieBadge && <span className="badge badge-open">remis</span>}
               {canDelete && (
@@ -428,6 +459,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     </span>
                   );
                 })}
+              </div>
+            )}
+
+            {isOrganizer && (
+              <div className="slot-confirm-row">
+                {event?.confirmed_slot_id === slot.id ? (
+                  <button type="button" className="ghost slot-confirm-btn" onClick={unconfirmSlot}>
+                    Odznacz termin
+                  </button>
+                ) : (
+                  <button type="button" className="ghost slot-confirm-btn" onClick={() => confirmSlot(slot)}>
+                    Ustal ten termin
+                  </button>
+                )}
               </div>
             )}
           </div>
