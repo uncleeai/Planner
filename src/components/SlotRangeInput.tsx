@@ -13,7 +13,7 @@ function nowDateTimeLocal(): string {
 }
 
 // Input terminu. Domyślnie: jedna data + godzina spotkania (konkretny moment).
-// Po zaznaczeniu „Dłuższy wypad" → Od / Do (+ opcjonalnie godzina) na kilka dni.
+// Po włączeniu „Dłuższy wypad" → Od / Do (+ opcjonalnie godzina) na kilka dni.
 export default function SlotRangeInput({
   value,
   onChange,
@@ -28,6 +28,22 @@ export default function SlotRangeInput({
 
   return (
     <div className="slot-range">
+      <label className="toggle-row">
+        <span className="toggle-label">Dłuższy wypad</span>
+        <input
+          type="checkbox"
+          className="toggle-input"
+          checked={longer}
+          onChange={(e) => {
+            const on = e.target.checked;
+            setLonger(on);
+            // Wracając do pojedynczego terminu — wyczyść „Do".
+            if (!on) onChange({ ...value, doDate: '' });
+          }}
+        />
+        <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
+      </label>
+
       {!longer ? (
         <DateTimeInput
           value={value.od ? `${value.od}T${value.time || '00:00'}` : ''}
@@ -44,62 +60,44 @@ export default function SlotRangeInput({
           }}
         />
       ) : (
-        <>
-          <div className="slot-range-grid">
-            <div className="field">
-              <label htmlFor={`${idPrefix}-od`}>Od</label>
-              <input
-                id={`${idPrefix}-od`}
-                type="date"
-                value={value.od}
-                min={min}
-                onChange={(e) =>
-                  onChange({
-                    ...value,
-                    od: e.target.value,
-                    doDate: value.doDate && value.doDate < e.target.value ? '' : value.doDate,
-                  })
-                }
-              />
-            </div>
-            <div className="field">
-              <label htmlFor={`${idPrefix}-do`}>Do</label>
-              <input
-                id={`${idPrefix}-do`}
-                type="date"
-                value={value.doDate}
-                min={value.od || min}
-                onChange={(e) => onChange({ ...value, doDate: e.target.value })}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor={`${idPrefix}-time`}>Godzina (opcjonalnie)</label>
-              <input
-                id={`${idPrefix}-time`}
-                type="time"
-                value={value.time}
-                onChange={(e) => onChange({ ...value, time: e.target.value })}
-              />
-            </div>
-          </div>
-        </>
+        <div className="slot-range-grid">
+          <span className={`dt-field${value.od ? '' : ' dt-empty'}`}>
+            <input
+              id={`${idPrefix}-od`}
+              type="date"
+              value={value.od}
+              min={min}
+              onChange={(e) =>
+                onChange({
+                  ...value,
+                  od: e.target.value,
+                  doDate: value.doDate && value.doDate < e.target.value ? '' : value.doDate,
+                })
+              }
+            />
+            {!value.od && <span className="dt-placeholder">Od</span>}
+          </span>
+          <span className={`dt-field${value.doDate ? '' : ' dt-empty'}`}>
+            <input
+              id={`${idPrefix}-do`}
+              type="date"
+              value={value.doDate}
+              min={value.od || min}
+              onChange={(e) => onChange({ ...value, doDate: e.target.value })}
+            />
+            {!value.doDate && <span className="dt-placeholder">Do</span>}
+          </span>
+          <span className={`dt-field${value.time ? '' : ' dt-empty'}`}>
+            <input
+              id={`${idPrefix}-time`}
+              type="time"
+              value={value.time}
+              onChange={(e) => onChange({ ...value, time: e.target.value })}
+            />
+            {!value.time && <span className="dt-placeholder">Godzina (opcjonalnie)</span>}
+          </span>
+        </div>
       )}
-
-      <label className="toggle-row">
-        <span className="toggle-label">Dłuższy wypad</span>
-        <input
-          type="checkbox"
-          className="toggle-input"
-          checked={longer}
-          onChange={(e) => {
-            const on = e.target.checked;
-            setLonger(on);
-            // Wracając do pojedynczego terminu — wyczyść „Do".
-            if (!on) onChange({ ...value, doDate: '' });
-          }}
-        />
-        <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
-      </label>
     </div>
   );
 }

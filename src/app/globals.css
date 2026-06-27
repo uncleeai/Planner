@@ -121,7 +121,7 @@ textarea::placeholder { color: #6a6f80; }
 .dt-field.dt-empty > input:not(:focus) { color: transparent; }
 .dt-placeholder {
   position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
-  text-align: center; color: #6a6f80; font-size: 1rem;
+  text-align: center; color: #aeb4c6; font-size: 1rem;
   pointer-events: none; white-space: nowrap;
 }
 /* Przy fokusie chowamy nakładkę, by nie nachodziła na natywne pola */
@@ -519,8 +519,8 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 
 /* Input terminu: Od / Do / Godzina */
 .slot-range-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.slot-range-grid .field { margin: 0; min-width: 0; }
-.slot-range-grid .field:last-child { grid-column: 1 / -1; }
+.slot-range-grid > * { min-width: 0; }
+.slot-range-grid > :last-child { grid-column: 1 / -1; }
 /* Natywne pola daty/godziny ubrane w taki sam box jak zwykłe inputy
    (bez tego iOS renderuje je jako małe ciemne „pigułki"). */
 .slot-range input[type="date"],
@@ -537,6 +537,7 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   font-size: 1rem;
   font-family: inherit;
   color-scheme: dark;
+  text-align: center;
 }
 .slot-range input[type="date"]:focus,
 .slot-range input[type="time"]:focus {
@@ -544,15 +545,14 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(91, 87, 242, 0.25);
 }
-/* Wartość do lewej; natywna ikonka pickera dociśnięta do prawej krawędzi. */
-.slot-range input::-webkit-date-and-time-value { text-align: left; }
-.slot-range input::-webkit-calendar-picker-indicator { margin-left: auto; opacity: 0.5; }
-.slot-range .opt { color: var(--muted); font-weight: 400; font-size: 0.85em; }
+/* Wartość wyśrodkowana, natywna ikonka pickera schowana (jak w datetime). */
+.slot-range input::-webkit-date-and-time-value { text-align: center; }
+.slot-range input::-webkit-calendar-picker-indicator { display: none; }
 
-/* Przełącznik „Dłuższy wypad" — toggle w stylu iOS */
+/* Przełącznik „Dłuższy wypad" — toggle w stylu iOS (na górze, przy etykiecie) */
 .toggle-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-top: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-bottom: 14px; cursor: pointer;
   font-size: 0.95rem; color: var(--text); user-select: none;
 }
 .toggle-input { position: absolute; opacity: 0; width: 0; height: 0; }
