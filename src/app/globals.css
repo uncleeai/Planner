@@ -206,6 +206,7 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   white-space: nowrap;
 }
 .badge-open { background: rgba(255, 214, 10, 0.16); color: var(--maybe); }
+.badge-muted { background: rgba(255, 255, 255, 0.08); color: var(--muted); }
 
 /* Ustalanie terminu przez organizatora (na stronie wypadu) */
 .slot-confirm-row {
