@@ -237,6 +237,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     navigate('/', 'back');
   }
 
+  // Eksport terminu do kalendarza (.ics). Wołany kliknięciem w datę w nagłówku.
+  function exportToCalendar(startIso: string) {
+    addToCalendar({
+      id: eventId,
+      title: event?.title ?? 'Wypad',
+      location: event?.location,
+      description: event?.description,
+      startIso,
+    });
+  }
+
   const stats = useMemo(() => {
     return slots.map((slot) => {
       const slotVotes = votes.filter((v) => v.slot_id === slot.id);
@@ -333,7 +344,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         )}
         <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
-          <div className={`confirmed-inline${status.settled ? ' settled' : ''}`}>
+          <div
+            className={`confirmed-inline tappable${status.settled ? ' settled' : ''}`}
+            role="button"
+            tabIndex={lastHeaderDate ? 0 : -1}
+            aria-label="Dodaj termin do kalendarza"
+            onClick={() => lastHeaderDate && exportToCalendar(lastHeaderDate)}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && lastHeaderDate) {
+                e.preventDefault();
+                exportToCalendar(lastHeaderDate);
+              }
+            }}
+          >
             {lastHeaderDate && (
               <>
                 <IconCalendar size={15} />
@@ -346,35 +369,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                       : 'Ustalone'
                     : 'Na czele'}
                 </span>
+                <span className="confirmed-cal-hint">＋ kalendarz</span>
               </>
             )}
           </div>
         </div>
       </header>
-
-      {/* TODO: na czas testów guzik widać też przy nieustalonym terminie.
-          Docelowo pokazywać tylko gdy status.settled. */}
-      {(() => {
-        const calDate = status.date ?? status.leadingDate ?? slots[0]?.starts_at ?? null;
-        if (!calDate) return null;
-        return (
-          <button
-            type="button"
-            className="ghost cal-export"
-            onClick={() =>
-              addToCalendar({
-                id: eventId,
-                title: event?.title ?? 'Wypad',
-                location: event?.location,
-                description: event?.description,
-                startIso: calDate,
-              })
-            }
-          >
-            <IconCalendar size={15} /> Dodaj do kalendarza
-          </button>
-        );
-      })()}
 
       {event?.description && (
         <p className="event-description">{event.description}</p>
