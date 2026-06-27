@@ -503,10 +503,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 /* Data w nagłówku jest klikalna — tapnięcie eksportuje termin do kalendarza (.ics) */
 .confirmed-inline.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .confirmed-inline.tappable:active { transform: scale(0.98); }
-.confirmed-cal-hint {
-  font-size: 0.72rem; font-weight: 600; color: var(--muted);
-  opacity: 0.75;
-}
 
 /* Spójny blok statusu głosowania: awatary + pasek postępu + kto się obija */
 .vote-status {

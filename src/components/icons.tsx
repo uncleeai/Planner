@@ -25,6 +25,13 @@ function Svg({ children, size = 16, ...props }: IconProps & { children: React.Re
 export const IconCalendar = (p: IconProps) => (
   <Svg {...p}><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M3 9h18M8 2v4M16 2v4" /></Svg>
 );
+export const IconCalendarPlus = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="4" width="18" height="18" rx="3" />
+    <path d="M3 9h18M8 2v4M16 2v4" />
+    <path d="M12 13v6M9 16h6" />
+  </Svg>
+);
 export const IconClock = (p: IconProps) => (
   <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>
 );

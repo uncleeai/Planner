@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { getEventStatus } from '@/lib/types';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
-import { IconPin, IconCalendar, IconCheck, IconChevronLeft } from '@/components/icons';
+import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft } from '@/components/icons';
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
@@ -359,7 +359,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           >
             {lastHeaderDate && (
               <>
-                <IconCalendar size={15} />
+                <IconCalendarPlus size={15} />
                 <span className="confirmed-date">{formatSlot(lastHeaderDate)}</span>
                 <span className="confirmed-tag">
                   <IconCheck size={12} />{' '}
@@ -369,7 +369,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                       : 'Ustalone'
                     : 'Na czele'}
                 </span>
-                <span className="confirmed-cal-hint">＋ kalendarz</span>
               </>
             )}
           </div>
