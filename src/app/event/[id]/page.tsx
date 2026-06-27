@@ -11,6 +11,7 @@ import { IconPin, IconCalendar, IconCheck, IconChevronLeft } from '@/components/
 import DateTimeInput from '@/components/DateTimeInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
+import { addToCalendar } from '@/lib/calendar';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
@@ -350,6 +351,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </header>
+
+      {status.settled && status.date && (
+        <button
+          type="button"
+          className="ghost cal-export"
+          onClick={() =>
+            addToCalendar({
+              id: eventId,
+              title: event?.title ?? 'Wypad',
+              location: event?.location,
+              description: event?.description,
+              startIso: status.date!,
+            })
+          }
+        >
+          <IconCalendar size={15} /> Dodaj do kalendarza
+        </button>
+      )}
 
       {event?.description && (
         <p className="event-description">{event.description}</p>

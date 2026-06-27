@@ -500,6 +500,16 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   padding: 3px 8px 3px 6px; border-radius: 999px;
 }
 
+/* Przycisk eksportu ustalonego terminu do kalendarza (.ics) */
+.cal-export {
+  margin-top: 14px;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.cal-export svg { color: var(--yes); flex-shrink: 0; }
+
 /* Spójny blok statusu głosowania: awatary + pasek postępu + kto się obija */
 .vote-status {
   margin-top: 18px;
