@@ -96,7 +96,7 @@ language sql
 stable
 as $$
   select coalesce(
-    lower(auth.jwt() ->> 'email') = any (array['uncleeai@gmail.com']),
+    lower(auth.jwt() ->> 'email') = any (array['tomaszproblemx@gmail.com']),
     false
   );
 $$;

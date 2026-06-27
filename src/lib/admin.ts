@@ -14,7 +14,7 @@ const ENV_ADMINS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? '')
   .filter(Boolean);
 
 export const ADMIN_EMAILS: string[] =
-  ENV_ADMINS.length > 0 ? ENV_ADMINS : ['uncleeai@gmail.com'];
+  ENV_ADMINS.length > 0 ? ENV_ADMINS : ['tomaszproblemx@gmail.com'];
 
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
