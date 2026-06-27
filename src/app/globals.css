@@ -1066,15 +1066,14 @@ body.login-active .glass-bg { display: none; }
    przejścia bywał porzucany (tap nie przenosił na event, slajd leciał „home → home").
    Teraz nawigacja to zwykły router.push (NIGDY nie zawiedzie), a nowa strona animuje
    się przy zamontowaniu czystym CSS na <main> — odporne na każde urządzenie, bez wyścigów. */
+/* Tylko opacity — BEZ transform. Transform promował <main> na warstwę GPU, która przy
+   rozwijaniu formularza „Nowy wypad" przerysowywała się z sub-pikselowym drżeniem (cały
+   UI, łącznie z nagłówkiem, się trząsł). Fade nie tworzy takiej warstwy → stabilnie. */
 @keyframes page-in {
-  from { opacity: 0; transform: translateX(48px); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-main { animation: page-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both; }
-/* Nowa strona wjeżdża z prawej — przycięcie poziomu zapobiega bocznemu scrollowi
-   podczas animacji. `clip` (nie `hidden`), żeby NIE zrobić z kontenera pionowego
-   scrollera (hidden wymusza overflow-y: auto wg spec CSS). */
-.container { overflow-x: clip; }
+main { animation: page-in 0.3s ease both; }
 
 @media (prefers-reduced-motion: reduce) {
   main { animation: none; }
