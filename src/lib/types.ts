@@ -74,3 +74,69 @@ export function getConfirmedSlot(
   return { slotId: null, confirmedAt: null };
 }
 
+export type EventStatus = {
+  settled: boolean;                 // czy wypad jest ustalony (ma finalny termin)
+  source: 'manual' | 'auto' | null; // jak: organizator ręcznie / automat „wszyscy dali znać"
+  slotId: string | null;            // ustalony slot
+  date: string | null;              // data ustalonego slotu
+  leadingSlotId: string | null;     // prowadzący termin (informacyjnie, gdy nieustalony)
+  leadingDate: string | null;
+  allVoted: boolean;                // czy wszyscy z paczki oddali głos
+};
+
+/**
+ * Status ustalenia wypadu. Dwie drogi do „ustalone":
+ *  A) ręcznie — organizator zapisał `confirmed_slot_id` (ma pierwszeństwo, jest sticky),
+ *  B) automatycznie — WSZYSCY z paczki (memberIds) dali znać i jest prowadzący termin
+ *     (≥1 „Wchodzę"); liczone na żywo, więc zmiana głosu przestawia/cofa ustalenie.
+ * Gdy nieustalony — zwracamy prowadzący termin do pokazania jako podpowiedź.
+ */
+export function getEventStatus(
+  event: Pick<EventRow, 'confirmed_slot_id' | 'confirmed_at'>,
+  eventSlots: Slot[],
+  eventVotes: Vote[],
+  memberIds: string[],
+): EventStatus {
+  const leading = getConfirmedSlot(eventSlots, eventVotes);
+  const voterIds = new Set(eventVotes.map((v) => v.user_id).filter(Boolean) as string[]);
+  const allVoted = memberIds.length > 0 && memberIds.every((id) => voterIds.has(id));
+
+  // A) Ręczne ustalenie organizatora — pierwszeństwo.
+  if (event.confirmed_slot_id) {
+    const slot = eventSlots.find((s) => s.id === event.confirmed_slot_id);
+    return {
+      settled: true,
+      source: 'manual',
+      slotId: event.confirmed_slot_id,
+      date: event.confirmed_at ?? slot?.starts_at ?? null,
+      leadingSlotId: leading.slotId,
+      leadingDate: leading.confirmedAt,
+      allVoted,
+    };
+  }
+
+  // B) Automat — komplet głosów + jest prowadzący termin.
+  if (allVoted && leading.slotId) {
+    return {
+      settled: true,
+      source: 'auto',
+      slotId: leading.slotId,
+      date: leading.confirmedAt,
+      leadingSlotId: leading.slotId,
+      leadingDate: leading.confirmedAt,
+      allVoted,
+    };
+  }
+
+  // Wciąż zbieramy głosy.
+  return {
+    settled: false,
+    source: null,
+    slotId: null,
+    date: null,
+    leadingSlotId: leading.slotId,
+    leadingDate: leading.confirmedAt,
+    allVoted,
+  };
+}
+

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getConfirmedSlot } from '@/lib/types';
+import { getEventStatus } from '@/lib/types';
 import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
 import { AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
@@ -34,8 +34,14 @@ function getMinDateTime(): string {
   return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
-type Agg = { voters: Person[]; percent: number; dateIso: string | null };
-const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null };
+type Agg = {
+  voters: Person[];
+  percent: number;
+  dateIso: string | null;      // data USTALONEGO terminu (dla „Nadchodzące/Minione")
+  leadingDate: string | null;  // prowadzący termin (podpowiedź w „W trakcie")
+  leadingYes: number;          // ile „Wchodzę" na prowadzący termin
+};
+const EMPTY_AGG: Agg = { voters: [], percent: 0, dateIso: null, leadingDate: null, leadingYes: 0 };
 
 const MAJOR_QUOTES = [
   "„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”",
@@ -192,10 +198,12 @@ export default function Home() {
     navigate(`/event/${data.id}`, 'forward');
   }
 
-  const { open, upcoming, past } = useMemo(() => {
+  const { open, upcoming, expired, past } = useMemo(() => {
     const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
     const open: EventRow[] = [];
     const upcoming: EventRow[] = [];
+    const expired: EventRow[] = [];
     const past: EventRow[] = [];
 
     const slotsByEvent = new Map<string, Slot[]>();
@@ -212,21 +220,36 @@ export default function Home() {
     }
 
     const confirmedDateMap = new Map<string, string>();
+    const expiredAtMap = new Map<string, number>();
+    const memberIds = profiles.map((p) => p.id);
 
     for (const ev of events) {
       const evSlots = slotsByEvent.get(ev.id) ?? [];
       const evVotes = votesByEvent.get(ev.id) ?? [];
-      const { confirmedAt } = getConfirmedSlot(evSlots, evVotes);
+      const status = getEventStatus(ev, evSlots, evVotes, memberIds);
 
-      if (!confirmedAt) {
-        open.push(ev);
-      } else {
-        confirmedDateMap.set(ev.id, confirmedAt);
-        if (new Date(confirmedAt).getTime() >= now) {
-          upcoming.push(ev);
-        } else {
-          past.push(ev);
+      // Ustalony (ręcznie LUB wszyscy dali znać) → Nadchodzące / Odbyte wg daty.
+      if (status.settled && status.date) {
+        confirmedDateMap.set(ev.id, status.date);
+        if (new Date(status.date).getTime() >= now) upcoming.push(ev);
+        else past.push(ev);
+        continue;
+      }
+
+      // Nieustalony: czy jest jeszcze jakiś termin w przyszłości?
+      const latest = evSlots.reduce((m, s) => Math.max(m, new Date(s.starts_at).getTime()), 0);
+      const hasFuture = evSlots.some((s) => new Date(s.starts_at).getTime() > now);
+
+      if (evSlots.length > 0 && !hasFuture) {
+        // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono". Pokazujemy do 24h
+        // po ostatnim terminie, potem archiwizujemy (pomijamy → znika z listy, zostaje w bazie).
+        if (latest >= now - DAY) {
+          expired.push(ev);
+          expiredAtMap.set(ev.id, latest);
         }
+      } else {
+        // Ma przyszły termin albo brak terminów → wciąż „W trakcie".
+        open.push(ev);
       }
     }
 
@@ -242,8 +265,10 @@ export default function Home() {
       return db - da;
     });
 
-    return { open, upcoming, past };
-  }, [events, slots, votes]);
+    expired.sort((a, b) => (expiredAtMap.get(b.id) ?? 0) - (expiredAtMap.get(a.id) ?? 0));
+
+    return { open, upcoming, expired, past };
+  }, [events, slots, votes, profiles]);
 
   const aggByEvent = useMemo(() => {
     const profileById = new Map(profiles.map((p) => [p.id, p]));
@@ -260,6 +285,7 @@ export default function Home() {
       votesBy.set(v.event_id, arr);
     }
     const memberCount = profiles.length;
+    const memberIds = profiles.map((p) => p.id);
     const result = new Map<string, Agg>();
     for (const ev of events) {
       const seen = new Map<string, Person>();
@@ -275,9 +301,12 @@ export default function Home() {
       const evSlots = (slotsBy.get(ev.id) ?? [])
         .slice()
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-      const { confirmedAt } = getConfirmedSlot(evSlots, evVotes);
-      const dateIso = confirmedAt ?? evSlots[0]?.starts_at ?? null;
-      result.set(ev.id, { voters, percent, dateIso });
+      const status = getEventStatus(ev, evSlots, evVotes, memberIds);
+      const dateIso = status.settled ? status.date : null;
+      const leadingYes = status.leadingSlotId
+        ? evVotes.filter((v) => v.slot_id === status.leadingSlotId && v.availability === 'yes').length
+        : 0;
+      result.set(ev.id, { voters, percent, dateIso, leadingDate: status.leadingDate, leadingYes });
     }
     return result;
   }, [events, slots, votes, profiles]);
@@ -534,7 +563,8 @@ export default function Home() {
 
       <Section title="W trakcie" events={open} agg={aggByEvent} variant="open" />
       <Section title="Nadchodzące" events={upcoming} agg={aggByEvent} variant="upcoming" />
-      <Section title="Minione" events={past} agg={aggByEvent} variant="past" muted />
+      <Section title="Nie ustalono" events={expired} agg={aggByEvent} variant="expired" muted />
+      <Section title="Odbyte" events={past} agg={aggByEvent} variant="past" muted />
 
       {!loading && events.length > 0 && quote && (
         <div 
@@ -561,7 +591,7 @@ function Section({
   title: string;
   events: EventRow[];
   agg: Map<string, Agg>;
-  variant: 'open' | 'upcoming' | 'past';
+  variant: 'open' | 'upcoming' | 'expired' | 'past';
   muted?: boolean;
 }) {
   if (events.length === 0) return null;
@@ -575,7 +605,7 @@ function Section({
   );
 }
 
-function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'past' }) {
+function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past' }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
   return (
@@ -601,11 +631,18 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
       )}
 
       <div className="event-meta-row">
-        {agg.dateIso ? (
+        {variant === 'expired' ? (
+          <span className="event-meta"><IconCalendar size={14} /> Termin minął</span>
+        ) : agg.dateIso ? (
           <>
             <span className="event-meta"><IconCalendar size={14} /> {fmtDate(agg.dateIso)}</span>
             <span className="event-meta"><IconClock size={14} /> {fmtTime(agg.dateIso)}</span>
           </>
+        ) : agg.leadingDate ? (
+          <span className="event-meta">
+            <IconCalendar size={14} /> {fmtDate(agg.leadingDate)} prowadzi
+            {agg.leadingYes > 0 && ` · ${agg.leadingYes} wchodzi`}
+          </span>
         ) : (
           <span className="event-meta"><IconCalendar size={14} /> Zbieramy terminy</span>
         )}
@@ -633,8 +670,9 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
         ) : (
           <>
             <span className="spacer" />
-            {variant === 'past' && <span className="badge">✓ Zakończony</span>}
+            {variant === 'past' && <span className="badge">✓ Odbyte</span>}
             {variant === 'upcoming' && <span className="badge">Jest termin</span>}
+            {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
           </>
         )}
       </div>
