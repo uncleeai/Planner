@@ -42,7 +42,7 @@ function buildIcs(ev: CalendarEvent): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Wypad//Planner//PL',
+    'PRODID:-//Wypad.exe//Wypad//PL',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
     `UID:${ev.id}-${start.getTime()}@wypad`,
