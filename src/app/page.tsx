@@ -10,6 +10,7 @@ import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
+import DescriptionInput from '@/components/DescriptionInput';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
@@ -534,12 +535,11 @@ export default function Home() {
 
             <div className="field">
               <label htmlFor="description">Opis (opcjonalnie)</label>
-              <textarea
+              <DescriptionInput
                 id="description"
-                placeholder="np. co bierzemy, plan xd, szczegóły…"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                onChange={setDescription}
+                placeholder="np. co bierzemy, plan xd, szczegóły…"
               />
             </div>
 
@@ -664,12 +664,11 @@ export default function Home() {
                   </div>,
                   <div className="field" key="desc">
                     <label htmlFor="description">Opis (opcjonalnie)</label>
-                    <textarea
+                    <DescriptionInput
                       id="description"
-                      placeholder="np. co bierzemy, plan, szczegóły…"
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={3}
+                      onChange={setDescription}
+                      placeholder="np. co bierzemy, plan, szczegóły…"
                     />
                   </div>,
                   <div className="field" key="date">

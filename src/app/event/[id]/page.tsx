@@ -9,6 +9,8 @@ import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
+import DescriptionInput from '@/components/DescriptionInput';
+import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
@@ -450,12 +452,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
           <div className="field">
             <label htmlFor="edit-description">Opis (opcjonalnie)</label>
-            <textarea
+            <DescriptionInput
               id="edit-description"
-              rows={3}
-              placeholder="np. co bierzemy, plan, szczegóły…"
               value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
+              onChange={setEditDescription}
+              placeholder="np. co bierzemy, plan, szczegóły…"
             />
           </div>
           {editError && <p className="small" style={{ color: 'var(--no)' }}>{editError}</p>}
@@ -528,7 +529,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
 
       {!editing && event?.description && (
-        <p className="event-description">{event.description}</p>
+        <div className="event-description"><Markdown text={event.description} /></div>
       )}
 
       {isPast && (

@@ -58,6 +58,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SlotRangeInput.tsx    # Wspólny input terminu: Od / Do / Godzina
+    │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
     │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin…)
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
@@ -68,6 +69,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
         ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
+        ├── markdown.tsx          # Mini-renderer markdownu opisu → elementy React (bez surowego HTML)
         └── types.ts              # Typy: EventRow, Slot, Vote, Profile, Availability
 ```
 

@@ -1101,8 +1101,26 @@ body.login-active .glass-bg { display: none; }
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.92rem;
   line-height: 1.5;
-  white-space: pre-line;
 }
+/* Render markdownu w opisie */
+.event-description p { margin: 0 0 8px; }
+.event-description p:last-child { margin-bottom: 0; }
+.event-description ul,
+.event-description ol { margin: 6px 0; padding-left: 22px; }
+.event-description li { margin: 3px 0; }
+.event-description strong { color: var(--text); font-weight: 700; }
+.event-description a { color: var(--primary-hover); text-decoration: underline; overflow-wrap: anywhere; }
+
+/* Pole opisu z paskiem formatowania */
+.desc-input { display: flex; flex-direction: column; gap: 7px; }
+.desc-toolbar { display: flex; gap: 6px; }
+.desc-tool {
+  padding: 5px 11px; font-size: 0.82rem; font-weight: 600;
+  background: var(--card-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.desc-tool:hover { background: #262833; border-color: var(--border-strong); }
+.desc-tool b { font-weight: 800; }
 
 /* Notka, że wypad już się odbył (strona w trybie podglądu) */
 .readonly-note {
