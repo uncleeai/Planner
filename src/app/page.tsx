@@ -181,20 +181,20 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
             </div>
           ))}
         </div>
+        {n > 1 && (
+          <div className="activity-dots">
+            {items.map((it, i) => (
+              <button
+                key={it.id}
+                type="button"
+                className={`activity-dot${i === safeIdx ? ' on' : ''}`}
+                aria-label={`Komentarz ${i + 1}`}
+                onClick={(e) => { e.stopPropagation(); setIdx(i); }}
+              />
+            ))}
+          </div>
+        )}
       </div>
-      {n > 1 && (
-        <div className="activity-dots">
-          {items.map((it, i) => (
-            <button
-              key={it.id}
-              type="button"
-              className={`activity-dot${i === safeIdx ? ' on' : ''}`}
-              aria-label={`Komentarz ${i + 1}`}
-              onClick={() => setIdx(i)}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
