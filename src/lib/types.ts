@@ -8,6 +8,7 @@ export type EventRow = {
   image_url: string | null;
   latitude: number | null;
   longitude: number | null;
+  emoji: string | null;
   created_by: string | null;
   created_by_user_id: string | null;
   confirmed_slot_id: string | null;

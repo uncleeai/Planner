@@ -12,6 +12,7 @@ import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventImageInput from '@/components/EventImageInput';
+import EventEmojiInput from '@/components/EventEmojiInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { uploadEventImage } from '@/lib/eventImage';
 import { fetchDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
@@ -238,6 +239,7 @@ export default function Home() {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [emoji, setEmoji] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
@@ -327,6 +329,7 @@ export default function Home() {
         location: location.trim() || null,
         latitude: locationCoords?.lat ?? null,
         longitude: locationCoords?.lon ?? null,
+        emoji,
         description: description.trim() || null,
         image_url: imageUrl,
         created_by: displayName,
@@ -614,6 +617,8 @@ export default function Home() {
               />
             </div>
 
+            <EventEmojiInput value={emoji} onChange={setEmoji} />
+
             <EventImageInput file={imageFile} onChange={setImageFile} id="create-image" />
 
             <div className="field">
@@ -744,6 +749,7 @@ export default function Home() {
                       placeholder="np. co bierzemy, plan, szczegóły…"
                     />
                   </div>,
+                  <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
                   <EventImageInput key="img" file={imageFile} onChange={setImageFile} id="create-empty-image" />,
                   <div className="field" key="date">
                     <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
@@ -783,7 +789,7 @@ export default function Home() {
       {heroEvent && (
         <section>
           <div className="section-label">Najbliższy</div>
-          <EventCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} variant={heroVariant} hero weatherDate={heroDate} />
+          <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} weatherDate={heroDate} variant={heroVariant} />
         </section>
       )}
       <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
@@ -830,26 +836,108 @@ function Section({
   );
 }
 
-// Chip pogody w hero: prognoza Open-Meteo na dzień wypadu. Renderuje się tylko gdy są
-// współrzędne i prognoza w zasięgu (~16 dni); inaczej nic (bez błędu).
-function HeroWeather({ lat, lon, dateISO }: { lat: number; lon: number; dateISO: string }) {
-  const [w, setW] = useState<DayWeather | null>(null);
+// Bogata karta najbliższego wypadu (układ z mockupu): emoji w kółku + tytuł + status,
+// lokalizacja/data, szklany pod-panel (avatary + „X z Y" + pasek), grid Pogoda + Zbiórka.
+function HeroCard({ ev, agg, memberCount, weatherDate, variant }: {
+  ev: EventRow; agg: Agg; memberCount: number; weatherDate: string | null; variant: 'open' | 'upcoming';
+}) {
+  const navigate = useTransitionNavigate();
+  const href = `/event/${ev.id}`;
+  const hasImage = !!ev.image_url;
+
+  // Pogoda na dzień wypadu (gdy są współrzędne i termin w zasięgu).
+  const hasCoords = ev.latitude != null && ev.longitude != null && !!weatherDate;
+  const [weather, setWeather] = useState<DayWeather | null>(null);
   useEffect(() => {
+    if (!hasCoords) return;
     let alive = true;
-    fetchDayWeather(lat, lon, dateISO).then((r) => alive && setW(r));
+    fetchDayWeather(ev.latitude as number, ev.longitude as number, weatherDate as string)
+      .then((r) => alive && setWeather(r));
     return () => { alive = false; };
-  }, [lat, lon, dateISO]);
-  if (!w) return null;
-  const { emoji, label } = describeWeather(w.code);
+  }, [hasCoords, ev.latitude, ev.longitude, weatherDate]);
+
+  // „Zbiórka": godzina z ustalonego terminu (gdy ma konkretną godzinę).
+  const settled = agg.slot;
+  const meetTime = settled && !settled.all_day
+    ? new Date(settled.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  const badge = variant === 'upcoming'
+    ? { label: 'Ustalone', cls: 'hero-badge hero-badge-green' }
+    : { label: 'Aktywny', cls: 'hero-badge hero-badge-blue' };
+
+  const wInfo = weather ? describeWeather(weather.code) : null;
+
   return (
-    <span className="event-meta hero-weather">
-      <span className="hero-weather-emoji">{emoji}</span>
-      <strong>{w.tempMax}°</strong> {label}
-    </span>
+    <Link
+      href={href}
+      className={`event-rich hero${hasImage ? ' has-image' : ''}`}
+      onPointerDown={() => prefetchEvent(ev.id)}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        navigate(href, 'forward');
+      }}
+    >
+      {hasImage && (
+        <div className="event-rich-media" aria-hidden="true">
+          <img src={ev.image_url ?? ''} alt="" className="event-rich-img" />
+        </div>
+      )}
+
+      <div className="hero-head">
+        <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
+        <div className="hero-head-main">
+          <span className="hero-title">{ev.title}</span>
+          <span className={badge.cls}>{badge.label}</span>
+        </div>
+        <IconChevron size={20} className="row-chevron" />
+      </div>
+
+      <div className="hero-meta">
+        {ev.location && <span className="event-meta"><IconPin size={14} /> {ev.location}</span>}
+        <span className="event-meta"><IconCalendar size={14} /> {agg.slot ? formatSlotRange(agg.slot) : 'Zbieramy terminy'}</span>
+      </div>
+
+      <div className="hero-panel">
+        <div className="hero-panel-top">
+          {agg.voters.length > 0
+            ? <AvatarStack people={agg.voters} size={28} />
+            : <span className="small muted">Jeszcze nikt nie dał znać</span>}
+          <span className="small muted">{agg.voters.length} z {memberCount} dało znać</span>
+        </div>
+        <div className="progress">
+          <div className="progress-bar" style={{ width: `${agg.percent}%` }} />
+        </div>
+      </div>
+
+      {(wInfo || meetTime) && (
+        <div className="hero-grid">
+          {wInfo && weather && (
+            <div className="hero-tile">
+              <span className="hero-tile-emoji">{wInfo.emoji}</span>
+              <div>
+                <div className="hero-tile-main">{weather.tempMax}°</div>
+                <div className="hero-tile-sub">{wInfo.label}</div>
+              </div>
+            </div>
+          )}
+          {meetTime && (
+            <div className="hero-tile">
+              <span className="hero-tile-emoji">⏰</span>
+              <div>
+                <div className="hero-tile-main">Zbiórka {meetTime}</div>
+                {ev.location && <div className="hero-tile-sub">{ev.location}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Link>
   );
 }
 
-function EventCard({ ev, agg, variant, hero, weatherDate }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean; weatherDate?: string | null }) {
+function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
   const hasImage = !!ev.image_url;
@@ -892,9 +980,6 @@ function EventCard({ ev, agg, variant, hero, weatherDate }: { ev: EventRow; agg:
           <span className="event-meta"><IconCalendar size={14} /> {formatSlotRange(agg.slot)}</span>
         ) : (
           <span className="event-meta"><IconCalendar size={14} /> Zbieramy terminy</span>
-        )}
-        {hero && ev.latitude != null && ev.longitude != null && weatherDate && (
-          <HeroWeather lat={ev.latitude} lon={ev.longitude} dateISO={weatherDate} />
         )}
       </div>
 

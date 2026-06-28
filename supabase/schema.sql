@@ -67,6 +67,10 @@ alter table public.events
 alter table public.events
   add column if not exists longitude double precision;
 
+-- Emoji wypadu (ikona w kółku na karcie) — wybierane przy tworzeniu, opcjonalne.
+alter table public.events
+  add column if not exists emoji text;
+
 -- Sprzątanie po wcześniejszym (porzuconym) pomyśle z „ekipami" — bezpieczne, jeśli nie istniały.
 alter table public.events drop column if exists group_id;
 drop table if exists public.groups cascade;
