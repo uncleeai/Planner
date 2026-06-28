@@ -105,10 +105,13 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (rola service_role) rozsyła push o nowym wypadzie do wszystkich poza twórcą. Powiadomienia
   na iOS tylko w PWA dodanym do ekranu głównego (16.4+). Toast „na żywo" przy otwartej apce
   jest w `auth.tsx` (Realtime na INSERT `events`).
+- **comments** — komentarze pod wypadem (koordynacja): `event_id` + `user_id` (konto)
+  + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; usuwa
+  autor, organizator albo admin. Realtime + wątek pod terminami na stronie wypadu.
 - Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
-  przy głosach/wypadach zapisujemy dodatkowo migawkę nazwy.
+  przy głosach/wypadach/komentarzach zapisujemy dodatkowo migawkę nazwy.
 
-Realtime włączony dla `events`, `slots`, `votes`, `profiles` (publikacja `supabase_realtime`).
+Realtime włączony dla `events`, `slots`, `votes`, `profiles`, `comments` (publikacja `supabase_realtime`).
 **RLS:** dostęp tylko dla zalogowanych (`authenticated`); każdy edytuje wyłącznie swoje
 rekordy (głos po `user_id`, ustalanie terminu tylko twórca wypadu). To realna ochrona
 przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodności.

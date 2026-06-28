@@ -1115,6 +1115,29 @@ body.login-active .glass-bg { display: none; }
   font-size: 0.85rem;
 }
 
+/* Komentarze pod wypadem */
+.comments-card h2 { margin-bottom: 14px; }
+.comment-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+.comment { display: flex; gap: 10px; align-items: flex-start; }
+.comment-body { flex: 1; min-width: 0; }
+.comment-head { display: flex; align-items: center; gap: 8px; }
+.comment-author { font-weight: 600; font-size: 0.9rem; }
+.comment-time { font-size: 0.75rem; color: var(--muted); }
+.comment-del {
+  margin-left: auto; background: none; border: none;
+  color: var(--muted); font-size: 0.8rem; padding: 2px 6px;
+  cursor: pointer; opacity: 0.55;
+}
+.comment-del:hover { color: var(--no); opacity: 1; }
+.comment-text {
+  margin: 2px 0 0; font-size: 0.92rem; line-height: 1.45;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.comment-form { display: flex; gap: 8px; }
+.comment-form input { flex: 1; min-width: 0; }
+.comment-form button { flex-shrink: 0; }
+
 /* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */
 .toast {
   position: fixed;

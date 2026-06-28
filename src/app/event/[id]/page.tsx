@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
-import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
+import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
@@ -20,6 +20,15 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'maybe', label: 'Może', cls: 'active-maybe' },
   { value: 'no', label: 'Pas', cls: 'active-no' },
 ];
+
+function formatCommentTime(iso: string): string {
+  return new Date(iso).toLocaleString('pl-PL', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
@@ -37,6 +46,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(!seedEvent);
   const [notFound, setNotFound] = useState(false);
 
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -53,11 +65,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
 
   const load = useCallback(async () => {
-    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
+    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] = await Promise.all([
       supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
       supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
       supabase.from('votes').select('*').eq('event_id', eventId),
       supabase.from('profiles').select('*'),
+      supabase.from('comments').select('*').eq('event_id', eventId).order('created_at'),
     ]);
 
     if (evErr || !ev) {
@@ -66,6 +79,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setEvent(ev as EventRow);
       setSlots((sl ?? []) as Slot[]);
       setMembers((pr ?? []) as Profile[]);
+      setComments((cm ?? []) as Comment[]);
 
       // Nałóż oczekujące głosy bieżącego użytkownika na świeży stan z bazy:
       // jego ostatni wybór wygrywa, dopóki baza go nie potwierdzi (wtedy czyścimy pending).
@@ -126,6 +140,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
+        () => load(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `event_id=eq.${eventId}` },
         () => load(),
       )
       .subscribe();
@@ -218,6 +237,37 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       return;
     }
     load();
+  }
+
+  async function addComment(e: React.FormEvent) {
+    e.preventDefault();
+    const body = newComment.trim();
+    if (!body) return;
+    setNewComment('');
+    // Optymistycznie pokaż od razu; load() z realtime zastąpi listę prawdą z bazy.
+    const optimistic: Comment = {
+      id: `optimistic-${Date.now()}`,
+      event_id: eventId,
+      user_id: userId,
+      author_name: displayName,
+      body,
+      created_at: new Date().toISOString(),
+    };
+    setComments((prev) => [...prev, optimistic]);
+    const { error } = await supabase
+      .from('comments')
+      .insert({ event_id: eventId, user_id: userId, author_name: displayName, body });
+    if (error) {
+      setNewComment(body);
+      load();
+    }
+  }
+
+  async function deleteComment(id: string) {
+    if (!window.confirm('Usunąć komentarz?')) return;
+    setComments((prev) => prev.filter((c) => c.id !== id));
+    const { error } = await supabase.from('comments').delete().eq('id', id);
+    if (error) load();
   }
 
   function startEdit() {
@@ -643,6 +693,53 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
         )}
+      </div>
+
+      <div className="card comments-card">
+        <h2>Komentarze</h2>
+        {comments.length === 0 ? (
+          <p className="small muted">Brak komentarzy. Napisz pierwszy.</p>
+        ) : (
+          <div className="comment-list">
+            {comments.map((c) => {
+              const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+              const name = prof?.display_name ?? c.author_name;
+              const canDel = c.user_id === userId || isOrganizer;
+              return (
+                <div key={c.id} className="comment">
+                  <Avatar name={name} avatar={prof?.avatar ?? null} size={30} />
+                  <div className="comment-body">
+                    <div className="comment-head">
+                      <span className="comment-author">{name}</span>
+                      <span className="comment-time">{formatCommentTime(c.created_at)}</span>
+                      {canDel && (
+                        <button
+                          type="button"
+                          className="comment-del"
+                          aria-label="Usuń komentarz"
+                          onClick={() => deleteComment(c.id)}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <p className="comment-text">{c.body}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <form className="comment-form" onSubmit={addComment}>
+          <input
+            type="text"
+            placeholder="Napisz komentarz…"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            maxLength={500}
+          />
+          <button type="submit" disabled={!newComment.trim()}>Wyślij</button>
+        </form>
       </div>
 
       {isOrganizer && !editing && (

@@ -231,5 +231,4 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
   tylko do tych z paczki, którzy jeszcze nie oddali głosu (Edge Function liczy brakujących
   jak `missingVoters` i wysyła do ich subskrypcji).
 - Logowanie przez Google (jedno kliknięcie) obok kodu e-mail; allowlista e-maili.
-- Komentarze przy wypadzie.
-- Ikony PNG (192/512) i `apple-touch-icon` dla pełnego wsparcia instalacji PWA.
+- Feed aktywności / mentiony na bazie komentarzy (komentarze pod wypadem już są).

@@ -79,6 +79,15 @@ export type Profile = {
   updated_at: string;
 };
 
+export type Comment = {
+  id: string;
+  event_id: string;
+  user_id: string | null;
+  author_name: string;
+  body: string;
+  created_at: string;
+};
+
 export function getConfirmedSlot(
   eventSlots: Slot[],
   eventVotes: Vote[]
