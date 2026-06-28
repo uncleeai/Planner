@@ -820,8 +820,8 @@ function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant
       }}
     >
       {hasImage && (
-        // Jak w mockupie: zdjęcie to ledwie widoczna tekstura (opacity 0.2 + luminosity),
-        // przyciemniona gradientem ku dołowi. Pod treścią (z-index), nie tło karty.
+        // Jak w mockupie: widoczne zdjęcie po prawej, wygaszane poziomym gradientem
+        // w tło karty ku lewej (czytelny tytuł) i lekko ku dołowi. Pod treścią (z-index).
         <div className="event-rich-media" aria-hidden="true">
           <img src={ev.image_url ?? ''} alt="" className="event-rich-img" />
           <div className="event-rich-scrim" />
