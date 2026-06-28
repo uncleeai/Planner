@@ -111,9 +111,10 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   const onTouchMove = (e: React.TouchEvent) => {
     if (startY.current == null) return;
     let dy = e.touches[0].clientY - startY.current;
-    // Nie pozwól odsłonić pustki za krańcami toru.
-    const maxDown = safeIdx * SLIDE_H;
-    const maxUp = -((n - 1) - safeIdx) * SLIDE_H;
+    // Najwyżej JEDEN slajd na gest (żeby szybki, długi ruch nie przelatywał przez kilka),
+    // i nie odsłaniaj pustki za krańcami toru.
+    const maxDown = Math.min(SLIDE_H, safeIdx * SLIDE_H);
+    const maxUp = Math.max(-SLIDE_H, -((n - 1) - safeIdx) * SLIDE_H);
     dy = Math.max(maxUp, Math.min(maxDown, dy));
     dragRef.current = dy;
     setDrag(dy);
