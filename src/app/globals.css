@@ -1555,13 +1555,11 @@ main::before {
 
 /* ===== Autouzupełnianie lokalizacji (Open-Meteo geocoding) ===== */
 .loc-autocomplete { position: relative; }
+/* Dropdown W PRZEPŁYWIE (nie absolutny): pola formularza mają animację z transform/opacity,
+   co tworzy osobne konteksty stackingu i „uwięziłoby" absolutną listę pod kolejnym polem.
+   W przepływie lista po prostu rozpycha pola pod sobą — zero nakładania, zero z-index. */
 .loc-suggestions {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 30;
-  margin: 0;
+  margin: 6px 0 0;
   padding: 6px;
   list-style: none;
   background: #14141b;
