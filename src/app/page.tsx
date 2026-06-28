@@ -820,11 +820,10 @@ function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant
       }}
     >
       {hasImage && (
-        // Jak w mockupie: widoczne zdjęcie po prawej, wygaszane poziomym gradientem
-        // w tło karty ku lewej (czytelny tytuł) i lekko ku dołowi. Pod treścią (z-index).
+        // Jak w mockupie: widoczne zdjęcie po prawej, wygaszane (feather alphy przez
+        // mask-image w CSS) w lewo pod tytuł i lekko ku dołowi. Pod treścią (z-index).
         <div className="event-rich-media" aria-hidden="true">
           <img src={ev.image_url ?? ''} alt="" className="event-rich-img" />
-          <div className="event-rich-scrim" />
         </div>
       )}
       <div className="event-rich-head">
