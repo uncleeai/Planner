@@ -1552,3 +1552,45 @@ main::before {
   text-shadow: 0 0 10px rgba(255, 69, 58, 0.25);
 }
 
+
+/* ===== Autouzupełnianie lokalizacji (Open-Meteo geocoding) ===== */
+.loc-autocomplete { position: relative; }
+.loc-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #14141b;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.loc-suggestions li { margin: 0; }
+.loc-suggestions button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: var(--text);
+  font-weight: 500;
+}
+.loc-suggestions button:hover { background: var(--card-2); }
+.loc-name { font-size: 0.95rem; }
+.loc-region { font-size: 0.78rem; color: var(--muted); }
+
+/* Chip pogody w karcie hero (dziedziczy układ z .event-meta) */
+.hero-weather { gap: 5px; }
+.hero-weather-emoji { font-size: 1rem; line-height: 1; }
+.hero-weather strong { color: var(--text); font-weight: 700; }

@@ -12,7 +12,9 @@ import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventImageInput from '@/components/EventImageInput';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { uploadEventImage } from '@/lib/eventImage';
+import { fetchDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
@@ -21,6 +23,11 @@ import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare } from 
 
 function progressColor(p: number): string {
   return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
+}
+// Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
+function toDateISO(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function timeAgo(iso: string): string {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -230,6 +237,7 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
@@ -317,6 +325,8 @@ export default function Home() {
       .insert({
         title: title.trim(),
         location: location.trim() || null,
+        latitude: locationCoords?.lat ?? null,
+        longitude: locationCoords?.lon ?? null,
         description: description.trim() || null,
         image_url: imageUrl,
         created_by: displayName,
@@ -507,6 +517,25 @@ export default function Home() {
   const heroVariant: 'open' | 'upcoming' =
     heroId && upcoming.some((e) => e.id === heroId) ? 'upcoming' : 'open';
 
+  // Data hero do prognozy: ustalony termin, a jak brak — najbliższy przyszły proponowany.
+  const heroDate = useMemo(() => {
+    if (!heroId) return null;
+    const settled = aggByEvent.get(heroId)?.slot;
+    if (settled) return toDateISO(settled.starts_at);
+    const now = Date.now();
+    let best: string | null = null;
+    let bestMs = Infinity;
+    for (const s of slots) {
+      if (s.event_id !== heroId) continue;
+      const end = slotEndMs(s);
+      if (end >= now && end < bestMs) {
+        bestMs = end;
+        best = s.starts_at;
+      }
+    }
+    return best ? toDateISO(best) : null;
+  }, [heroId, aggByEvent, slots]);
+
   return (
     <main className="glass-page">
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
@@ -566,12 +595,12 @@ export default function Home() {
             </div>
             <div className="field">
               <label htmlFor="location">Miejsce (opcjonalnie)</label>
-              <input
+              <LocationAutocomplete
                 id="location"
-                type="text"
-                placeholder="np. u Kubusia, u twojej starej…"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={setLocation}
+                onCoords={setLocationCoords}
+                placeholder="np. Zakopane, Łabiszyn…"
               />
             </div>
 
@@ -698,12 +727,12 @@ export default function Home() {
                   </div>,
                   <div className="field" key="loc">
                     <label htmlFor="location">Miejsce (opcjonalnie)</label>
-                    <input
+                    <LocationAutocomplete
                       id="location"
-                      type="text"
-                      placeholder="np. u Kuby, Zakopane…"
                       value={location}
-                      onChange={(e) => setLocation(e.target.value)}
+                      onChange={setLocation}
+                      onCoords={setLocationCoords}
+                      placeholder="np. Zakopane, Łabiszyn…"
                     />
                   </div>,
                   <div className="field" key="desc">
@@ -754,7 +783,7 @@ export default function Home() {
       {heroEvent && (
         <section>
           <div className="section-label">Najbliższy</div>
-          <EventCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} variant={heroVariant} hero />
+          <EventCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} variant={heroVariant} hero weatherDate={heroDate} />
         </section>
       )}
       <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
@@ -801,7 +830,26 @@ function Section({
   );
 }
 
-function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
+// Chip pogody w hero: prognoza Open-Meteo na dzień wypadu. Renderuje się tylko gdy są
+// współrzędne i prognoza w zasięgu (~16 dni); inaczej nic (bez błędu).
+function HeroWeather({ lat, lon, dateISO }: { lat: number; lon: number; dateISO: string }) {
+  const [w, setW] = useState<DayWeather | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchDayWeather(lat, lon, dateISO).then((r) => alive && setW(r));
+    return () => { alive = false; };
+  }, [lat, lon, dateISO]);
+  if (!w) return null;
+  const { emoji, label } = describeWeather(w.code);
+  return (
+    <span className="event-meta hero-weather">
+      <span className="hero-weather-emoji">{emoji}</span>
+      <strong>{w.tempMax}°</strong> {label}
+    </span>
+  );
+}
+
+function EventCard({ ev, agg, variant, hero, weatherDate }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean; weatherDate?: string | null }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
   const hasImage = !!ev.image_url;
@@ -844,6 +892,9 @@ function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant
           <span className="event-meta"><IconCalendar size={14} /> {formatSlotRange(agg.slot)}</span>
         ) : (
           <span className="event-meta"><IconCalendar size={14} /> Zbieramy terminy</span>
+        )}
+        {hero && ev.latitude != null && ev.longitude != null && weatherDate && (
+          <HeroWeather lat={ev.latitude} lon={ev.longitude} dateISO={weatherDate} />
         )}
       </div>
 

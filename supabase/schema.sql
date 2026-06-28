@@ -60,6 +60,13 @@ alter table public.events
 alter table public.events
   add column if not exists image_url text;
 
+-- Współrzędne wybranej miejscowości (z geokodowania Open-Meteo) — do prognozy pogody.
+-- Null gdy lokalizacja to wolny tekst bez wyboru z listy.
+alter table public.events
+  add column if not exists latitude double precision;
+alter table public.events
+  add column if not exists longitude double precision;
+
 -- Sprzątanie po wcześniejszym (porzuconym) pomyśle z „ekipami" — bezpieczne, jeśli nie istniały.
 alter table public.events drop column if exists group_id;
 drop table if exists public.groups cascade;
