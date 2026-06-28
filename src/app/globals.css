@@ -985,23 +985,21 @@ body.login-active .glass-bg { display: none; }
   z-index: 1;
 }
 
-/* Szkło BEZ przeskoku przy wejściu strony: animacja main { opacity:0→1 } wyłącza
-   backdrop-filter u potomków, więc przez 0,3 s blur nie działa. Klucz: baza jest na tyle
-   kryjąca i ciemna, że klatka „bez blura" (podczas fade) wygląda praktycznie identycznie
-   jak końcowa z blurem — przeskok znika, a backdrop-filter dokłada subtelny frost wideo
-   na wierzchu. Lekki blur wystarcza, bo baza i tak kryje (taniej niż dawne 30px). */
+/* Recepta szkła Apple (Apple Glassmorphism): bg-white/[0.03] + blur(30px) + saturate(200%).
+   Działa bez przeskoku, bo strona NIE animuje już opacity na <main> (patrz page-in niżej) —
+   animowany opacity przodka wyłączał backdrop-filter i powodował „doskok" koloru. */
 .glass-page .card,
 .glass-page .empty-state,
 .glass-page .tip-banner {
-  background: rgba(18, 18, 24, 0.58);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  backdrop-filter: blur(30px) saturate(200%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
     0 20px 40px rgba(0, 0, 0, 0.4);
 }
-.glass-page .card:hover { background: rgba(28, 28, 34, 0.6); }
+.glass-page .card:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* Szklane karty wydarzeń */
 .glass-page .event-rich {
@@ -1238,11 +1236,9 @@ body.login-active .glass-bg { display: none; }
 /* Tylko opacity — BEZ transform. Transform promował <main> na warstwę GPU, która przy
    rozwijaniu formularza „Nowy wypad" przerysowywała się z sub-pikselowym drżeniem (cały
    UI, łącznie z nagłówkiem, się trząsł). Fade nie tworzy takiej warstwy → stabilnie. */
-@keyframes page-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-main { animation: page-in 0.3s ease both; }
+/* Brak animacji opacity na <main>: wygaszanie wejścia strony wyłączało backdrop-filter
+   na szklanych kartach (przeskok koloru). Strona pojawia się od razu — szkło działa od
+   pierwszej klatki. Płynność dają lokalne animacje (kaskada pól, slider głosów itd.). */
 
 @media (prefers-reduced-motion: reduce) {
   main { animation: none; }
