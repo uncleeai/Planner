@@ -60,6 +60,117 @@ const MAJOR_QUOTES = [
   "„Muszę mieć lepszą wiadomość!”"
 ];
 
+type ActivityItem = {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  name: string;
+  avatar: string | null;
+  body: string;
+  createdAt: string;
+};
+
+// Pastylka „liquid glass": jeden komentarz na raz, przewijana palcem w pionie,
+// a gdy nikt nie dotyka — sama rotuje co kilka sekund. Tap/klik → otwiera wypad.
+function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (eventId: string) => void }) {
+  const [idx, setIdx] = useState(0);
+  const [drag, setDrag] = useState(0);
+  const dragRef = useRef(0);
+  const startY = useRef<number | null>(null);
+  const pausedRef = useRef(false);
+  const swallowClick = useRef(false);
+
+  useEffect(() => {
+    if (idx > items.length - 1) setIdx(0);
+  }, [items.length, idx]);
+
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const t = window.setInterval(() => {
+      if (!pausedRef.current) setIdx((i) => (i + 1) % items.length);
+    }, 5000);
+    return () => window.clearInterval(t);
+  }, [items.length]);
+
+  const safeIdx = Math.min(idx, items.length - 1);
+  const item = items[safeIdx];
+  if (!item) return null;
+
+  const go = (dir: number) => setIdx((i) => (i + dir + items.length) % items.length);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startY.current = e.touches[0].clientY;
+    pausedRef.current = true;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (startY.current == null) return;
+    const dy = Math.max(-44, Math.min(44, e.touches[0].clientY - startY.current));
+    dragRef.current = dy;
+    setDrag(dy);
+  };
+  const onTouchEnd = () => {
+    startY.current = null;
+    pausedRef.current = false;
+    const dy = dragRef.current;
+    dragRef.current = 0;
+    setDrag(0);
+    if (Math.abs(dy) > 24) {
+      go(dy < 0 ? 1 : -1); // w górę → następny, w dół → poprzedni
+      swallowClick.current = true; // nie otwieraj wypadu po geście
+    }
+  };
+  const onClick = () => {
+    if (swallowClick.current) {
+      swallowClick.current = false;
+      return;
+    }
+    onOpen(item.eventId);
+  };
+
+  return (
+    <div className="activity-pill">
+      <div
+        className="activity-pill-touch"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+      >
+        <div
+          key={item.id}
+          className="activity-pill-content"
+          style={drag ? { transform: `translateY(${drag}px)`, transition: 'none', animation: 'none' } : undefined}
+        >
+          <Avatar name={item.name} avatar={item.avatar} size={34} />
+          <div className="activity-body">
+            <div className="activity-head">
+              <span className="activity-author">{item.name}</span>
+              <span className="activity-event">· {item.eventTitle}</span>
+              <span className="activity-time">{timeAgo(item.createdAt)}</span>
+            </div>
+            <p className="activity-text">{item.body}</p>
+          </div>
+        </div>
+      </div>
+      {items.length > 1 && (
+        <div className="activity-dots">
+          {items.map((it, i) => (
+            <button
+              key={it.id}
+              type="button"
+              className={`activity-dot${i === safeIdx ? ' on' : ''}`}
+              aria-label={`Komentarz ${i + 1}`}
+              onClick={() => setIdx(i)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const navigate = useTransitionNavigate();
   const { userId, displayName } = useAuth();
@@ -316,6 +427,24 @@ export default function Home() {
 
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
 
+  const activityItems = useMemo<ActivityItem[]>(
+    () =>
+      recentComments.map((c) => {
+        const ev = events.find((e) => e.id === c.event_id);
+        const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+        return {
+          id: c.id,
+          eventId: c.event_id,
+          eventTitle: ev?.title ?? 'wypad',
+          name: prof?.display_name ?? c.author_name,
+          avatar: prof?.avatar ?? null,
+          body: c.body,
+          createdAt: c.created_at,
+        };
+      }),
+    [recentComments, events, profileById],
+  );
+
   return (
     <main className="glass-page">
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
@@ -407,32 +536,10 @@ export default function Home() {
         </div>
       )}
 
-      {recentComments.length > 0 && (
+      {activityItems.length > 0 && (
         <section className="activity">
           <div className="section-label">Ostatnia aktywność</div>
-          {recentComments.map((c) => {
-            const ev = events.find((e) => e.id === c.event_id);
-            const prof = c.user_id ? profileById.get(c.user_id) : undefined;
-            const name = prof?.display_name ?? c.author_name;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                className="activity-item"
-                onClick={() => navigate(`/event/${c.event_id}`, 'forward')}
-              >
-                <Avatar name={name} avatar={prof?.avatar ?? null} size={32} />
-                <div className="activity-body">
-                  <div className="activity-head">
-                    <span className="activity-author">{name}</span>
-                    {ev && <span className="activity-event">· {ev.title}</span>}
-                    <span className="activity-time">{timeAgo(c.created_at)}</span>
-                  </div>
-                  <p className="activity-text">{c.body}</p>
-                </div>
-              </button>
-            );
-          })}
+          <ActivityPill items={activityItems} onOpen={(id) => navigate(`/event/${id}`, 'forward')} />
         </section>
       )}
 

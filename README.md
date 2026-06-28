@@ -233,3 +233,7 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 - Logowanie przez Google (jedno kliknięcie) obok kodu e-mail; allowlista e-maili.
 - Mentiony / powiadomienia z komentarzy (komentarze pod wypadem i feed „Ostatnia
   aktywność" na dashboardzie już są).
+- **Formatowanie opisu wypadu.** W polu „Opis" pozwolić na lekki rich-text /
+  markdown — szczególnie szybkie ładne **listy** (punktowane / do odhaczenia
+  „co kto bierze"), pogrubienie, linki. Render np. prostym parserem markdown
+  albo edytorem; uważać na sanityzację HTML.
