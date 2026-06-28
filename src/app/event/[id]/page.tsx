@@ -351,6 +351,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // Organizator wypadu LUB admin aplikacji (właściciel) — pełne uprawnienia zarządzania.
   const isOrganizer = isAdmin || !event?.created_by_user_id || event.created_by_user_id === userId;
 
+  // Wypad już się odbył (ustalony termin minął) → strona staje się podglądem:
+  // bez dodawania/edycji terminów, ustalania i głosowania.
+  const settledSlotObj = status.slotId ? slots.find((s) => s.id === status.slotId) ?? null : null;
+  const isPast = status.settled && settledSlotObj ? slotEndMs(settledSlotObj) < Date.now() : false;
+
   const memberCount = members.length;
   const votedCount = participantsPeople.length;
   const votedPct = memberCount > 0 ? Math.min(100, Math.round((votedCount / memberCount) * 100)) : 0;
@@ -419,7 +424,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       <header className="app-header">
         <div className="title-row">
           <h1 className="large-title">{event?.title}</h1>
-          {isOrganizer && (
+          {isOrganizer && !isPast && (
             <button
               type="button"
               className="title-edit-btn"
@@ -476,7 +481,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <p className="event-description">{event.description}</p>
       )}
 
-      {slots.length > 0 && missingVoters.length > 0 && (
+      {isPast && (
+        <p className="readonly-note">Ten wypad już się odbył — to tylko podgląd.</p>
+      )}
+
+      {!isPast && slots.length > 0 && missingVoters.length > 0 && (
         <div className="vote-status">
           <div className="vote-status-row">
             {votedCount > 0 && <AvatarStack people={participantsPeople} size={26} />}
@@ -528,7 +537,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               {isSettledSlot && <span className="badge">✓ Ustalony</span>}
               {showBestBadge && <span className="badge">na czele</span>}
               {showTieBadge && <span className="badge badge-open">remis</span>}
-              {canDelete && (
+              {canDelete && !isPast && (
                 <>
                   <span className="spacer" />
                   <button
@@ -549,7 +558,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <span className="no">✗ {no}</span>
             </div>
 
-            {(() => {
+            {!isPast && (() => {
               const selectedIndex = CHOICES.findIndex((c) => c.value === mine);
               return (
                 <div className={`choices ${selectedIndex !== -1 ? `active-index-${selectedIndex}` : 'no-active'}`}>
@@ -583,7 +592,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               </div>
             )}
 
-            {isOrganizer && (
+            {isOrganizer && !isPast && (
               <div className="slot-confirm-row">
                 {event?.confirmed_slot_id === slot.id ? (
                   <button type="button" className="ghost slot-confirm-btn" onClick={unconfirmSlot}>
@@ -602,6 +611,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
 
 
+        {!isPast && (
         <div className={`add-slot-wrapper${showAddForm ? ' open' : ''}`}>
           <button
             type="button"
@@ -632,6 +642,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             </form>
           </div>
         </div>
+        )}
       </div>
 
       {isOrganizer && !editing && (

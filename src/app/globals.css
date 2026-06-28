@@ -1104,6 +1104,17 @@ body.login-active .glass-bg { display: none; }
   white-space: pre-line;
 }
 
+/* Notka, że wypad już się odbył (strona w trybie podglądu) */
+.readonly-note {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 /* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */
 .toast {
   position: fixed;

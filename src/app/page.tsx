@@ -534,7 +534,7 @@ export default function Home() {
       <Section title="W trakcie" events={open} agg={aggByEvent} variant="open" />
       <Section title="Nadchodzące" events={upcoming} agg={aggByEvent} variant="upcoming" />
       <Section title="Nie ustalono" events={expired} agg={aggByEvent} variant="expired" muted />
-      <Section title="Odbyte" events={past} agg={aggByEvent} variant="past" muted />
+      <Section title="Bylim już" events={past} agg={aggByEvent} variant="past" muted />
 
       {!loading && events.length > 0 && quote && (
         <div 
@@ -632,7 +632,7 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
         ) : (
           <>
             <span className="spacer" />
-            {variant === 'past' && <span className="badge">✓ Odbyte</span>}
+            {variant === 'past' && <span className="badge">✓ Bylim już</span>}
             {variant === 'upcoming' && <span className="badge">Ustalone</span>}
             {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
           </>
