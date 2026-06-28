@@ -156,6 +156,9 @@ i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql
 
 ## Conventions
 
+- **Tryb ponytail (domyślnie):** pracuj wg skilla `ponytail` (full) — najprostsze
+  działające rozwiązanie, YAGNI, stdlib/native przed zależnościami, najkrótszy diff.
+  Wyłączasz słowami „stop ponytail" / „normal mode".
 - **Język/wersje:** TypeScript w trybie `strict`; React 19; Next 16 App Router.
 - **Alias importów:** `@/...` wskazuje na `src/...` (zob. `tsconfig.json`).
 - **`params` jest asynchroniczne** (Next 15+): w stronach odpakowuj przez
