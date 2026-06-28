@@ -14,6 +14,7 @@ import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
+import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
 
 
@@ -67,25 +68,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
 
   const load = useCallback(async () => {
-    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] = await Promise.all([
-      supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
-      supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
-      supabase.from('votes').select('*').eq('event_id', eventId),
-      supabase.from('profiles').select('*'),
-      supabase.from('comments').select('*').eq('event_id', eventId).order('created_at'),
-    ]);
+    const { event: ev, slots: sl, votes: vo, profiles: pr, comments: cm, notFound: nf } =
+      await loadEventBundle(eventId);
 
-    if (evErr || !ev) {
+    if (nf || !ev) {
       setNotFound(true);
     } else {
-      setEvent(ev as EventRow);
-      setSlots((sl ?? []) as Slot[]);
-      setMembers((pr ?? []) as Profile[]);
-      setComments((cm ?? []) as Comment[]);
+      setEvent(ev);
+      setSlots(sl);
+      setMembers(pr);
+      setComments(cm);
 
       // Nałóż oczekujące głosy bieżącego użytkownika na świeży stan z bazy:
       // jego ostatni wybór wygrywa, dopóki baza go nie potwierdzi (wtedy czyścimy pending).
-      const dbVotes = (vo ?? []) as Vote[];
+      const dbVotes = vo;
       const pending = pendingVotesRef.current;
       const merged = dbVotes.map((v) => {
         if (v.user_id === userId && pending.has(v.slot_id)) {
@@ -115,10 +111,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       // Odśwież cache tego wypadu, by powrót na listę pokazał aktualne dane.
       mergeEventData(eventId, {
-        event: ev as EventRow,
-        slots: (sl ?? []) as Slot[],
+        event: ev,
+        slots: sl,
         votes: dbVotes,
-        profiles: (pr ?? []) as Profile[],
+        profiles: pr,
       });
     }
     setLoading(false);

@@ -14,6 +14,7 @@ import DescriptionInput from '@/components/DescriptionInput';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
+import { prefetchEvent } from '@/lib/eventPrefetch';
 import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare } from '@/components/icons';
 
 function progressColor(p: number): string {
@@ -757,6 +758,9 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
     <Link
       href={href}
       className="event-rich"
+      // Dotknięcie karty → pobierz dane wypadu w tle, nim odpali się nawigacja:
+      // round-trip do bazy nakłada się na tap i montowanie strony.
+      onPointerDown={() => prefetchEvent(ev.id)}
       onClick={(e) => {
         // Pozwól na otwieranie w nowej karcie (Cmd/Ctrl/środkowy przycisk); inaczej animowany slide.
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
