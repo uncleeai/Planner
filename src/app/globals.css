@@ -1146,7 +1146,7 @@ body.login-active .glass-bg { display: none; }
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
-  padding: 0 26px 0 16px;
+  padding: 0 16px;
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 22px rgba(0, 0, 0, 0.22);
@@ -1174,19 +1174,6 @@ body.login-active .glass-bg { display: none; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* Kropki pozycji — pionowo, przy prawej krawędzi pastylki */
-.activity-dots {
-  position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: 6px;
-}
-.activity-dot {
-  width: 5px; height: 5px; min-height: 0; padding: 0;
-  border-radius: 50%; border: none;
-  background: rgba(255, 255, 255, 0.25);
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-.activity-dot:hover { background: rgba(255, 255, 255, 0.5); }
-.activity-dot.on { background: rgba(255, 255, 255, 0.9); transform: scale(1.4); }
 
 /* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */
 .toast {
