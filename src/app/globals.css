@@ -1013,40 +1013,34 @@ body.login-active .glass-bg { display: none; }
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 20px 40px rgba(0, 0, 0, 0.4);
 }
-/* Hover tylko dla kart BEZ zdjęcia — skrót `background` skasowałby background-image. */
-.glass-page .event-rich:not(.has-image):hover {
+/* Hover — bezpieczny dla obu, bo zdjęcie jest w ::before, nie w tle elementu. */
+.glass-page .event-rich:hover {
   background: rgba(26, 26, 32, 0.6);
   border-color: rgba(255, 255, 255, 0.12);
 }
-.glass-page .event-rich.has-image:hover { border-color: rgba(255, 255, 255, 0.16); }
 
-/* Zdjęcie w tle karty (Faza 1): obraz jako tło elementu, scrim dla czytelności tekstu,
-   treść nad nim. Bez zdjęcia — delikatny gradient, żeby karta nie była płaska. */
+/* Zdjęcie wypadu NIE pokrywa całej karty: obraz zakotwiczony w prawym górnym rogu i
+   wyfadowany maską promienistą w lewo i w dół. Karta zachowuje ciemny panel jako tło,
+   więc lewa strona pozostaje ciemna i tekst jest w pełni czytelny. Obraz = akcent w rogu. */
 .glass-page .event-rich {
   position: relative;
   overflow: hidden;
   isolation: isolate;
 }
-.glass-page .event-rich.has-image {
-  background-image: var(--event-image);
-  background-size: cover;
-  background-position: center;
-}
-/* Scrim: ciemniej u góry (tytuł) i u dołu (avatary/progres), jaśniej w środku → widać zdjęcie. */
-.glass-page .event-rich.has-image::after {
+.glass-page .event-rich.has-image::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(
-    to bottom,
-    rgba(10, 10, 14, 0.78) 0%,
-    rgba(10, 10, 14, 0.42) 42%,
-    rgba(10, 10, 14, 0.88) 100%
-  );
+  background-image: var(--event-image);
+  background-size: cover;
+  background-position: top right;
+  /* Pełne krycie w prawym-górnym rogu → przezroczystość w stronę lewej i dołu. */
+  -webkit-mask-image: radial-gradient(135% 120% at 100% 0%, #000 0%, #000 30%, transparent 68%);
+  mask-image: radial-gradient(135% 120% at 100% 0%, #000 0%, #000 30%, transparent 68%);
 }
-/* Fallback bez zdjęcia — subtelny gradient w tonie apki. */
-.glass-page .event-rich:not(.has-image)::after {
+/* Fallback bez zdjęcia — subtelny gradient w tonie apki, żeby karta nie była płaska. */
+.glass-page .event-rich:not(.has-image)::before {
   content: '';
   position: absolute;
   inset: 0;
