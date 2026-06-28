@@ -520,23 +520,23 @@ export default function Home() {
   const heroVariant: 'open' | 'upcoming' =
     heroId && upcoming.some((e) => e.id === heroId) ? 'upcoming' : 'open';
 
-  // Data hero do prognozy: ustalony termin, a jak brak — najbliższy przyszły proponowany.
-  const heroDate = useMemo(() => {
+  // Termin hero (do pogody i godziny zbiórki): ustalony, a jak brak — najbliższy proponowany.
+  const heroSlot = useMemo<Slot | null>(() => {
     if (!heroId) return null;
     const settled = aggByEvent.get(heroId)?.slot;
-    if (settled) return toDateISO(settled.starts_at);
+    if (settled) return settled;
     const now = Date.now();
-    let best: string | null = null;
+    let best: Slot | null = null;
     let bestMs = Infinity;
     for (const s of slots) {
       if (s.event_id !== heroId) continue;
       const end = slotEndMs(s);
       if (end >= now && end < bestMs) {
         bestMs = end;
-        best = s.starts_at;
+        best = s;
       }
     }
-    return best ? toDateISO(best) : null;
+    return best;
   }, [heroId, aggByEvent, slots]);
 
   return (
@@ -789,7 +789,7 @@ export default function Home() {
       {heroEvent && (
         <section>
           <div className="section-label">Najbliższy</div>
-          <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} weatherDate={heroDate} variant={heroVariant} />
+          <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} slot={heroSlot} variant={heroVariant} />
         </section>
       )}
       <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
@@ -838,12 +838,18 @@ function Section({
 
 // Bogata karta najbliższego wypadu (układ z mockupu): emoji w kółku + tytuł + status,
 // lokalizacja/data, szklany pod-panel (avatary + „X z Y" + pasek), grid Pogoda + Zbiórka.
-function HeroCard({ ev, agg, memberCount, weatherDate, variant }: {
-  ev: EventRow; agg: Agg; memberCount: number; weatherDate: string | null; variant: 'open' | 'upcoming';
+function HeroCard({ ev, agg, memberCount, slot, variant }: {
+  ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming';
 }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
   const hasImage = !!ev.image_url;
+
+  // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
+  const weatherDate = slot ? toDateISO(slot.starts_at) : null;
+  const meetTime = slot && !slot.all_day
+    ? new Date(slot.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   // Pogoda na dzień wypadu (gdy są współrzędne i termin w zasięgu).
   const hasCoords = ev.latitude != null && ev.longitude != null && !!weatherDate;
@@ -855,12 +861,6 @@ function HeroCard({ ev, agg, memberCount, weatherDate, variant }: {
       .then((r) => alive && setWeather(r));
     return () => { alive = false; };
   }, [hasCoords, ev.latitude, ev.longitude, weatherDate]);
-
-  // „Zbiórka": godzina z ustalonego terminu (gdy ma konkretną godzinę).
-  const settled = agg.slot;
-  const meetTime = settled && !settled.all_day
-    ? new Date(settled.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
-    : null;
 
   const badge = variant === 'upcoming'
     ? { label: 'Ustalone', cls: 'hero-badge hero-badge-green' }

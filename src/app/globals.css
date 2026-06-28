@@ -675,8 +675,8 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 12px;
+  padding: 13px 14px;
+  margin-bottom: 10px;
   text-decoration: none;
   color: var(--text);
   box-shadow: var(--shadow);
@@ -689,12 +689,12 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .event-rich:hover { background: var(--card-2); border-color: var(--border-strong); text-decoration: none; }
 .event-rich:active { transform: scale(0.992); }
 .event-rich-head { display: flex; align-items: center; gap: 10px; }
-.event-rich-title { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; flex: 1; min-width: 0; }
+.event-rich-title { font-weight: 600; font-size: 0.98rem; letter-spacing: -0.01em; flex: 1; min-width: 0; }
 
-.event-meta { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.88rem; }
+.event-meta { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.84rem; }
 .event-meta svg { flex-shrink: 0; opacity: 0.85; }
-.event-meta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
-.event-rich-foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; min-height: 28px; }
+.event-meta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 5px; }
+.event-rich-foot { display: flex; align-items: center; gap: 12px; margin-top: 9px; min-height: 22px; }
 .event-rich-foot .spacer { flex: 1; }
 
 /* Pasek postępu głosowania */
