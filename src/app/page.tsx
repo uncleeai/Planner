@@ -809,7 +809,6 @@ function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant
     <Link
       href={href}
       className={`event-rich${hero ? ' hero' : ''}${hasImage ? ' has-image' : ''}`}
-      style={hasImage ? ({ ['--event-image']: `url("${ev.image_url}")` } as React.CSSProperties) : undefined}
       // Dotknięcie karty → pobierz dane wypadu w tle, nim odpali się nawigacja:
       // round-trip do bazy nakłada się na tap i montowanie strony.
       onPointerDown={() => prefetchEvent(ev.id)}
@@ -820,6 +819,14 @@ function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant
         navigate(href, 'forward');
       }}
     >
+      {hasImage && (
+        // Jak w mockupie: zdjęcie to ledwie widoczna tekstura (opacity 0.2 + luminosity),
+        // przyciemniona gradientem ku dołowi. Pod treścią (z-index), nie tło karty.
+        <div className="event-rich-media" aria-hidden="true">
+          <img src={ev.image_url ?? ''} alt="" className="event-rich-img" />
+          <div className="event-rich-scrim" />
+        </div>
+      )}
       <div className="event-rich-head">
         <span className="event-rich-title">{ev.title}</span>
         <IconChevron size={18} className="row-chevron" />

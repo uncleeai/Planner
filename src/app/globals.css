@@ -1024,21 +1024,31 @@ body.login-active .glass-bg { display: none; }
   position: relative;
   overflow: hidden;
 }
-/* Zdjęcie jak w mockupie: NIE żywa fotka ze scrimami, tylko ledwie widoczna TEKSTURA —
-   odbarwiona (luminosity) i przyciemniona pionowym gradientem (najmocniej u góry, czarno
-   u dołu). Stąd brak pasków i bleedu: obraz to subtelny cień tła, nie zdjęcie. Ramka i
-   połysk szkła zostają normalne (jak w mockupie), bo na tej teksturze już nie kontrastują. */
-.glass-page .event-rich.has-image {
-  background-color: #0c0c14;
-  background-image:
-    linear-gradient(to top, #0c0c14 0%, rgba(12, 12, 20, 0.9) 50%, rgba(12, 12, 20, 0.42) 100%),
-    var(--event-image);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  /* dolna warstwa (obraz) zlewa się z ciemnym tłem przez luminosity → odbarwienie */
-  background-blend-mode: normal, luminosity;
+/* Zdjęcie DOKŁADNIE jak w mockupie: prawdziwy <img> z opacity 0.2 + mix-blend luminosity
+   (odbarwienie), pod treścią karty, + gradient ku dołowi. To `opacity: 0.2` czyni je ledwie
+   widoczną teksturą — nie czytelną fotką. Stąd zero pasków/bleedu i „nie widać że to zdjęcie". */
+.glass-page .event-rich.has-image { background-color: #0c0c14; }
+.event-rich-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
 }
+.event-rich-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.2;
+  mix-blend-mode: luminosity;
+}
+.event-rich-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #0c0c14 0%, rgba(12, 12, 20, 0.9) 50%, rgba(12, 12, 20, 0.4) 100%);
+}
+/* Treść karty nad warstwą zdjęcia. */
+.glass-page .event-rich.has-image > *:not(.event-rich-media) { position: relative; z-index: 1; }
 /* Fallback bez zdjęcia — subtelny gradient w tonie apki, żeby karta nie była płaska. */
 .glass-page .event-rich:not(.has-image) {
   background-image: linear-gradient(135deg, rgba(91, 87, 242, 0.10), rgba(255, 255, 255, 0.012) 62%);
