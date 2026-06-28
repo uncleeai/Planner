@@ -1024,17 +1024,18 @@ body.login-active .glass-bg { display: none; }
   position: relative;
   overflow: hidden;
 }
-/* Zdjęcie wypadu NIE pokrywa całej karty: obraz to tło elementu, a NAD nim radialny
-   ciemny scrim — przezroczysty w prawym górnym rogu (widać zdjęcie), kryjący w lewo i
-   w dół (tam tekst). Bez masek (kruche na iOS) — zwykłe warstwy `background`, scrim
-   jako pierwsza (górna) warstwa nad obrazem. */
+/* Zdjęcie wypadu NIE pokrywa całej karty: obraz to tło, a NAD nim DWA liniowe scrimy —
+   ciemność od lewej (pod tytuł/meta) i od dołu (pod stopkę). Razem gwarantują czytelność
+   i zabijają jasny prześwit zdjęcia na dole, niezależnie od fotki. Obraz widać w prawej
+   górnej części. Bez masek (kruche na iOS) — zwykłe warstwy `background`. */
 .glass-page .event-rich.has-image {
   background-image:
-    radial-gradient(135% 125% at 100% 0%, transparent 0%, transparent 26%, rgba(13, 13, 17, 0.55) 50%, rgba(13, 13, 17, 0.97) 74%),
+    linear-gradient(to right, rgba(13, 13, 17, 0.95) 0%, rgba(13, 13, 17, 0.5) 40%, transparent 72%),
+    linear-gradient(to top, rgba(13, 13, 17, 0.9) 0%, transparent 42%),
     var(--event-image);
-  background-size: cover, cover;
-  background-position: center, top right;
-  background-repeat: no-repeat, no-repeat;
+  background-size: cover, cover, cover;
+  background-position: center, center, center;
+  background-repeat: no-repeat;
 }
 /* Fallback bez zdjęcia — subtelny gradient w tonie apki, żeby karta nie była płaska. */
 .glass-page .event-rich:not(.has-image) {
