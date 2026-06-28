@@ -1231,17 +1231,28 @@ body.login-active .glass-bg { display: none; }
 /* ===== Wejście strony ===== */
 /* Bez snapshotów View Transitions: na części iOS `router.push` odpalany wewnątrz
    przejścia bywał porzucany (tap nie przenosił na event, slajd leciał „home → home").
-   Teraz nawigacja to zwykły router.push (NIGDY nie zawiedzie), a nowa strona animuje
-   się przy zamontowaniu czystym CSS na <main> — odporne na każde urządzenie, bez wyścigów. */
-/* Tylko opacity — BEZ transform. Transform promował <main> na warstwę GPU, która przy
-   rozwijaniu formularza „Nowy wypad" przerysowywała się z sub-pikselowym drżeniem (cały
-   UI, łącznie z nagłówkiem, się trząsł). Fade nie tworzy takiej warstwy → stabilnie. */
-/* Brak animacji opacity na <main>: wygaszanie wejścia strony wyłączało backdrop-filter
-   na szklanych kartach (przeskok koloru). Strona pojawia się od razu — szkło działa od
-   pierwszej klatki. Płynność dają lokalne animacje (kaskada pól, slider głosów itd.). */
+   Teraz nawigacja to zwykły router.push (NIGDY nie zawiedzie). */
+/* Animacja wejścia przez KURTYNĘ, nie przez opacity na <main>. Animowany opacity/transform
+   przodka wyłącza backdrop-filter u potomków → szklane karty „doskakiwały" kolorem po
+   wygaszeniu. Tu nakrywamy stronę warstwą w kolorze tła i wygaszamy JĄ; ::before nie jest
+   przodkiem kart, więc szkło jest poprawne od pierwszej klatki, a kurtyna je tylko odsłania.
+   (Transform też odpada — promował <main> na warstwę GPU, co dawało drżenie przy formularzu.) */
+main::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--bg);
+  animation: page-curtain 0.32s ease forwards;
+}
+@keyframes page-curtain {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  main { animation: none; }
+  main::before { animation: none; opacity: 0; }
 }
 
 /* Animacja rozwijania formularza nowego wypadu */
