@@ -212,14 +212,19 @@ export default function Home() {
       const evVotes = votesByEvent.get(ev.id) ?? [];
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
 
-      // Ustalony (ręcznie LUB wszyscy dali znać) → Nadchodzące / Odbyte.
+      // Ustalony (ręcznie LUB wszyscy dali znać) → Nadchodzące / Bylim już.
       // Liczone od KOŃCA terminu (zakres/cały dzień trwa do końca ostatniego dnia).
       if (status.settled && status.date) {
         confirmedDateMap.set(ev.id, status.date);
         const settledSlot = evSlots.find((s) => s.id === status.slotId);
         const endMs = settledSlot ? slotEndMs(settledSlot) : new Date(status.date).getTime();
-        if (endMs >= now) upcoming.push(ev);
-        else past.push(ev);
+        if (endMs >= now) {
+          upcoming.push(ev);
+        } else if (endMs >= now - 7 * DAY) {
+          // „Bylim już" pokazujemy do tygodnia po wypadzie; starsze → archiwum
+          // (pomijamy z listy, zostają w bazie pod przyszły widok archiwum).
+          past.push(ev);
+        }
         continue;
       }
 
