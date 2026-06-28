@@ -83,10 +83,13 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   const startY = useRef<number | null>(null);
   const pausedRef = useRef(false);
   const swallowClick = useRef(false);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (idx > items.length - 1) setIdx(0);
   }, [items.length, idx]);
+
+  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
   useEffect(() => {
     if (items.length <= 1) return;
@@ -101,6 +104,7 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   if (n === 0) return null;
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     startY.current = e.touches[0].clientY;
     pausedRef.current = true;
     setDragging(true);
@@ -118,20 +122,23 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   const onTouchEnd = () => {
     startY.current = null;
     pausedRef.current = false;
-    setDragging(false);
     const dy = dragRef.current;
     dragRef.current = 0;
-    setDrag(0);
+
     const TH = SLIDE_H / 3;
-    if (dy <= -TH && safeIdx < n - 1) {
-      setIdx(safeIdx + 1);
-      swallowClick.current = true;
-    } else if (dy >= TH && safeIdx > 0) {
-      setIdx(safeIdx - 1);
-      swallowClick.current = true;
-    } else if (Math.abs(dy) > 6) {
-      swallowClick.current = true; // był gest, ale bez progu — nie otwieraj wypadu
-    }
+    let target = safeIdx;
+    if (dy <= -TH && safeIdx < n - 1) target = safeIdx + 1;
+    else if (dy >= TH && safeIdx > 0) target = safeIdx - 1;
+    if (target !== safeIdx || Math.abs(dy) > 6) swallowClick.current = true;
+
+    // Najpierw włącz transicję (tor zostaje w pozycji z palca), a docelową pozycję
+    // ustaw dopiero w następnej klatce — inaczej zmiana transformu w tej samej klatce
+    // co transition:none→0.38s skacze bez animacji („teleport").
+    setDragging(false);
+    rafRef.current = requestAnimationFrame(() => {
+      setDrag(0);
+      setIdx(target);
+    });
   };
   const onClick = () => {
     if (swallowClick.current) {
