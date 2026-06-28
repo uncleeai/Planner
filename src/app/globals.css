@@ -1035,9 +1035,11 @@ body.login-active .glass-bg { display: none; }
   background-image: var(--event-image);
   background-size: cover;
   background-position: top right;
-  /* Pełne krycie w prawym-górnym rogu → przezroczystość w stronę lewej i dołu. */
-  -webkit-mask-image: radial-gradient(135% 120% at 100% 0%, #000 0%, #000 30%, transparent 68%);
-  mask-image: radial-gradient(135% 120% at 100% 0%, #000 0%, #000 30%, transparent 68%);
+  /* Pełne krycie w prawym-górnym rogu → przezroczystość w stronę lewej i dołu.
+     UWAGA: część widoczna musi być BIAŁA — iOS Safari traktuje maskę przez luminancję,
+     gdzie #000 = ukryj wszystko (zdjęcie znikało zupełnie). #fff działa w obu trybach. */
+  -webkit-mask-image: radial-gradient(135% 120% at 100% 0%, #fff 0%, #fff 30%, transparent 68%);
+  mask-image: radial-gradient(135% 120% at 100% 0%, #fff 0%, #fff 30%, transparent 68%);
 }
 /* Fallback bez zdjęcia — subtelny gradient w tonie apki, żeby karta nie była płaska. */
 .glass-page .event-rich:not(.has-image)::before {
