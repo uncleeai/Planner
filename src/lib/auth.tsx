@@ -365,8 +365,7 @@ function SetupForm({
   }
 
   return (
-    <main>
-      <h1>Wypad.exe</h1>
+    <main className="glass-page auth-screen">
       <form className="card" onSubmit={save}>
         <h2>Twój profil</h2>
         <p className="small muted">Tę nazwę i awatar zobaczą inni przy Twoich głosach.</p>

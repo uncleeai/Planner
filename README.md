@@ -50,6 +50,29 @@ Bez kroków 1–4 strona się otworzy, ale pokaże baner z prośbą o konfigurac
    (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
 4. Deploy. Dostajesz darmowy adres `nazwa.vercel.app`, który wysyłasz znajomym.
 
+## Środowiska: produkcja vs preview (osobne bazy)
+
+Żeby testy na podglądach (preview) nie zaśmiecały produkcyjnej bazy, użyj **dwóch
+projektów Supabase** i przypisz zmienne **per środowisko** w Vercelu
+(*Settings → Environment Variables*). Apka czyta bazę wyłącznie z
+`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`, więc wystarczy je
+rozdzielić — bez zmian w kodzie:
+
+| Zmienna | Production | Preview |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL projektu **produkcyjnego** | URL projektu **dev** |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | klucz anon produkcyjny | klucz anon dev |
+
+- **Production** = deploy z gałęzi produkcyjnej (`main`) → oryginalna baza.
+- **Preview** = pozostałe branche → baza dev.
+- `NEXT_PUBLIC_*` są **wkompilowywane przy buildzie** — po zmianie zmiennych zrób
+  **redeploy** danego środowiska, inaczej stary build trzyma starą bazę.
+- W projekcie **dev** też uruchom `supabase/schema.sql` i skonfiguruj logowanie OTP
+  (Edge Functions/push opcjonalnie). Lokalnie (`.env.local`) wskazuj na dev.
+- **Przy wdrożeniu na produkcję** uruchom `supabase/schema.sql` na **oryginalnej**
+  bazie — schemat jest idempotentny, dodaje brakujące kolumny/funkcje (np. zakresy
+  terminów, `is_admin()`) bez ruszania danych.
+
 ## Skrypty
 
 - `npm run dev` — serwer deweloperski.
