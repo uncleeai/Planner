@@ -231,4 +231,5 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
   tylko do tych z paczki, którzy jeszcze nie oddali głosu (Edge Function liczy brakujących
   jak `missingVoters` i wysyła do ich subskrypcji).
 - Logowanie przez Google (jedno kliknięcie) obok kodu e-mail; allowlista e-maili.
-- Feed aktywności / mentiony na bazie komentarzy (komentarze pod wypadem już są).
+- Mentiony / powiadomienia z komentarzy (komentarze pod wypadem i feed „Ostatnia
+  aktywność" na dashboardzie już są).

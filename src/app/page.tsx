@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
-import type { EventRow, Slot, Vote, Profile } from '@/lib/types';
-import { AvatarStack, type Person } from '@/components/Avatar';
+import type { EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
+import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
@@ -17,6 +17,16 @@ import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare } from 
 
 function progressColor(p: number): string {
   return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
+}
+function timeAgo(iso: string): string {
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return 'teraz';
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} godz`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} dni`;
+  return new Date(iso).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
 }
 
 type Agg = {
@@ -60,6 +70,7 @@ export default function Home() {
   const [slots, setSlots] = useState<Slot[]>(() => cached?.slots ?? []);
   const [votes, setVotes] = useState<Vote[]>(() => cached?.votes ?? []);
   const [profiles, setProfiles] = useState<Profile[]>(() => cached?.profiles ?? []);
+  const [recentComments, setRecentComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(() => !cached);
 
   const [quote, setQuote] = useState('');
@@ -102,11 +113,12 @@ export default function Home() {
   }, [showForm]);
 
   const load = useCallback(async () => {
-    const [{ data: ev }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
+    const [{ data: ev }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] = await Promise.all([
       supabase.from('events').select('*').order('created_at', { ascending: false }),
       supabase.from('slots').select('*'),
       supabase.from('votes').select('*'),
       supabase.from('profiles').select('*'),
+      supabase.from('comments').select('*').order('created_at', { ascending: false }).limit(3),
     ]);
     const events = (ev ?? []) as EventRow[];
     const slots = (sl ?? []) as Slot[];
@@ -116,6 +128,7 @@ export default function Home() {
     setSlots(slots);
     setVotes(votes);
     setProfiles(profiles);
+    setRecentComments((cm ?? []) as Comment[]);
     setCache({ events, slots, votes, profiles }); // zaliczka dla strony wypadu
     setLoading(false);
   }, []);
@@ -127,6 +140,7 @@ export default function Home() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => load())
       .subscribe();
     // Zmiany w `events` łapie JEDNA globalna subskrypcja (NewEventToast) i rozgłasza je
     // tym zdarzeniem. Dwa kanały Realtime na tej samej tabeli gubiły dostawy (toast
@@ -300,6 +314,8 @@ export default function Home() {
     return result;
   }, [events, slots, votes, profiles]);
 
+  const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
+
   return (
     <main className="glass-page">
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
@@ -389,6 +405,35 @@ export default function Home() {
             </button>
           </form>
         </div>
+      )}
+
+      {recentComments.length > 0 && (
+        <section className="activity">
+          <div className="section-label">Ostatnia aktywność</div>
+          {recentComments.map((c) => {
+            const ev = events.find((e) => e.id === c.event_id);
+            const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+            const name = prof?.display_name ?? c.author_name;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className="activity-item"
+                onClick={() => navigate(`/event/${c.event_id}`, 'forward')}
+              >
+                <Avatar name={name} avatar={prof?.avatar ?? null} size={32} />
+                <div className="activity-body">
+                  <div className="activity-head">
+                    <span className="activity-author">{name}</span>
+                    {ev && <span className="activity-event">· {ev.title}</span>}
+                    <span className="activity-time">{timeAgo(c.created_at)}</span>
+                  </div>
+                  <p className="activity-text">{c.body}</p>
+                </div>
+              </button>
+            );
+          })}
+        </section>
       )}
 
       {loading && <p className="muted mt">Wczytuję…</p>}
