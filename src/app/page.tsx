@@ -90,7 +90,7 @@ export default function Home() {
     router.push(`/event/${data.id}`);
   }
 
-  const { open, upcoming, past } = useMemo(() => {
+  const { hero, open, upcoming, past } = useMemo(() => {
     const now = Date.now();
     const open: EventRow[] = [];
     const upcoming: EventRow[] = [];
@@ -107,8 +107,16 @@ export default function Home() {
     }
     upcoming.sort((a, b) => new Date(a.confirmed_at!).getTime() - new Date(b.confirmed_at!).getTime());
     past.sort((a, b) => new Date(b.confirmed_at!).getTime() - new Date(a.confirmed_at!).getTime());
-    return { open, upcoming, past };
+
+    // Wyróżniony wypad (karta hero): najbliższy ustalony, a jeśli brak — pierwszy do ustalenia.
+    const hero = upcoming[0] ?? open[0] ?? null;
+    return { hero, open, upcoming, past };
   }, [events]);
+
+  // Wyróżniony wypad pokazujemy tylko jako kartę hero — bez powielania na osi czasu.
+  const heroId = hero?.id;
+  const openRest = open.filter((ev) => ev.id !== heroId);
+  const upcomingRest = upcoming.filter((ev) => ev.id !== heroId);
 
   return (
     <main>
@@ -198,10 +206,55 @@ export default function Home() {
         <p className="muted mt">Brak wypadów. Kliknij „+ Nowy wypad", żeby zaproponować pierwszy.</p>
       )}
 
-      <Timeline title="Do ustalenia" events={open} />
-      <Timeline title="Nadchodzące" events={upcoming} />
+      {hero && (
+        <section className="mt">
+          <h2>🔥 Nadchodzące wypady</h2>
+          <HeroCard event={hero} />
+        </section>
+      )}
+
+      <Timeline title="Do ustalenia" events={openRest} />
+      <Timeline title="Nadchodzące" events={upcomingRest} />
       <Timeline title="Minione" events={past} muted />
     </main>
+  );
+}
+
+function HeroCard({ event }: { event: EventRow }) {
+  const confirmed = Boolean(event.confirmed_at);
+  return (
+    <Link href={`/event/${event.id}`} className="hero-card">
+      {/* Warstwa zdjęcia + gradient (CSS w globals.css). Aby dać własne zdjęcie
+          per-wypad, ustaw tu np. style={{ '--hero-image': `url(${event.image_url})` }}. */}
+      <div className="hero-card-image" aria-hidden />
+      <div className="hero-card-body">
+        <div className="hero-top">
+          <div className="hero-icon" aria-hidden>🗓️</div>
+          <div className="hero-heading">
+            <div className="hero-title">
+              <span className="truncate">{event.title}</span>
+              <span className={`hero-badge${confirmed ? '' : ' planned'}`}>
+                {confirmed ? 'Aktywny' : 'Planowany'}
+              </span>
+            </div>
+          </div>
+          <span className="hero-chevron" aria-hidden>›</span>
+        </div>
+
+        <div className="hero-meta">
+          {event.location && (
+            <div className="hero-meta-row">
+              <span className="ic" aria-hidden>📍</span>
+              <span>{event.location}</span>
+            </div>
+          )}
+          <div className="hero-meta-row">
+            <span className="ic" aria-hidden>🗓️</span>
+            <span>{confirmed ? formatDate(event.confirmed_at!) : 'Zbieramy terminy'}</span>
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
 

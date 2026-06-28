@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2238"/>
+      <stop offset="45%" stop-color="#2b2f4e"/>
+      <stop offset="70%" stop-color="#6d4b6b"/>
+      <stop offset="100%" stop-color="#c98a5a"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a06a4a"/>
+      <stop offset="35%" stop-color="#4a3c52"/>
+      <stop offset="100%" stop-color="#10131f"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffd9a0" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffd9a0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- niebo -->
+  <rect width="900" height="360" fill="url(#sky)"/>
+  <!-- słońce nisko nad horyzontem -->
+  <circle cx="560" cy="330" r="150" fill="url(#sun)"/>
+  <circle cx="560" cy="345" r="26" fill="#ffe6b8" opacity="0.9"/>
+
+  <!-- woda -->
+  <rect y="360" width="900" height="200" fill="url(#water)"/>
+  <!-- odbicie słońca -->
+  <rect x="540" y="360" width="40" height="200" fill="#ffcaa0" opacity="0.18"/>
+
+  <!-- las na drugim brzegu -->
+  <path d="M0 360 Q120 330 240 352 T520 348 T780 356 T900 350 L900 360 Z" fill="#161a28" opacity="0.95"/>
+  <!-- drzewa po prawej -->
+  <path d="M760 360 C760 300 790 250 815 200 C840 250 870 300 870 360 Z" fill="#0e1220" opacity="0.9"/>
+  <path d="M820 360 C820 290 850 240 875 190 C895 240 900 300 900 360 Z" fill="#0b0f1b" opacity="0.95"/>
+
+  <!-- molo / pomost -->
+  <g fill="#0a0d18" opacity="0.92">
+    <rect x="150" y="392" width="240" height="14"/>
+    <rect x="160" y="406" width="10" height="48"/>
+    <rect x="250" y="406" width="10" height="60"/>
+    <rect x="350" y="406" width="10" height="70"/>
+  </g>
+</svg>

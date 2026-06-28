@@ -185,6 +185,105 @@ button.ghost.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: va
 
 .badge-open { background: var(--maybe); color: #3b2f04; }
 
+/* ── Karta hero (wyróżniony, najbliższy wypad) ─────────────────────────── */
+.hero-card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--primary);
+  background: var(--card);
+  padding: 18px;
+  margin-bottom: 16px;
+  text-decoration: none;
+  color: var(--text);
+  /* Delikatna niebieska poświata jak na mockupie. */
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 8px 30px rgba(79, 70, 229, 0.18);
+}
+.hero-card:hover { border-color: var(--primary-hover); }
+
+/* Warstwa zdjęcia — wypełnia prawą część karty. */
+.hero-card-image {
+  position: absolute;
+  inset: 0;
+  background-image: var(--hero-image, url('/hero-default.svg'));
+  background-size: cover;
+  background-position: center right;
+  z-index: 0;
+}
+/* Gradient wygaszający zdjęcie w tło karty: od lewej (kryjące tło) do prawej
+   (przezroczyste, widać zdjęcie). Dodatkowy gradient w pionie dla czytelności. */
+.hero-card-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, var(--card) 18%, rgba(21, 26, 46, 0.85) 42%, rgba(21, 26, 46, 0.25) 75%, rgba(21, 26, 46, 0.15) 100%),
+    linear-gradient(0deg, rgba(11, 16, 32, 0.55) 0%, rgba(11, 16, 32, 0) 45%);
+}
+
+/* Treść karty leży nad zdjęciem. */
+.hero-card-body { position: relative; z-index: 1; }
+
+.hero-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.hero-icon {
+  flex-shrink: 0;
+  width: 56px; height: 56px;
+  display: grid; place-items: center;
+  font-size: 1.6rem;
+  border-radius: 16px;
+  background: rgba(79, 70, 229, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+.hero-heading { min-width: 0; }
+.hero-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 1.5rem; font-weight: 800; line-height: 1.1;
+}
+.hero-title .truncate {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hero-badge {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid var(--yes);
+  color: var(--yes);
+  text-transform: uppercase;
+}
+.hero-badge.planned {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--primary-hover);
+  color: var(--primary-hover);
+}
+.hero-chevron {
+  margin-left: auto; flex-shrink: 0;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 999px;
+  background: rgba(20, 24, 40, 0.7);
+  border: 1px solid var(--border);
+  font-size: 1.1rem; color: var(--text);
+}
+
+.hero-meta { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.hero-meta-row { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--text); }
+.hero-meta-row .ic { opacity: 0.85; }
+
+.hero-progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 0.85rem; color: var(--muted); margin-bottom: 6px;
+}
+.hero-progress-track {
+  height: 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.hero-progress-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+}
+
 /* Baner ustalonego terminu na stronie wypadu */
 .confirmed-banner {
   margin-top: 12px;
