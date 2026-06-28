@@ -1065,11 +1065,19 @@ body.login-active .glass-bg { display: none; }
   background-image: linear-gradient(135deg, rgba(91, 87, 242, 0.10), rgba(255, 255, 255, 0.012) 62%);
 }
 
-/* Hero: najbliższy wypad — bogata karta (układ z mockupu). */
+/* Hero: najbliższy wypad — bogata karta (układ z mockupu). Większa i bardziej zaokrąglona. */
 .glass-page .event-rich.hero {
-  padding: 18px;
+  padding: 20px;
+  border-radius: 26px;
   display: flex;
   flex-direction: column;
+}
+/* W hero zdjęcie to TŁO pod panelami — przygaszamy je (opacity + luminosity, jak w mockupie),
+   żeby avatary/pasek/pogoda były czytelne, a karta minimalistyczna. Kompaktowe karty
+   zachowują mocne, wyraźne zdjęcie (bez tej reguły). */
+.glass-page .event-rich.hero .event-rich-img {
+  opacity: 0.22;
+  mix-blend-mode: luminosity;
 }
 
 /* Podgląd zdjęcia w formularzu tworzenia wypadu. */
