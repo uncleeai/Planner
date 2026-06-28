@@ -1030,13 +1030,13 @@ body.login-active .glass-bg { display: none; }
    górnej części. Bez masek (kruche na iOS) — zwykłe warstwy `background`. */
 .glass-page .event-rich.has-image {
   background-image:
-    /* od lewej: kryje tekst i ogranicza ile zdjęcia widać (przezroczyste dopiero przy prawej krawędzi) */
-    linear-gradient(to right, rgba(13, 13, 17, 0.97) 0%, rgba(13, 13, 17, 0.62) 42%, rgba(13, 13, 17, 0.15) 75%, transparent 100%),
-    /* góra + dół: ramka ciemności, żeby zdjęcie osiadało w karcie, nie dobijało do krawędzi */
-    linear-gradient(to bottom, rgba(13, 13, 17, 0.7) 0%, transparent 24%, transparent 68%, rgba(13, 13, 17, 0.93) 100%),
+    /* Radialny scrim z prawego-górnego rogu: przezroczysty w rogu (widać zdjęcie),
+       a poza nim dobija do PEŁNEJ czerni (1.0) — dzięki temu brzegi karty (góra/dół/lewa)
+       są całkowicie ciemne, bez jasnych pasków, i tekst jest czytelny. */
+    radial-gradient(125% 115% at 100% 0%, transparent 0%, transparent 20%, rgba(13, 13, 17, 0.6) 44%, rgba(13, 13, 17, 1) 72%),
     var(--event-image);
-  background-size: cover, cover, cover;
-  background-position: center, center, center;
+  background-size: cover, cover;
+  background-position: center, center;
   background-repeat: no-repeat;
 }
 /* Fallback bez zdjęcia — subtelny gradient w tonie apki, żeby karta nie była płaska. */
