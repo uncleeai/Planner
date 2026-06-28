@@ -110,12 +110,14 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   };
   const onTouchMove = (e: React.TouchEvent) => {
     if (startY.current == null) return;
-    let dy = e.touches[0].clientY - startY.current;
-    // Najwyżej JEDEN slajd na gest (żeby szybki, długi ruch nie przelatywał przez kilka),
-    // i nie odsłaniaj pustki za krańcami toru.
-    const maxDown = Math.min(SLIDE_H, safeIdx * SLIDE_H);
-    const maxUp = Math.max(-SLIDE_H, -((n - 1) - safeIdx) * SLIDE_H);
-    dy = Math.max(maxUp, Math.min(maxDown, dy));
+    // Opór: tor sunie wolniej niż palec, więc szybki flick nie przelatuje błyskawicznie.
+    const damped = (e.touches[0].clientY - startY.current) * 0.5;
+    // Cap mocno poniżej jednego slajdu — resztę dociąga zawsze kontrolowana transicja,
+    // nie prędkość Twojego machnięcia. Przy krańcach toru: brak ruchu w stronę pustki.
+    const CAP = SLIDE_H * 0.4;
+    const maxDown = safeIdx > 0 ? CAP : 0;
+    const maxUp = safeIdx < n - 1 ? -CAP : 0;
+    const dy = Math.max(maxUp, Math.min(maxDown, damped));
     dragRef.current = dy;
     setDrag(dy);
   };
@@ -124,7 +126,7 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
     const dy = dragRef.current;
     dragRef.current = 0;
 
-    const TH = SLIDE_H / 3;
+    const TH = SLIDE_H * 0.16;
     let target = safeIdx;
     if (dy <= -TH && safeIdx < n - 1) target = safeIdx + 1;
     else if (dy >= TH && safeIdx > 0) target = safeIdx - 1;
