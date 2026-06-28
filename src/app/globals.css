@@ -1013,43 +1013,33 @@ body.login-active .glass-bg { display: none; }
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 20px 40px rgba(0, 0, 0, 0.4);
 }
-/* Hover — bezpieczny dla obu, bo zdjęcie jest w ::before, nie w tle elementu. */
-.glass-page .event-rich:hover {
+/* Hover tylko dla kart BEZ zdjęcia — skrót `background` skasowałby zdjęcie-tło. */
+.glass-page .event-rich:not(.has-image):hover {
   background: rgba(26, 26, 32, 0.6);
   border-color: rgba(255, 255, 255, 0.12);
 }
+.glass-page .event-rich.has-image:hover { border-color: rgba(255, 255, 255, 0.18); }
 
-/* Zdjęcie wypadu NIE pokrywa całej karty: obraz zakotwiczony w prawym górnym rogu i
-   wyfadowany maską promienistą w lewo i w dół. Karta zachowuje ciemny panel jako tło,
-   więc lewa strona pozostaje ciemna i tekst jest w pełni czytelny. Obraz = akcent w rogu. */
 .glass-page .event-rich {
   position: relative;
   overflow: hidden;
-  isolation: isolate;
 }
-.glass-page .event-rich.has-image::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image: var(--event-image);
-  background-size: cover;
-  background-position: top right;
-  /* Pełne krycie w prawym-górnym rogu → przezroczystość w stronę lewej i dołu.
-     UWAGA: część widoczna musi być BIAŁA — iOS Safari traktuje maskę przez luminancję,
-     gdzie #000 = ukryj wszystko (zdjęcie znikało zupełnie). #fff działa w obu trybach. */
-  -webkit-mask-image: radial-gradient(135% 120% at 100% 0%, #fff 0%, #fff 30%, transparent 68%);
-  mask-image: radial-gradient(135% 120% at 100% 0%, #fff 0%, #fff 30%, transparent 68%);
+/* Zdjęcie wypadu NIE pokrywa całej karty: obraz to tło elementu, a NAD nim radialny
+   ciemny scrim — przezroczysty w prawym górnym rogu (widać zdjęcie), kryjący w lewo i
+   w dół (tam tekst). Bez masek (kruche na iOS) — zwykłe warstwy `background`, scrim
+   jako pierwsza (górna) warstwa nad obrazem. */
+.glass-page .event-rich.has-image {
+  background-image:
+    radial-gradient(135% 125% at 100% 0%, transparent 0%, transparent 26%, rgba(13, 13, 17, 0.55) 50%, rgba(13, 13, 17, 0.97) 74%),
+    var(--event-image);
+  background-size: cover, cover;
+  background-position: center, top right;
+  background-repeat: no-repeat, no-repeat;
 }
 /* Fallback bez zdjęcia — subtelny gradient w tonie apki, żeby karta nie była płaska. */
-.glass-page .event-rich:not(.has-image)::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(135deg, rgba(91, 87, 242, 0.10), rgba(255, 255, 255, 0.012) 62%);
+.glass-page .event-rich:not(.has-image) {
+  background-image: linear-gradient(135deg, rgba(91, 87, 242, 0.10), rgba(255, 255, 255, 0.012) 62%);
 }
-.glass-page .event-rich > * { position: relative; z-index: 1; }
 
 /* Hero: najbliższy wypad — wyższy, większy tytuł, zdjęcie dostaje miejsce w środku. */
 .glass-page .event-rich.hero {
