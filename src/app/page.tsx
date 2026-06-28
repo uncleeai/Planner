@@ -106,6 +106,7 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   const onTouchStart = (e: React.TouchEvent) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     startY.current = e.touches[0].clientY;
+    swallowClick.current = false;
     setDragging(true);
   };
   const onTouchMove = (e: React.TouchEvent) => {
@@ -130,7 +131,9 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
     let target = safeIdx;
     if (dy <= -TH && safeIdx < n - 1) target = safeIdx + 1;
     else if (dy >= TH && safeIdx > 0) target = safeIdx - 1;
-    if (target !== safeIdx || Math.abs(dy) > 6) swallowClick.current = true;
+    // Połknij klik tylko gdy gest realnie zmienił komentarz — tap z drobnym
+    // drgnięciem palca dalej otwiera wypad (bez podwójnego klikania).
+    if (target !== safeIdx) swallowClick.current = true;
 
     // Najpierw włącz transicję (tor zostaje w pozycji z palca), a docelową pozycję
     // ustaw dopiero w następnej klatce — inaczej zmiana transformu w tej samej klatce
@@ -196,7 +199,7 @@ export default function Home() {
   const [slots, setSlots] = useState<Slot[]>(() => cached?.slots ?? []);
   const [votes, setVotes] = useState<Vote[]>(() => cached?.votes ?? []);
   const [profiles, setProfiles] = useState<Profile[]>(() => cached?.profiles ?? []);
-  const [recentComments, setRecentComments] = useState<Comment[]>([]);
+  const [recentComments, setRecentComments] = useState<Comment[]>(() => cached?.recentComments ?? []);
   const [loading, setLoading] = useState(() => !cached);
 
   const [quote, setQuote] = useState('');
@@ -254,8 +257,9 @@ export default function Home() {
     setSlots(slots);
     setVotes(votes);
     setProfiles(profiles);
-    setRecentComments((cm ?? []) as Comment[]);
-    setCache({ events, slots, votes, profiles }); // zaliczka dla strony wypadu
+    const recentComments = (cm ?? []) as Comment[];
+    setRecentComments(recentComments);
+    setCache({ events, slots, votes, profiles, recentComments }); // zaliczka dla strony wypadu
     setLoading(false);
   }, []);
 
