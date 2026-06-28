@@ -56,6 +56,10 @@ alter table public.events
 alter table public.events
   add column if not exists reminded_at timestamptz;
 
+-- Zdjęcie w tle karty wypadu (opcjonalne) — publiczny URL z bucketu event-images.
+alter table public.events
+  add column if not exists image_url text;
+
 -- Sprzątanie po wcześniejszym (porzuconym) pomyśle z „ekipami" — bezpieczne, jeśli nie istniały.
 alter table public.events drop column if exists group_id;
 drop table if exists public.groups cascade;
@@ -269,3 +273,23 @@ create policy "avatars update" on storage.objects for update to authenticated
   with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "avatars delete" on storage.objects for delete to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Storage: bucket na zdjęcia w tle wypadów (publiczny odczyt; każdy zarządza tylko swoim folderem <uid>/...).
+insert into storage.buckets (id, name, public)
+values ('event-images', 'event-images', true)
+on conflict (id) do nothing;
+
+drop policy if exists "event-images read"   on storage.objects;
+drop policy if exists "event-images insert" on storage.objects;
+drop policy if exists "event-images update" on storage.objects;
+drop policy if exists "event-images delete" on storage.objects;
+
+create policy "event-images read" on storage.objects for select
+  using (bucket_id = 'event-images');
+create policy "event-images insert" on storage.objects for insert to authenticated
+  with check (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "event-images update" on storage.objects for update to authenticated
+  using (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "event-images delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);

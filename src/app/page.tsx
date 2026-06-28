@@ -11,6 +11,8 @@ import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
+import EventImageInput from '@/components/EventImageInput';
+import { uploadEventImage } from '@/lib/eventImage';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
@@ -229,6 +231,7 @@ export default function Home() {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -298,12 +301,24 @@ export default function Home() {
     setBusy(true);
     setError('');
 
+    let imageUrl: string | null = null;
+    if (imageFile) {
+      try {
+        imageUrl = await uploadEventImage(userId, imageFile);
+      } catch {
+        setError('Nie udało się wgrać zdjęcia. Spróbuj inne albo utwórz bez zdjęcia.');
+        setBusy(false);
+        return;
+      }
+    }
+
     const { data, error } = await supabase
       .from('events')
       .insert({
         title: title.trim(),
         location: location.trim() || null,
         description: description.trim() || null,
+        image_url: imageUrl,
         created_by: displayName,
         created_by_user_id: userId,
       })
@@ -466,6 +481,32 @@ export default function Home() {
     [recentComments, events, profileById],
   );
 
+  // Hero = wypad z najbliższym (w przyszłości) terminem — czy to ustalony „nadchodzący",
+  // czy aktywny zbierający głosy. Pokazujemy go powiększonego na górze, raz.
+  const heroId = useMemo(() => {
+    const now = Date.now();
+    let bestId: string | null = null;
+    let bestMs = Infinity;
+    const consider = (ev: EventRow) => {
+      let ms = Infinity;
+      for (const s of slots) {
+        if (s.event_id !== ev.id) continue;
+        const end = slotEndMs(s);
+        if (end >= now && end < ms) ms = end;
+      }
+      if (ms < bestMs) {
+        bestMs = ms;
+        bestId = ev.id;
+      }
+    };
+    upcoming.forEach(consider);
+    open.forEach(consider);
+    return bestId;
+  }, [upcoming, open, slots]);
+  const heroEvent = heroId ? events.find((e) => e.id === heroId) ?? null : null;
+  const heroVariant: 'open' | 'upcoming' =
+    heroId && upcoming.some((e) => e.id === heroId) ? 'upcoming' : 'open';
+
   return (
     <main className="glass-page">
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
@@ -543,6 +584,8 @@ export default function Home() {
                 placeholder="np. co bierzemy, plan xd, szczegóły…"
               />
             </div>
+
+            <EventImageInput file={imageFile} onChange={setImageFile} id="create-image" />
 
             <div className="field">
               <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
@@ -672,6 +715,7 @@ export default function Home() {
                       placeholder="np. co bierzemy, plan, szczegóły…"
                     />
                   </div>,
+                  <EventImageInput key="img" file={imageFile} onChange={setImageFile} id="create-empty-image" />,
                   <div className="field" key="date">
                     <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
                   </div>,
@@ -707,8 +751,14 @@ export default function Home() {
         </div>
       )}
 
-      <Section title="W trakcie" events={open} agg={aggByEvent} variant="open" />
-      <Section title="Nadchodzące" events={upcoming} agg={aggByEvent} variant="upcoming" />
+      {heroEvent && (
+        <section>
+          <div className="section-label">Najbliższy</div>
+          <EventCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} variant={heroVariant} hero />
+        </section>
+      )}
+      <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
+      <Section title="Nadchodzące" events={upcoming.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="upcoming" />
       <Section title="Nie ustalono" events={expired} agg={aggByEvent} variant="expired" muted />
       <Section title="Bylim już" events={past} agg={aggByEvent} variant="past" muted />
 
@@ -751,13 +801,15 @@ function Section({
   );
 }
 
-function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past' }) {
+function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
+  const hasImage = !!ev.image_url;
   return (
     <Link
       href={href}
-      className="event-rich"
+      className={`event-rich${hero ? ' hero' : ''}${hasImage ? ' has-image' : ''}`}
+      style={hasImage ? ({ ['--event-image']: `url("${ev.image_url}")` } as React.CSSProperties) : undefined}
       // Dotknięcie karty → pobierz dane wypadu w tle, nim odpali się nawigacja:
       // round-trip do bazy nakłada się na tap i montowanie strony.
       onPointerDown={() => prefetchEvent(ev.id)}

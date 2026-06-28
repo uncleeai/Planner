@@ -5,6 +5,7 @@ export type EventRow = {
   title: string;
   location: string | null;
   description: string | null;
+  image_url: string | null;
   created_by: string | null;
   created_by_user_id: string | null;
   confirmed_slot_id: string | null;

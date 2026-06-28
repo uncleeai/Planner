@@ -1013,10 +1013,62 @@ body.login-active .glass-bg { display: none; }
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 20px 40px rgba(0, 0, 0, 0.4);
 }
-.glass-page .event-rich:hover {
+/* Hover tylko dla kart BEZ zdjęcia — skrót `background` skasowałby background-image. */
+.glass-page .event-rich:not(.has-image):hover {
   background: rgba(26, 26, 32, 0.6);
   border-color: rgba(255, 255, 255, 0.12);
 }
+.glass-page .event-rich.has-image:hover { border-color: rgba(255, 255, 255, 0.16); }
+
+/* Zdjęcie w tle karty (Faza 1): obraz jako tło elementu, scrim dla czytelności tekstu,
+   treść nad nim. Bez zdjęcia — delikatny gradient, żeby karta nie była płaska. */
+.glass-page .event-rich {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.glass-page .event-rich.has-image {
+  background-image: var(--event-image);
+  background-size: cover;
+  background-position: center;
+}
+/* Scrim: ciemniej u góry (tytuł) i u dołu (avatary/progres), jaśniej w środku → widać zdjęcie. */
+.glass-page .event-rich.has-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 10, 14, 0.78) 0%,
+    rgba(10, 10, 14, 0.42) 42%,
+    rgba(10, 10, 14, 0.88) 100%
+  );
+}
+/* Fallback bez zdjęcia — subtelny gradient w tonie apki. */
+.glass-page .event-rich:not(.has-image)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, rgba(91, 87, 242, 0.10), rgba(255, 255, 255, 0.012) 62%);
+}
+.glass-page .event-rich > * { position: relative; z-index: 1; }
+
+/* Hero: najbliższy wypad — wyższy, większy tytuł, zdjęcie dostaje miejsce w środku. */
+.glass-page .event-rich.hero {
+  min-height: 188px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.glass-page .event-rich.hero .event-rich-title { font-size: 1.4rem; }
+.glass-page .event-rich.hero .event-rich-foot { margin-top: auto; }
+
+/* Podgląd zdjęcia w formularzu tworzenia wypadu. */
+.event-image-preview { position: relative; border-radius: var(--radius-sm); overflow: hidden; }
+.event-image-preview img { display: block; width: 100%; height: 160px; object-fit: cover; }
+.event-image-remove { position: absolute; top: 8px; right: 8px; padding: 6px 12px; font-size: 0.8rem; }
 
 /* Biały szklany przycisk główny (CTA) */
 .glass-page .cta-gradient {
