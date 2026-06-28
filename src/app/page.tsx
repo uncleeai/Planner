@@ -70,11 +70,15 @@ type ActivityItem = {
   createdAt: string;
 };
 
-// Pastylka „liquid glass": jeden komentarz na raz, przewijana palcem w pionie,
-// a gdy nikt nie dotyka — sama rotuje co kilka sekund. Tap/klik → otwiera wypad.
+// Wysokość jednego „slajdu" — musi być spójna z .activity-slide w globals.css.
+const SLIDE_H = 64;
+
+// Pastylka „liquid glass": jeden komentarz na raz na pionowym torze (transform —
+// płynnie, bez remountu). Przewijana palcem; gdy nikt nie dotyka, sama rotuje.
 function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (eventId: string) => void }) {
   const [idx, setIdx] = useState(0);
   const [drag, setDrag] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const dragRef = useRef(0);
   const startY = useRef<number | null>(null);
   const pausedRef = useRef(false);
@@ -92,31 +96,41 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
     return () => window.clearInterval(t);
   }, [items.length]);
 
-  const safeIdx = Math.min(idx, items.length - 1);
-  const item = items[safeIdx];
-  if (!item) return null;
-
-  const go = (dir: number) => setIdx((i) => (i + dir + items.length) % items.length);
+  const n = items.length;
+  const safeIdx = Math.min(idx, n - 1);
+  if (n === 0) return null;
 
   const onTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
     pausedRef.current = true;
+    setDragging(true);
   };
   const onTouchMove = (e: React.TouchEvent) => {
     if (startY.current == null) return;
-    const dy = Math.max(-44, Math.min(44, e.touches[0].clientY - startY.current));
+    let dy = e.touches[0].clientY - startY.current;
+    // Nie pozwól odsłonić pustki za krańcami toru.
+    const maxDown = safeIdx * SLIDE_H;
+    const maxUp = -((n - 1) - safeIdx) * SLIDE_H;
+    dy = Math.max(maxUp, Math.min(maxDown, dy));
     dragRef.current = dy;
     setDrag(dy);
   };
   const onTouchEnd = () => {
     startY.current = null;
     pausedRef.current = false;
+    setDragging(false);
     const dy = dragRef.current;
     dragRef.current = 0;
     setDrag(0);
-    if (Math.abs(dy) > 24) {
-      go(dy < 0 ? 1 : -1); // w górę → następny, w dół → poprzedni
-      swallowClick.current = true; // nie otwieraj wypadu po geście
+    const TH = SLIDE_H / 3;
+    if (dy <= -TH && safeIdx < n - 1) {
+      setIdx(safeIdx + 1);
+      swallowClick.current = true;
+    } else if (dy >= TH && safeIdx > 0) {
+      setIdx(safeIdx - 1);
+      swallowClick.current = true;
+    } else if (Math.abs(dy) > 6) {
+      swallowClick.current = true; // był gest, ale bez progu — nie otwieraj wypadu
     }
   };
   const onClick = () => {
@@ -124,13 +138,16 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
       swallowClick.current = false;
       return;
     }
-    onOpen(item.eventId);
+    onOpen(items[safeIdx].eventId);
   };
+
+  const translate = -safeIdx * SLIDE_H + drag;
 
   return (
     <div className="activity-pill">
       <div
         className="activity-pill-touch"
+        style={{ height: SLIDE_H }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -139,22 +156,25 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
         tabIndex={0}
       >
         <div
-          key={item.id}
-          className="activity-pill-content"
-          style={drag ? { transform: `translateY(${drag}px)`, transition: 'none', animation: 'none' } : undefined}
+          className="activity-track"
+          style={{ transform: `translateY(${translate}px)`, transition: dragging ? 'none' : undefined }}
         >
-          <Avatar name={item.name} avatar={item.avatar} size={34} />
-          <div className="activity-body">
-            <div className="activity-head">
-              <span className="activity-author">{item.name}</span>
-              <span className="activity-event">· {item.eventTitle}</span>
-              <span className="activity-time">{timeAgo(item.createdAt)}</span>
+          {items.map((it) => (
+            <div key={it.id} className="activity-slide" style={{ height: SLIDE_H }}>
+              <Avatar name={it.name} avatar={it.avatar} size={34} />
+              <div className="activity-body">
+                <div className="activity-head">
+                  <span className="activity-author">{it.name}</span>
+                  <span className="activity-event">· {it.eventTitle}</span>
+                  <span className="activity-time">{timeAgo(it.createdAt)}</span>
+                </div>
+                <p className="activity-text">{it.body}</p>
+              </div>
             </div>
-            <p className="activity-text">{item.body}</p>
-          </div>
+          ))}
         </div>
       </div>
-      {items.length > 1 && (
+      {n > 1 && (
         <div className="activity-dots">
           {items.map((it, i) => (
             <button
