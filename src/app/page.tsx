@@ -23,10 +23,8 @@ type Agg = {
   voters: Person[];
   percent: number;
   slot: Slot | null;           // USTALONY termin (do formatu zakresu/całodniowego)
-  leadingSlot: Slot | null;    // prowadzący termin (podpowiedź w „W trakcie")
-  leadingYes: number;          // ile „Wchodzę" na prowadzący termin
 };
-const EMPTY_AGG: Agg = { voters: [], percent: 0, slot: null, leadingSlot: null, leadingYes: 0 };
+const EMPTY_AGG: Agg = { voters: [], percent: 0, slot: null };
 
 const MAJOR_QUOTES = [
   "„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”",
@@ -292,13 +290,7 @@ export default function Home() {
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
       const slot = status.settled ? evSlots.find((s) => s.id === status.slotId) ?? null : null;
-      const leadingSlot = status.leadingSlotId
-        ? evSlots.find((s) => s.id === status.leadingSlotId) ?? null
-        : null;
-      const leadingYes = status.leadingSlotId
-        ? evVotes.filter((v) => v.slot_id === status.leadingSlotId && v.availability === 'yes').length
-        : 0;
-      result.set(ev.id, { voters, percent, slot, leadingSlot, leadingYes });
+      result.set(ev.id, { voters, percent, slot });
     }
     return result;
   }, [events, slots, votes, profiles]);
@@ -613,11 +605,6 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
           <span className="event-meta"><IconCalendar size={14} /> Termin minął</span>
         ) : agg.slot ? (
           <span className="event-meta"><IconCalendar size={14} /> {formatSlotRange(agg.slot)}</span>
-        ) : agg.leadingSlot ? (
-          <span className="event-meta">
-            <IconCalendar size={14} /> {formatSlotRange(agg.leadingSlot)} prowadzi
-            {agg.leadingYes > 0 && ` · ${agg.leadingYes} wchodzi`}
-          </span>
         ) : (
           <span className="event-meta"><IconCalendar size={14} /> Zbieramy terminy</span>
         )}
@@ -646,7 +633,7 @@ function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'ope
           <>
             <span className="spacer" />
             {variant === 'past' && <span className="badge">✓ Odbyte</span>}
-            {variant === 'upcoming' && <span className="badge">Jest termin</span>}
+            {variant === 'upcoming' && <span className="badge">Ustalone</span>}
             {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
           </>
         )}
