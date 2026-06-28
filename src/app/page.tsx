@@ -110,14 +110,14 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   };
   const onTouchMove = (e: React.TouchEvent) => {
     if (startY.current == null) return;
-    // Opór: tor sunie wolniej niż palec, więc szybki flick nie przelatuje błyskawicznie.
-    const damped = (e.touches[0].clientY - startY.current) * 0.5;
-    // Cap mocno poniżej jednego slajdu — resztę dociąga zawsze kontrolowana transicja,
-    // nie prędkość Twojego machnięcia. Przy krańcach toru: brak ruchu w stronę pustki.
-    const CAP = SLIDE_H * 0.4;
-    const maxDown = safeIdx > 0 ? CAP : 0;
-    const maxUp = safeIdx < n - 1 ? -CAP : 0;
-    const dy = Math.max(maxUp, Math.min(maxDown, damped));
+    const raw = e.touches[0].clientY - startY.current;
+    const dir = raw < 0 ? -1 : 1;
+    // Rubber-band: tor zawsze reaguje na palec (małe ruchy ~1:1), ale opór rośnie i
+    // asymptotycznie nie przekracza ~jednego slajdu — bez twardego „zacięcia".
+    // W stronę pustki za krańcem toru opór jest dużo większy (ledwo drgnie, wróci).
+    const allowed = raw < 0 ? safeIdx < n - 1 : safeIdx > 0;
+    const c = SLIDE_H * (allowed ? 0.85 : 0.12);
+    const dy = dir * (1 - 1 / (Math.abs(raw) / c + 1)) * c;
     dragRef.current = dy;
     setDrag(dy);
   };
@@ -126,7 +126,7 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
     const dy = dragRef.current;
     dragRef.current = 0;
 
-    const TH = SLIDE_H * 0.16;
+    const TH = SLIDE_H * 0.22;
     let target = safeIdx;
     if (dy <= -TH && safeIdx < n - 1) target = safeIdx + 1;
     else if (dy >= TH && safeIdx > 0) target = safeIdx - 1;
