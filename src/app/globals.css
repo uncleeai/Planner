@@ -1640,7 +1640,7 @@ main::before {
   padding: 10px 12px;
   min-width: 0;
 }
-.hero-tile-emoji { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.hero-tile-icon { color: rgba(255, 255, 255, 0.82); flex-shrink: 0; }
 .hero-tile-main { font-size: 0.9rem; font-weight: 700; color: var(--text); }
 .hero-tile-sub { font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

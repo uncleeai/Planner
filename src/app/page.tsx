@@ -20,7 +20,7 @@ import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInpu
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
-import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare } from '@/components/icons';
+import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare, IconClock, WeatherIcon } from '@/components/icons';
 
 function progressColor(p: number): string {
   return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
@@ -915,7 +915,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
         <div className="hero-grid">
           {wInfo && weather && (
             <div className="hero-tile">
-              <span className="hero-tile-emoji">{wInfo.emoji}</span>
+              <WeatherIcon code={weather.code} size={22} className="hero-tile-icon" />
               <div>
                 <div className="hero-tile-main">{weather.tempMax}°</div>
                 <div className="hero-tile-sub">{wInfo.label}</div>
@@ -924,10 +924,10 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
           )}
           {meetTime && (
             <div className="hero-tile">
-              <span className="hero-tile-emoji">⏰</span>
+              <IconClock size={22} className="hero-tile-icon" />
               <div>
-                <div className="hero-tile-main">Zbiórka {meetTime}</div>
-                {ev.location && <div className="hero-tile-sub">{ev.location}</div>}
+                <div className="hero-tile-main">{meetTime}</div>
+                <div className="hero-tile-sub">Godzina</div>
               </div>
             </div>
           )}
