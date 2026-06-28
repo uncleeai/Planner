@@ -985,15 +985,18 @@ body.login-active .glass-bg { display: none; }
   z-index: 1;
 }
 
-/* Bez backdrop-filter: szkło zależne od backdropu znika podczas animacji wejścia strony
-   (main { opacity:0→1 } wyłącza backdrop-filter u potomków), przez co box „doskakiwał"
-   kolorem po jej zakończeniu. Pełniejsze, ciemne półprzezroczyste tło wygląda zbliżenie,
-   nie skacze, zasłania wideo bez rozmycia i jest tańsze — jak w .event-rich. */
+/* Szkło BEZ przeskoku przy wejściu strony: animacja main { opacity:0→1 } wyłącza
+   backdrop-filter u potomków, więc przez 0,3 s blur nie działa. Klucz: baza jest na tyle
+   kryjąca i ciemna, że klatka „bez blura" (podczas fade) wygląda praktycznie identycznie
+   jak końcowa z blurem — przeskok znika, a backdrop-filter dokłada subtelny frost wideo
+   na wierzchu. Lekki blur wystarcza, bo baza i tak kryje (taniej niż dawne 30px). */
 .glass-page .card,
 .glass-page .empty-state,
 .glass-page .tip-banner {
   background: rgba(18, 18, 24, 0.58);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
     0 20px 40px rgba(0, 0, 0, 0.4);
