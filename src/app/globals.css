@@ -1031,16 +1031,18 @@ body.login-active .glass-bg { display: none; }
 .glass-page .event-rich.has-image { background-color: #0c0c14; }
 .event-rich-media {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 42%;            /* zdjęcie tylko w prawej części karty (jak w mockupie) */
   z-index: 0;
-  border-radius: inherit;
-  overflow: hidden;
+  overflow: hidden;     /* zaokrąglenie rogów daje overflow:hidden karty-rodzica */
 }
 .event-rich-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center right;
+  object-position: center;   /* środek kadru = główna akcja, w widocznej strefie */
 }
 .event-rich-scrim {
   position: absolute;
@@ -1053,6 +1055,18 @@ body.login-active .glass-bg { display: none; }
 }
 /* Treść karty nad warstwą zdjęcia. */
 .glass-page .event-rich.has-image > *:not(.event-rich-media) { position: relative; z-index: 1; }
+/* Górny „sweep" (highlight krawędzi) także na kartach ze zdjęciem: warstwa media
+   zasłaniała inset-highlight karty. Cienka nakładka (1px) nad zdjęciem, ale nieklikalna,
+   więc nie przeszkadza treści. */
+.glass-page .event-rich.has-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+  z-index: 2;
+}
 /* Fallback bez zdjęcia — subtelny gradient w tonie apki, żeby karta nie była płaska. */
 .glass-page .event-rich:not(.has-image) {
   background-image: linear-gradient(135deg, rgba(91, 87, 242, 0.10), rgba(255, 255, 255, 0.012) 62%);
