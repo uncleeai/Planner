@@ -1248,17 +1248,17 @@ main { animation: page-in 0.3s ease both; }
 .form-collapse {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.42s cubic-bezier(0.25, 1, 0.5, 1),
-              opacity 0.35s ease-in-out,
-              margin-top 0.42s cubic-bezier(0.25, 1, 0.5, 1),
-              margin-bottom 0.42s cubic-bezier(0.25, 1, 0.5, 1);
+  /* Wysokość i marginesy zmieniamy NATYCHMIAST (bez transicji). Animowanie
+     grid-template-rows reflowowało cały formularz co klatkę (layout-driven = ~30fps).
+     Płynność daje teraz wyłącznie wsuwanie zawartości niżej (transform+opacity —
+     tylko kompozytor, 60fps), a sam box tylko miękko przygasa. */
+  transition: opacity 0.2s ease;
   opacity: 0;
   overflow: hidden;
   /* Zaokrąglone przycięcie rodzica — inaczej prostokątny clip + szklany blur karty
      daje kwadratowy róg wystający spod zaokrąglenia */
   border-radius: var(--radius);
-  /* Ogranicz przeliczanie layoutu/malowania do tego poddrzewa — animacja
-     grid-template-rows nie reflowuje wtedy całej listy wypadów pod spodem. */
+  /* Ogranicz przeliczanie layoutu/malowania do tego poddrzewa. */
   contain: layout paint;
   margin-top: 0;
   margin-bottom: 0;
