@@ -1034,7 +1034,7 @@ body.login-active .glass-bg { display: none; }
   top: 0;
   right: 0;
   bottom: 0;
-  left: 42%;            /* zdjęcie tylko w prawej części karty (jak w mockupie) */
+  left: 32%;            /* zdjęcie w prawej części karty + zapas na łagodny fade */
   z-index: 0;
   overflow: hidden;     /* zaokrąglenie rogów daje overflow:hidden karty-rodzica */
 }
@@ -1047,11 +1047,19 @@ body.login-active .glass-bg { display: none; }
 .event-rich-scrim {
   position: absolute;
   inset: 0;
-  /* Poziomo: lewa = kryjące tło karty (tekst czytelny), prawa = przezroczyste (widać foto).
-     Pionowo: delikatne przyciemnienie u dołu pod avatary/pasek postępu. */
+  /* Poziomo: dłuższe, wielostopniowe przejście = gładki fade w tło karty (tekst czytelny).
+     Pionowo: lekkie przyciemnienie dołu (pod avatary/pasek) ORAZ samej górnej krawędzi,
+     żeby górny highlight („sweep") był czytelny także nad jasnym zdjęciem. */
   background:
-    linear-gradient(90deg, #0c0c14 16%, rgba(12, 12, 20, 0.72) 44%, rgba(12, 12, 20, 0.12) 74%, rgba(12, 12, 20, 0) 100%),
-    linear-gradient(0deg, #0c0c14 2%, rgba(12, 12, 20, 0.55) 24%, rgba(12, 12, 20, 0) 58%);
+    linear-gradient(90deg,
+      #0c0c14 0%,
+      #0c0c14 20%,
+      rgba(12, 12, 20, 0.82) 38%,
+      rgba(12, 12, 20, 0.5) 58%,
+      rgba(12, 12, 20, 0.2) 78%,
+      rgba(12, 12, 20, 0) 100%),
+    linear-gradient(0deg, #0c0c14 2%, rgba(12, 12, 20, 0.55) 22%, rgba(12, 12, 20, 0) 55%),
+    linear-gradient(180deg, rgba(12, 12, 20, 0.5) 0%, rgba(12, 12, 20, 0) 15%);
 }
 /* Treść karty nad warstwą zdjęcia. */
 .glass-page .event-rich.has-image > *:not(.event-rich-media) { position: relative; z-index: 1; }
@@ -1063,7 +1071,7 @@ body.login-active .glass-bg { display: none; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   pointer-events: none;
   z-index: 2;
 }
