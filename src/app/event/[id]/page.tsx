@@ -4,13 +4,17 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus } from '@/lib/types';
-import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
+import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
+import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
-import { IconPin, IconCalendar, IconCheck, IconChevronLeft } from '@/components/icons';
-import DateTimeInput from '@/components/DateTimeInput';
+import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
+import SlotRangeInput from '@/components/SlotRangeInput';
+import DescriptionInput from '@/components/DescriptionInput';
+import { Markdown } from '@/lib/markdown';
+import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
+import { addToCalendar } from '@/lib/calendar';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
@@ -19,25 +23,19 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'no', label: 'Pas', cls: 'active-no' },
 ];
 
-function formatSlot(iso: string): string {
+function formatCommentTime(iso: string): string {
   return new Date(iso).toLocaleString('pl-PL', {
-    weekday: 'short',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-function getMinDateTime(): string {
-  const now = new Date();
-  const tzOffset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
   const navigate = useTransitionNavigate();
-  const { userId, displayName } = useAuth();
+  const { userId, displayName, isAdmin } = useAuth();
 
   // Seed z cache dashboardu (jeśli wchodzimy z listy) — wypad pokazuje się natychmiast,
   // a load() poniżej i tak dociąga świeże dane i podpina realtime.
@@ -50,19 +48,31 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(!seedEvent);
   const [notFound, setNotFound] = useState(false);
 
-  const [newSlot, setNewSlot] = useState('');
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+
+  const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
   // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
 
   const load = useCallback(async () => {
-    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }] = await Promise.all([
+    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] = await Promise.all([
       supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
       supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
       supabase.from('votes').select('*').eq('event_id', eventId),
       supabase.from('profiles').select('*'),
+      supabase.from('comments').select('*').eq('event_id', eventId).order('created_at'),
     ]);
 
     if (evErr || !ev) {
@@ -71,6 +81,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setEvent(ev as EventRow);
       setSlots((sl ?? []) as Slot[]);
       setMembers((pr ?? []) as Profile[]);
+      setComments((cm ?? []) as Comment[]);
 
       // Nałóż oczekujące głosy bieżącego użytkownika na świeży stan z bazy:
       // jego ostatni wybór wygrywa, dopóki baza go nie potwierdzi (wtedy czyścimy pending).
@@ -133,6 +144,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
         () => load(),
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `event_id=eq.${eventId}` },
+        () => load(),
+      )
       .subscribe();
 
     return () => {
@@ -140,25 +156,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
   }, [eventId, load]);
 
-  async function insertSlot(localValue: string) {
-    if (!localValue) return;
-    await supabase.from('slots').insert({
-      event_id: eventId,
-      starts_at: new Date(localValue).toISOString(),
-      created_by: displayName,
-      created_by_user_id: userId,
-    });
-  }
-
   async function addSlot(e: React.FormEvent) {
     e.preventDefault();
-    if (!newSlot) return;
-    if (new Date(newSlot).getTime() < Date.now() - 60000) {
+    const times = buildSlotTimes(slotDraft);
+    if (!times) return;
+    // Termin nie może być z przeszłości (cały dzień „dziś" jest OK — liczymy koniec dnia).
+    if (slotEndMs(times) < Date.now() - 60000) {
       alert('Nie można dodać terminu z przeszłości.');
       return;
     }
-    await insertSlot(newSlot);
-    setNewSlot('');
+    await supabase.from('slots').insert({
+      event_id: eventId,
+      starts_at: times.starts_at,
+      ends_at: times.ends_at,
+      all_day: times.all_day,
+      created_by: displayName,
+      created_by_user_id: userId,
+    });
+    setSlotDraft(EMPTY_SLOT_RANGE);
   }
 
   async function deleteSlot(slotId: string) {
@@ -226,6 +241,68 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     load();
   }
 
+  async function addComment(e: React.FormEvent) {
+    e.preventDefault();
+    const body = newComment.trim();
+    if (!body) return;
+    setNewComment('');
+    // Optymistycznie pokaż od razu; load() z realtime zastąpi listę prawdą z bazy.
+    const optimistic: Comment = {
+      id: `optimistic-${Date.now()}`,
+      event_id: eventId,
+      user_id: userId,
+      author_name: displayName,
+      body,
+      created_at: new Date().toISOString(),
+    };
+    setComments((prev) => [...prev, optimistic]);
+    const { error } = await supabase
+      .from('comments')
+      .insert({ event_id: eventId, user_id: userId, author_name: displayName, body });
+    if (error) {
+      setNewComment(body);
+      load();
+    }
+  }
+
+  async function deleteComment(id: string) {
+    if (!window.confirm('Usunąć komentarz?')) return;
+    setComments((prev) => prev.filter((c) => c.id !== id));
+    const { error } = await supabase.from('comments').delete().eq('id', id);
+    if (error) load();
+  }
+
+  function startEdit() {
+    if (!event) return;
+    setEditTitle(event.title ?? '');
+    setEditLocation(event.location ?? '');
+    setEditDescription(event.description ?? '');
+    setEditError('');
+    setEditing(true);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTitle.trim() || editBusy) return;
+    setEditBusy(true);
+    setEditError('');
+    const { error } = await supabase
+      .from('events')
+      .update({
+        title: editTitle.trim(),
+        location: editLocation.trim() || null,
+        description: editDescription.trim() || null,
+      })
+      .eq('id', eventId);
+    setEditBusy(false);
+    if (error) {
+      setEditError(error.message ?? 'Nie udało się zapisać zmian.');
+      return;
+    }
+    setEditing(false);
+    load();
+  }
+
   async function deleteEvent() {
     if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
     const { error } = await supabase.from('events').delete().eq('id', eventId);
@@ -234,6 +311,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       return;
     }
     navigate('/', 'back');
+  }
+
+  // Eksport terminu do kalendarza (.ics). Wołany kliknięciem w datę w nagłówku.
+  function exportToCalendar(slot: Slot) {
+    addToCalendar({
+      id: eventId,
+      title: event?.title ?? 'Wypad',
+      location: event?.location,
+      description: event?.description,
+      startIso: slot.starts_at,
+      endIso: slot.ends_at,
+      allDay: slot.all_day,
+    });
   }
 
   const stats = useMemo(() => {
@@ -265,6 +355,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     if (headerDate) setLastHeaderDate(headerDate);
   }, [headerDate]);
+
+  // Slot pokazywany w nagłówku (do formatowania zakresu + eksportu kalendarza).
+  const headerSlotId = status.settled ? status.slotId : (!isTie ? status.leadingSlotId : null);
+  const headerSlot = useMemo(
+    () => (headerSlotId ? slots.find((s) => s.id === headerSlotId) ?? null : null),
+    [headerSlotId, slots],
+  );
+  const [lastHeaderSlot, setLastHeaderSlot] = useState<Slot | null>(null);
+  useEffect(() => {
+    if (headerSlot) setLastHeaderSlot(headerSlot);
+  }, [headerSlot]);
 
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
@@ -299,7 +400,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  const isOrganizer = !event?.created_by_user_id || event.created_by_user_id === userId;
+  // Organizator wypadu LUB admin aplikacji (właściciel) — pełne uprawnienia zarządzania.
+  const isOrganizer = isAdmin || !event?.created_by_user_id || event.created_by_user_id === userId;
+
+  // Wypad już się odbył (ustalony termin minął) → strona staje się podglądem:
+  // bez dodawania/edycji terminów, ustalania i głosowania.
+  const settledSlotObj = status.slotId ? slots.find((s) => s.id === status.slotId) ?? null : null;
+  const isPast = status.settled && settledSlotObj ? slotEndMs(settledSlotObj) < Date.now() : false;
 
   const memberCount = members.length;
   const votedCount = participantsPeople.length;
@@ -320,8 +427,65 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <IconChevronLeft size={20} />
       </Link>
 
+      {editing && (
+        <form className="card" onSubmit={saveEdit}>
+          <h2>Edytuj wypad</h2>
+          <div className="field">
+            <label htmlFor="edit-title">Nazwa</label>
+            <input
+              id="edit-title"
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-location">Miejsce (opcjonalnie)</label>
+            <input
+              id="edit-location"
+              type="text"
+              placeholder="np. u Kuby, Zakopane…"
+              value={editLocation}
+              onChange={(e) => setEditLocation(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-description">Opis (opcjonalnie)</label>
+            <DescriptionInput
+              id="edit-description"
+              value={editDescription}
+              onChange={setEditDescription}
+              placeholder="np. co bierzemy, plan, szczegóły…"
+            />
+          </div>
+          {editError && <p className="small" style={{ color: 'var(--no)' }}>{editError}</p>}
+          <div className="row" style={{ gap: 8 }}>
+            <button type="submit" disabled={!editTitle.trim() || editBusy}>
+              {editBusy ? 'Zapisuję…' : 'Zapisz zmiany'}
+            </button>
+            <button type="button" className="ghost" onClick={() => setEditing(false)}>
+              Anuluj
+            </button>
+          </div>
+        </form>
+      )}
+
+      {!editing && (
       <header className="app-header">
-        <h1 className="large-title">{event?.title}</h1>
+        <div className="title-row">
+          <h1 className="large-title">{event?.title}</h1>
+          {isOrganizer && !isPast && (
+            <button
+              type="button"
+              className="title-edit-btn"
+              onClick={startEdit}
+              aria-label="Edytuj wypad"
+            >
+              <IconPencil size={17} />
+            </button>
+          )}
+        </div>
         {(event?.location || event?.created_by) && (
           <div className="event-submeta">
             {event?.location && (
@@ -332,11 +496,23 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         )}
         <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
-          <div className={`confirmed-inline${status.settled ? ' settled' : ''}`}>
-            {lastHeaderDate && (
+          <div
+            className={`confirmed-inline tappable${status.settled ? ' settled' : ''}`}
+            role="button"
+            tabIndex={lastHeaderSlot ? 0 : -1}
+            aria-label="Dodaj termin do kalendarza"
+            onClick={() => lastHeaderSlot && exportToCalendar(lastHeaderSlot)}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && lastHeaderSlot) {
+                e.preventDefault();
+                exportToCalendar(lastHeaderSlot);
+              }
+            }}
+          >
+            {lastHeaderSlot && (
               <>
-                <IconCalendar size={15} />
-                <span className="confirmed-date">{formatSlot(lastHeaderDate)}</span>
+                <IconCalendarPlus size={15} />
+                <span className="confirmed-date">{formatSlotRange(lastHeaderSlot)}</span>
                 <span className="confirmed-tag">
                   <IconCheck size={12} />{' '}
                   {status.settled
@@ -350,12 +526,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </header>
-
-      {event?.description && (
-        <p className="event-description">{event.description}</p>
       )}
 
-      {slots.length > 0 && missingVoters.length > 0 && (
+      {!editing && event?.description && (
+        <div className="event-description"><Markdown text={event.description} /></div>
+      )}
+
+      {isPast && (
+        <p className="readonly-note">Ten wypad już się odbył — to tylko podgląd.</p>
+      )}
+
+      {!isPast && slots.length > 0 && missingVoters.length > 0 && (
         <div className="vote-status">
           <div className="vote-status-row">
             {votedCount > 0 && <AvatarStack people={participantsPeople} size={26} />}
@@ -403,11 +584,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
           >
             <div className="slot-head">
-              <span className="slot-date">{formatSlot(slot.starts_at)}</span>
+              <span className="slot-date">{formatSlotRange(slot)}</span>
               {isSettledSlot && <span className="badge">✓ Ustalony</span>}
               {showBestBadge && <span className="badge">na czele</span>}
               {showTieBadge && <span className="badge badge-open">remis</span>}
-              {canDelete && (
+              {canDelete && !isPast && (
                 <>
                   <span className="spacer" />
                   <button
@@ -428,7 +609,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <span className="no">✗ {no}</span>
             </div>
 
-            {(() => {
+            {!isPast && (() => {
               const selectedIndex = CHOICES.findIndex((c) => c.value === mine);
               return (
                 <div className={`choices ${selectedIndex !== -1 ? `active-index-${selectedIndex}` : 'no-active'}`}>
@@ -462,7 +643,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               </div>
             )}
 
-            {isOrganizer && (
+            {isOrganizer && !isPast && (
               <div className="slot-confirm-row">
                 {event?.confirmed_slot_id === slot.id ? (
                   <button type="button" className="ghost slot-confirm-btn" onClick={unconfirmSlot}>
@@ -481,6 +662,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
 
 
+        {!isPast && (
         <div className={`add-slot-wrapper${showAddForm ? ' open' : ''}`}>
           <button
             type="button"
@@ -494,20 +676,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               await addSlot(e);
               setShowAddForm(false);
             }}>
-              <DateTimeInput
-                value={newSlot}
-                onChange={(e) => setNewSlot(e.target.value)}
-                placeholder="Wybierz datę i godzinę"
-                min={getMinDateTime()}
-              />
+              <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="new-slot" />
               <div className="add-slot-actions">
-                <button type="submit" disabled={!newSlot}>Dodaj</button>
+                <button type="submit" disabled={!slotDraft.od}>Dodaj</button>
                 <button
                   type="button"
                   className="ghost"
                   onClick={() => {
                     setShowAddForm(false);
-                    setNewSlot('');
+                    setSlotDraft(EMPTY_SLOT_RANGE);
                   }}
                 >
                   Anuluj
@@ -516,9 +693,57 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             </form>
           </div>
         </div>
+        )}
       </div>
 
-      {isOrganizer && (
+      <div className="card comments-card">
+        <h2>Komentarze</h2>
+        {comments.length === 0 ? (
+          <p className="small muted">Brak komentarzy. Napisz pierwszy.</p>
+        ) : (
+          <div className="comment-list">
+            {comments.map((c) => {
+              const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+              const name = prof?.display_name ?? c.author_name;
+              const canDel = c.user_id === userId || isOrganizer;
+              return (
+                <div key={c.id} className="comment">
+                  <Avatar name={name} avatar={prof?.avatar ?? null} size={30} />
+                  <div className="comment-body">
+                    <div className="comment-head">
+                      <span className="comment-author">{name}</span>
+                      <span className="comment-time">{formatCommentTime(c.created_at)}</span>
+                      {canDel && (
+                        <button
+                          type="button"
+                          className="comment-del"
+                          aria-label="Usuń komentarz"
+                          onClick={() => deleteComment(c.id)}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <p className="comment-text">{c.body}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <form className="comment-form" onSubmit={addComment}>
+          <input
+            type="text"
+            placeholder="Napisz komentarz…"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            maxLength={500}
+          />
+          <button type="submit" disabled={!newComment.trim()}>Wyślij</button>
+        </form>
+      </div>
+
+      {isOrganizer && !editing && (
         <div className="event-danger-zone">
           <button type="button" className="danger-link" onClick={deleteEvent}>
             Usuń ten wypad

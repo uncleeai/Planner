@@ -77,8 +77,11 @@ Deno.serve(async (req) => {
   for (const ev of events) {
     processed++;
 
-    const { data: slots } = await supabase.from('slots').select('starts_at').eq('event_id', ev.id);
-    const hasFuture = (slots ?? []).some((s) => new Date(s.starts_at).getTime() > now);
+    const { data: slots } = await supabase.from('slots').select('starts_at, ends_at').eq('event_id', ev.id);
+    // Termin „w przyszłości" liczymy od KOŃCA (zakres dni trwa do ostatniego dnia).
+    const hasFuture = (slots ?? []).some(
+      (s) => new Date((s.ends_at ?? s.starts_at) as string).getTime() > now,
+    );
     // Brak terminów lub wszystko w przeszłości → nic do przypominania; tylko oznacz.
     if (!slots || slots.length === 0 || !hasFuture) {
       await supabase.from('events').update({ reminded_at: nowIso }).eq('id', ev.id);

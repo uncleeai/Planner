@@ -1,4 +1,4 @@
-import type { EventRow, Slot, Vote, Profile } from './types';
+import type { EventRow, Slot, Vote, Profile, Comment } from './types';
 
 // Lekki cache w pamięci (singleton po stronie klienta). Dashboard ładuje komplet danych;
 // strona wypadu odczytuje je na start, by pokazać się natychmiast — a potem i tak
@@ -10,6 +10,7 @@ export type AppData = {
   slots: Slot[];
   votes: Vote[];
   profiles: Profile[];
+  recentComments: Comment[];
 };
 
 let cache: AppData | null = null;
@@ -39,6 +40,7 @@ export function mergeEventData(
       slots: [...data.slots],
       votes: [...data.votes],
       profiles: [...data.profiles],
+      recentComments: [],
     };
     return;
   }
@@ -47,5 +49,6 @@ export function mergeEventData(
     slots: [...cache.slots.filter((s) => s.event_id !== eventId), ...data.slots],
     votes: [...cache.votes.filter((v) => v.event_id !== eventId), ...data.votes],
     profiles: data.profiles.length ? data.profiles : cache.profiles,
+    recentComments: cache.recentComments,
   };
 }

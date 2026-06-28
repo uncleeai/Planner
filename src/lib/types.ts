@@ -16,10 +16,50 @@ export type Slot = {
   id: string;
   event_id: string;
   starts_at: string;
+  ends_at: string | null;
+  all_day: boolean;
   created_by: string | null;
   created_by_user_id: string | null;
   created_at: string;
 };
+
+// Efektywny koniec terminu w ms — do logiki „nadchodzące / odbyte / minęło".
+// Zakres i cały dzień trwają do KOŃCA ostatniego dnia (a nie od pierwszego momentu).
+export function slotEndMs(slot: Pick<Slot, 'starts_at' | 'ends_at' | 'all_day'>): number {
+  if (slot.ends_at) {
+    const d = new Date(slot.ends_at);
+    d.setHours(23, 59, 59, 999);
+    return d.getTime();
+  }
+  if (slot.all_day) {
+    const d = new Date(slot.starts_at);
+    d.setHours(23, 59, 59, 999);
+    return d.getTime();
+  }
+  return new Date(slot.starts_at).getTime();
+}
+
+function fmtDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'long' });
+}
+function fmtDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('pl-PL', {
+    weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  });
+}
+function fmtTimeOnly(iso: string): string {
+  return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Ludzki opis terminu wg modelu (moment / cały dzień / zakres / zakres z godziną).
+export function formatSlotRange(slot: Pick<Slot, 'starts_at' | 'ends_at' | 'all_day'>): string {
+  if (slot.ends_at) {
+    const range = `${fmtDateShort(slot.starts_at)} – ${fmtDateShort(slot.ends_at)}`;
+    return slot.all_day ? range : `${range}, ${fmtTimeOnly(slot.starts_at)}`;
+  }
+  if (slot.all_day) return fmtDateShort(slot.starts_at);
+  return fmtDateTime(slot.starts_at);
+}
 
 export type Vote = {
   id: string;
@@ -37,6 +77,15 @@ export type Profile = {
   avatar: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type Comment = {
+  id: string;
+  event_id: string;
+  user_id: string | null;
+  author_name: string;
+  body: string;
+  created_at: string;
 };
 
 export function getConfirmedSlot(
