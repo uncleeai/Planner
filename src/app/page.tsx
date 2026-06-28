@@ -81,7 +81,6 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef(0);
   const startY = useRef<number | null>(null);
-  const pausedRef = useRef(false);
   const swallowClick = useRef(false);
   const rafRef = useRef<number | null>(null);
 
@@ -91,13 +90,14 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
 
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
+  // Auto-rotacja: pojedynczy timeout przeplanowywany po KAŻDEJ zmianie idx i wstrzymywany
+  // na czas przeciągania. Dzięki temu Twój swipe resetuje zegar (auto nie wystrzeli zaraz
+  // po geście ani w trakcie dojazdu).
   useEffect(() => {
-    if (items.length <= 1) return;
-    const t = window.setInterval(() => {
-      if (!pausedRef.current) setIdx((i) => (i + 1) % items.length);
-    }, 5000);
-    return () => window.clearInterval(t);
-  }, [items.length]);
+    if (items.length <= 1 || dragging) return;
+    const t = window.setTimeout(() => setIdx((i) => (i + 1) % items.length), 5000);
+    return () => window.clearTimeout(t);
+  }, [idx, items.length, dragging]);
 
   const n = items.length;
   const safeIdx = Math.min(idx, n - 1);
@@ -106,7 +106,6 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   const onTouchStart = (e: React.TouchEvent) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     startY.current = e.touches[0].clientY;
-    pausedRef.current = true;
     setDragging(true);
   };
   const onTouchMove = (e: React.TouchEvent) => {
@@ -121,7 +120,6 @@ function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (event
   };
   const onTouchEnd = () => {
     startY.current = null;
-    pausedRef.current = false;
     const dy = dragRef.current;
     dragRef.current = 0;
 
