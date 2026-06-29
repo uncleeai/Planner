@@ -956,50 +956,69 @@ body.login-active .glass-bg { display: none; }
   position: absolute;
   inset: 0;
   z-index: 0;
-  overflow: hidden; /* miękkie krawędzie blobów schowane poza ekranem */
+  overflow: hidden; /* miękkie krawędzie wstęg schowane poza ekranem */
+  /* Kolorowy podkład — gwarantuje, że tło nigdy nie zgaśnie do czerni, nawet gdy
+     ruchome wstęgi akurat odpłyną. Ruch dodają wstęgi na wierzchu (screen). */
+  background:
+    radial-gradient(60% 50% at 24% 24%, rgba(79, 70, 229, 0.22), transparent 70%),
+    radial-gradient(55% 50% at 80% 30%, rgba(20, 150, 190, 0.18), transparent 72%),
+    radial-gradient(60% 55% at 55% 88%, rgba(150, 50, 190, 0.18), transparent 70%);
 }
+/* Pojedyncza „wstęga" aurory: szeroka, rozmyta elipsa koloru (radial closest-side na
+   prostokątnym boksie → rozciągnięty glow). Kilka różnych barw nakłada się przez
+   mix-blend: screen i przenika, dając ciągłe, rozciągnięte tło zamiast osobnych kul.
+   Animujemy WYŁĄCZNIE transform (translate/rotate/scale) → warstwa GPU, blur wypalony
+   raz, płynnie i bez zacinania/zamrażania. */
 .aurora-blob {
   position: absolute;
-  width: 65vmax;
-  height: 65vmax;
   border-radius: 50%;
-  filter: blur(50px);
-  opacity: 0.42;
-  mix-blend-mode: screen; /* bloby świecą i sumują się nad czernią jak w wideo */
+  filter: blur(60px);
+  mix-blend-mode: screen;
   will-change: transform;
   backface-visibility: hidden;
 }
-.aurora-blob.b1 {
-  top: -22%; left: -18%;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.95), transparent 60%);
-  animation: aurora-drift-1 19s ease-in-out infinite alternate;
+.aurora-blob.b1 { width: 150vmax; height: 70vmax; top: -15%; left: -20%; opacity: 0.50;
+  background: radial-gradient(closest-side, rgba(79, 70, 229, 0.95), transparent 80%);
+  animation: aurora-1 22s ease-in-out infinite alternate; }
+.aurora-blob.b2 { width: 140vmax; height: 62vmax; top: 4%; right: -18%; opacity: 0.46;
+  background: radial-gradient(closest-side, rgba(20, 150, 190, 0.9), transparent 80%);
+  animation: aurora-2 27s ease-in-out infinite alternate; }
+.aurora-blob.b3 { width: 145vmax; height: 70vmax; bottom: -16%; left: -15%; opacity: 0.48;
+  background: radial-gradient(closest-side, rgba(150, 50, 190, 0.9), transparent 80%);
+  animation: aurora-3 24s ease-in-out infinite alternate; }
+.aurora-blob.b4 { width: 140vmax; height: 56vmax; bottom: -6%; right: -12%; opacity: 0.36;
+  background: radial-gradient(closest-side, rgba(20, 185, 135, 0.8), transparent 80%);
+  animation: aurora-4 31s ease-in-out infinite alternate; }
+.aurora-blob.b5 { width: 120vmax; height: 60vmax; top: 22%; left: 0%; opacity: 0.34;
+  background: radial-gradient(closest-side, rgba(225, 70, 150, 0.8), transparent 80%);
+  animation: aurora-5 19s ease-in-out infinite alternate; }
+
+@keyframes aurora-1 {
+  0%   { transform: translate3d(0, 0, 0) rotate(-14deg) scale(1); }
+  50%  { transform: translate3d(18%, 16%, 0) rotate(-4deg) scale(1.18); }
+  100% { transform: translate3d(6%, 26%, 0) rotate(-20deg) scale(1.08); }
 }
-.aurora-blob.b2 {
-  top: 8%; right: -22%;
-  background: radial-gradient(circle, rgba(20, 140, 185, 0.9), transparent 60%);
-  animation: aurora-drift-2 23s ease-in-out infinite alternate;
+@keyframes aurora-2 {
+  0%   { transform: translate3d(0, 0, 0) rotate(12deg) scale(1.1); }
+  50%  { transform: translate3d(-20%, 16%, 0) rotate(2deg) scale(0.95); }
+  100% { transform: translate3d(-8%, -14%, 0) rotate(18deg) scale(1.15); }
 }
-.aurora-blob.b3 {
-  bottom: -26%; left: 18%;
-  background: radial-gradient(circle, rgba(140, 45, 175, 0.85), transparent 60%);
-  animation: aurora-drift-3 21s ease-in-out infinite alternate;
+@keyframes aurora-3 {
+  0%   { transform: translate3d(0, 0, 0) rotate(20deg) scale(1); }
+  50%  { transform: translate3d(20%, -18%, 0) rotate(8deg) scale(1.2); }
+  100% { transform: translate3d(-12%, -6%, 0) rotate(26deg) scale(1.06); }
 }
-@keyframes aurora-drift-1 {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(48%, 36%, 0) scale(1.35); }
-  100% { transform: translate3d(12%, 62%, 0) scale(1.1); }
+@keyframes aurora-4 {
+  0%   { transform: translate3d(0, 0, 0) rotate(-8deg) scale(1.05); }
+  50%  { transform: translate3d(-18%, -16%, 0) rotate(-20deg) scale(1.2); }
+  100% { transform: translate3d(-4%, -2%, 0) rotate(-2deg) scale(0.98); }
 }
-@keyframes aurora-drift-2 {
-  0%   { transform: translate3d(0, 0, 0) scale(1.15); }
-  50%  { transform: translate3d(-46%, 30%, 0) scale(0.85); }
-  100% { transform: translate3d(-16%, -26%, 0) scale(1.2); }
+@keyframes aurora-5 {
+  0%   { transform: translate3d(0, 0, 0) rotate(28deg) scale(1); }
+  50%  { transform: translate3d(24%, 12%, 0) rotate(42deg) scale(1.18); }
+  100% { transform: translate3d(10%, 26%, 0) rotate(20deg) scale(1.1); }
 }
-@keyframes aurora-drift-3 {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(40%, -42%, 0) scale(1.3); }
-  100% { transform: translate3d(-22%, -12%, 0) scale(1.05); }
-}
-/* Szanuj preferencję redukcji ruchu — wtedy bloby stoją. */
+/* Szanuj preferencję redukcji ruchu — wtedy wstęgi stoją. */
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none; }
 }

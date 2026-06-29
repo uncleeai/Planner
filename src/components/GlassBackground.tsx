@@ -17,6 +17,8 @@ export default function GlassBackground() {
         <i className="aurora-blob b1" />
         <i className="aurora-blob b2" />
         <i className="aurora-blob b3" />
+        <i className="aurora-blob b4" />
+        <i className="aurora-blob b5" />
       </div>
       <div className="glass-grain" />
     </div>
