@@ -13,7 +13,11 @@ export default function GlassBackground() {
 
   return (
     <div className="glass-bg" aria-hidden="true">
-      <div className="glass-aurora" />
+      <div className="glass-aurora">
+        <i className="aurora-blob b1" />
+        <i className="aurora-blob b2" />
+        <i className="aurora-blob b3" />
+      </div>
       <div className="glass-grain" />
     </div>
   );

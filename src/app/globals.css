@@ -948,17 +948,57 @@ body.login-active .glass-bg { display: none; }
   background: #050505;
 }
 
-/* Statyczna aurora — ciemne plamy koloru nad czernią. Malowana raz (zero dekodowania
-   wideo, zero przerysowań przy scrollu), więc nic się nie zacina i nie ma czego
-   zamrażać. Alpha trzymane nisko, by apka została sleek-ciemna. */
+/* Aurora — kilka kolorowych „blobów" wolno dryfujących nad czernią; odtwarza ruch
+   dawnego rozmytego wideo. KLUCZOWE: animujemy WYŁĄCZNIE transform → każdy blob to
+   osobna warstwa GPU, blur wypalony raz, zero przerysowań co klatkę. Dlatego płynnie
+   i bez zamrażania (inaczej niż wideo czy animowanie gradientu/tła). */
 .glass-aurora {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background:
-    radial-gradient(45% 55% at 22% 28%, rgba(79, 70, 229, 0.20), transparent 70%),
-    radial-gradient(50% 55% at 82% 22%, rgba(13, 110, 160, 0.18), transparent 72%),
-    radial-gradient(55% 55% at 62% 88%, rgba(120, 40, 160, 0.15), transparent 70%);
+  overflow: hidden; /* miękkie krawędzie blobów schowane poza ekranem */
+}
+.aurora-blob {
+  position: absolute;
+  width: 65vmax;
+  height: 65vmax;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: 0.42;
+  mix-blend-mode: screen; /* bloby świecą i sumują się nad czernią jak w wideo */
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.aurora-blob.b1 {
+  top: -22%; left: -18%;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.95), transparent 60%);
+  animation: aurora-drift-1 26s ease-in-out infinite alternate;
+}
+.aurora-blob.b2 {
+  top: 8%; right: -22%;
+  background: radial-gradient(circle, rgba(20, 140, 185, 0.9), transparent 60%);
+  animation: aurora-drift-2 34s ease-in-out infinite alternate;
+}
+.aurora-blob.b3 {
+  bottom: -26%; left: 18%;
+  background: radial-gradient(circle, rgba(140, 45, 175, 0.85), transparent 60%);
+  animation: aurora-drift-3 30s ease-in-out infinite alternate;
+}
+@keyframes aurora-drift-1 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(28%, 24%, 0) scale(1.25); }
+}
+@keyframes aurora-drift-2 {
+  from { transform: translate3d(0, 0, 0) scale(1.1); }
+  to   { transform: translate3d(-26%, 22%, 0) scale(0.9); }
+}
+@keyframes aurora-drift-3 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(22%, -28%, 0) scale(1.2); }
+}
+/* Szanuj preferencję redukcji ruchu — wtedy bloby stoją. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob { animation: none; }
 }
 
 .glass-grain {

@@ -156,7 +156,11 @@ function LoginBackground() {
 
   return (
     <div className="login-bg" aria-hidden="true">
-      <div className="glass-aurora" />
+      <div className="glass-aurora">
+        <i className="aurora-blob b1" />
+        <i className="aurora-blob b2" />
+        <i className="aurora-blob b3" />
+      </div>
     </div>
   );
 }
