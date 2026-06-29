@@ -773,13 +773,7 @@ export default function Home() {
       {heroEvent && (
         <section>
           <div className="section-label">Najbliższy</div>
-          <div className="hero-wrap">
-            {/* Kolorowa poświata ZA kartą — backdrop-filter hero ją rozmywa, więc kolor
-                prześwituje przez szkło (mocniej w rogach). To daje realną refrakcję
-                liquid glass zamiast malowanej ramki; reszta apki zostaje ciemna. */}
-            <div className="hero-glow" aria-hidden="true" />
-            <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} slot={heroSlot} variant={heroVariant} />
-          </div>
+          <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} slot={heroSlot} variant={heroVariant} />
         </section>
       )}
       <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
