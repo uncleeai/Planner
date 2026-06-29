@@ -958,6 +958,14 @@ body.login-active .glass-bg { display: none; }
   z-index: 0;
   overflow: hidden; /* miękkie krawędzie wstęgi schowane poza ekranem */
   /* Bez podkładu — wstęga ma świecić na czystej czerni jak w oryginalnym wideo. */
+  /* Powolny obrót barwy CAŁEJ wstęgi (jak w wideo: cyan→róż→fiolet→niebieski…). Wahanie
+     w chłodnym oknie −30°…+70°, by ominąć mulisty zielono-pomarańczowy środek koła.
+     hue-rotate to tani shader na już zrasteryzowanej warstwie — nie przelicza bluru. */
+  animation: aurora-hue 32s ease-in-out infinite alternate;
+}
+@keyframes aurora-hue {
+  from { filter: hue-rotate(-30deg); }
+  to   { filter: hue-rotate(70deg); }
 }
 /* Jedna wijąca się wstęga na czerni (jak oryginalne wideo): 6 kolorowych segmentów
    ułożonych wzdłuż litery S, z gradientem barw cyan→niebieski→fiolet→magenta→czerwień.
@@ -974,22 +982,22 @@ body.login-active .glass-bg { display: none; }
   backface-visibility: hidden;
 }
 .aurora-blob.b1 { left: 58%; top: 24%; width: 60vw; height: 28vh; margin: -14vh 0 0 -30vw;
-  background: radial-gradient(closest-side, rgba(0, 215, 235, 1), transparent 76%);
+  background: radial-gradient(closest-side, rgba(0, 210, 255, 1), rgba(0, 90, 150, 0.6) 48%, transparent 78%);
   animation: aurora-1 17s ease-in-out infinite alternate; }
 .aurora-blob.b2 { left: 40%; top: 37%; width: 52vw; height: 27vh; margin: -13.5vh 0 0 -26vw;
-  background: radial-gradient(closest-side, rgba(0, 160, 255, 1), transparent 76%);
+  background: radial-gradient(closest-side, rgba(40, 110, 255, 1), rgba(20, 40, 140, 0.6) 48%, transparent 78%);
   animation: aurora-2 21s ease-in-out infinite alternate; }
 .aurora-blob.b3 { left: 51%; top: 50%; width: 48vw; height: 25vh; margin: -12.5vh 0 0 -24vw;
-  background: radial-gradient(closest-side, rgba(60, 90, 255, 1), transparent 76%);
+  background: radial-gradient(closest-side, rgba(95, 70, 255, 1), rgba(45, 30, 140, 0.6) 48%, transparent 78%);
   animation: aurora-3 19s ease-in-out infinite alternate; }
 .aurora-blob.b4 { left: 55%; top: 62%; width: 48vw; height: 25vh; margin: -12.5vh 0 0 -24vw;
-  background: radial-gradient(closest-side, rgba(140, 55, 235, 1), transparent 76%);
+  background: radial-gradient(closest-side, rgba(150, 55, 235, 1), rgba(80, 25, 130, 0.6) 48%, transparent 78%);
   animation: aurora-4 23s ease-in-out infinite alternate; }
 .aurora-blob.b5 { left: 43%; top: 75%; width: 52vw; height: 26vh; margin: -13vh 0 0 -26vw;
-  background: radial-gradient(closest-side, rgba(225, 45, 150, 1), transparent 76%);
+  background: radial-gradient(closest-side, rgba(220, 50, 170, 1), rgba(120, 20, 90, 0.6) 48%, transparent 78%);
   animation: aurora-5 18s ease-in-out infinite alternate; }
 .aurora-blob.b6 { left: 49%; top: 87%; width: 48vw; height: 25vh; margin: -12.5vh 0 0 -24vw;
-  background: radial-gradient(closest-side, rgba(200, 35, 80, 0.95), transparent 78%);
+  background: radial-gradient(closest-side, rgba(230, 45, 110, 0.97), rgba(120, 20, 55, 0.6) 48%, transparent 80%);
   animation: aurora-6 25s ease-in-out infinite alternate; }
 
 @keyframes aurora-1 {
@@ -1016,9 +1024,10 @@ body.login-active .glass-bg { display: none; }
   0%   { transform: translate3d(0, 0, 0) scale(1); }
   100% { transform: translate3d(8%, -4%, 0) scale(1.1); }
 }
-/* Szanuj preferencję redukcji ruchu — wtedy wstęgi stoją. */
+/* Szanuj preferencję redukcji ruchu — wtedy wstęga stoi i barwa się nie obraca. */
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none; }
+  .glass-aurora { animation: none; }
 }
 
 .glass-grain {
