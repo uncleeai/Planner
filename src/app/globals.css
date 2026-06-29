@@ -938,15 +938,7 @@ img.avatar { display: inline-block; }
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
   background: #050505;
 }
-.login-bg video {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover;
-  /* Własna warstwa GPU; scale maskuje krawędzie po rozmyciu. */
-  transform: translateZ(0) scale(1.3);
-  filter: blur(44px);
-  opacity: 0.5;
-}
-/* Na ekranie logowania chowamy globalną aurorę — zostaje samo wideo. */
+/* Na ekranie logowania chowamy globalną aurorę — zostaje lokalna w .login-bg. */
 body.login-active .glass-bg { display: none; }
 
 .glass-bg {
@@ -956,24 +948,17 @@ body.login-active .glass-bg { display: none; }
   background: #050505;
 }
 
-/* Wideo w tle (Apple Glassmorphism Video Background). Tanie w przemalowaniu jako
-   warstwa GPU — nawigacja/scroll nie zacinają się tak, jak przy rozmytej aurorze. */
-.glass-video {
-  /* translateZ(0) promuje wideo na własną warstwę GPU — rozmycie kompozytuje się
-     taniej i nie wymusza przerysowań treści nad nim. */
-  transform: translateZ(0) scale(1.3);
+/* Statyczna aurora — ciemne plamy koloru nad czernią. Malowana raz (zero dekodowania
+   wideo, zero przerysowań przy scrollu), więc nic się nie zacina i nie ma czego
+   zamrażać. Alpha trzymane nisko, by apka została sleek-ciemna. */
+.glass-aurora {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* Nieco mniejszy promień rozmycia (było 60px) — przy scale 1.3 i opacity 0.5
-     wygląd praktycznie ten sam, a koszt na iOS zauważalnie niższy. */
-  filter: blur(44px);
-  opacity: 0.5;
   z-index: 0;
-  will-change: transform;
-  backface-visibility: hidden;
+  background:
+    radial-gradient(45% 55% at 22% 28%, rgba(79, 70, 229, 0.20), transparent 70%),
+    radial-gradient(50% 55% at 82% 22%, rgba(13, 110, 160, 0.18), transparent 72%),
+    radial-gradient(55% 55% at 62% 88%, rgba(120, 40, 160, 0.15), transparent 70%);
 }
 
 .glass-grain {

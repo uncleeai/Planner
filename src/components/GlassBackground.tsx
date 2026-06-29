@@ -1,47 +1,19 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import { useBackground } from '@/lib/background';
 
-// Tło „Liquid Glass" — wyciszone wideo + rozmycie/nasycenie w CSS.
-// Pętla natywna (loop) zamiast ręcznego cofania `currentTime` co klatkę — to ostatnie
-// było bardzo kosztowne na iOS (per-klatkowy seek = ciągłe dekodowanie, zabierało wątek
-// główny innym animacjom). Pauzujemy też wideo, gdy karta jest w tle.
-// Można je całkiem wyłączyć (przełącznik w menu profilu) dla maksymalnej wydajności.
+// Tło „Liquid Glass". Wcześniej rozmyte wideo, ale na iOS dekoder bywał ubijany pod
+// presją pamięci (zamrożona klatka = trzeba było odświeżać), a rozmycie odtwarzanego
+// wideo zacinało scroll. Animowana rozmyta aurora też była janky (przerysowanie co
+// klatkę). Teraz statyczny gradient CSS: malowany raz, zero dekodowania i przerysowań —
+// nic się nie zacina i nie ma czego zamrażać. Wyłączalne przełącznikiem w menu profilu.
 export default function GlassBackground() {
   const { enabled } = useBackground();
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    const tryPlay = () => video.play().catch(() => {});
-    tryPlay(); // niektóre Safari nie startują autoplay bez jawnego play()
-
-    const onVisibility = () => {
-      if (document.hidden) video.pause();
-      else tryPlay();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [enabled]);
-
   if (!enabled) return null;
 
   return (
     <div className="glass-bg" aria-hidden="true">
-      <video
-        ref={videoRef}
-        src="/BG/dark abstract.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        className="glass-video"
-      />
+      <div className="glass-aurora" />
       <div className="glass-grain" />
     </div>
   );

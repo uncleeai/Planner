@@ -146,32 +146,17 @@ export async function signOut() {
 // Szanuje przełącznik tła (gdy wyłączone — czyste ciemne tło, bez dekodowania wideo).
 function LoginBackground() {
   const { enabled } = useBackground();
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     document.body.classList.add('login-active');
     return () => document.body.classList.remove('login-active');
   }, []);
 
-  useEffect(() => {
-    if (!enabled) return;
-    const video = videoRef.current;
-    if (!video) return;
-    const tryPlay = () => video.play().catch(() => {});
-    tryPlay(); // niektóre Safari nie startują autoplay bez jawnego play()
-    const onVisibility = () => {
-      if (document.hidden) video.pause();
-      else tryPlay();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [enabled]);
-
   if (!enabled) return null;
 
   return (
     <div className="login-bg" aria-hidden="true">
-      <video ref={videoRef} src="/BG/dark abstract.mp4" autoPlay muted loop playsInline preload="auto" />
+      <div className="glass-aurora" />
     </div>
   );
 }
