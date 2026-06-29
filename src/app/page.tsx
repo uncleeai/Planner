@@ -11,10 +11,8 @@ import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
-import EventImageInput from '@/components/EventImageInput';
 import EventEmojiInput from '@/components/EventEmojiInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
-import { uploadEventImage } from '@/lib/eventImage';
 import { fetchDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -243,7 +241,6 @@ export default function Home() {
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [emoji, setEmoji] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -313,17 +310,6 @@ export default function Home() {
     setBusy(true);
     setError('');
 
-    let imageUrl: string | null = null;
-    if (imageFile) {
-      try {
-        imageUrl = await uploadEventImage(userId, imageFile);
-      } catch {
-        setError('Nie udało się wgrać zdjęcia. Spróbuj inne albo utwórz bez zdjęcia.');
-        setBusy(false);
-        return;
-      }
-    }
-
     const { data, error } = await supabase
       .from('events')
       .insert({
@@ -333,7 +319,6 @@ export default function Home() {
         longitude: locationCoords?.lon ?? null,
         emoji,
         description: description.trim() || null,
-        image_url: imageUrl,
         created_by: displayName,
         created_by_user_id: userId,
       })
@@ -621,8 +606,6 @@ export default function Home() {
 
             <EventEmojiInput value={emoji} onChange={setEmoji} />
 
-            <EventImageInput file={imageFile} onChange={setImageFile} id="create-image" />
-
             <div className="field">
               <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
             </div>
@@ -752,7 +735,6 @@ export default function Home() {
                     />
                   </div>,
                   <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
-                  <EventImageInput key="img" file={imageFile} onChange={setImageFile} id="create-empty-image" />,
                   <div className="field" key="date">
                     <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
                   </div>,
@@ -935,11 +917,10 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
 function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
-  const hasImage = !!ev.image_url;
   return (
     <Link
       href={href}
-      className={`event-rich${hero ? ' hero' : ''}${hasImage ? ' has-image' : ''}`}
+      className={`event-rich${hero ? ' hero' : ''}`}
       // Dotknięcie karty → pobierz dane wypadu w tle, nim odpali się nawigacja:
       // round-trip do bazy nakłada się na tap i montowanie strony.
       onPointerDown={() => prefetchEvent(ev.id)}
@@ -950,13 +931,6 @@ function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant
         navigate(href, 'forward');
       }}
     >
-      {hasImage && (
-        // Jak w mockupie: widoczne zdjęcie po prawej, wygaszane (feather alphy przez
-        // mask-image w CSS) w lewo pod tytuł i lekko ku dołowi. Pod treścią (z-index).
-        <div className="event-rich-media" aria-hidden="true">
-          <img src={ev.image_url ?? ''} alt="" className="event-rich-img" />
-        </div>
-      )}
       <div className="event-rich-head">
         <span className="event-rich-title">{ev.title}</span>
         <IconChevron size={18} className="row-chevron" />
