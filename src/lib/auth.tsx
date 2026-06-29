@@ -162,6 +162,7 @@ function LoginBackground() {
         <i className="aurora-blob b3" />
         <i className="aurora-blob b4" />
         <i className="aurora-blob b5" />
+        <i className="aurora-blob b6" />
       </div>
     </div>
   );

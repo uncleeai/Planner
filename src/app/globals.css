@@ -957,12 +957,12 @@ body.login-active .glass-bg { display: none; }
   inset: 0;
   z-index: 0;
   overflow: hidden; /* miękkie krawędzie wstęg schowane poza ekranem */
-  /* Kolorowy podkład — gwarantuje, że tło nigdy nie zgaśnie do czerni, nawet gdy
-     ruchome wstęgi akurat odpłyną. Ruch dodają wstęgi na wierzchu (screen). */
+  /* Kolorowy podkład — żeby tło nie zgasło do czerni, gdy wstęgi odpłyną. Trzymany
+     ciemniej niż wstęgi, by zostawić głębokie czernie na kontrast HDR. */
   background:
-    radial-gradient(60% 50% at 24% 24%, rgba(79, 70, 229, 0.22), transparent 70%),
-    radial-gradient(55% 50% at 80% 30%, rgba(20, 150, 190, 0.18), transparent 72%),
-    radial-gradient(60% 55% at 55% 88%, rgba(150, 50, 190, 0.18), transparent 70%);
+    radial-gradient(60% 50% at 24% 22%, rgba(70, 70, 255, 0.20), transparent 70%),
+    radial-gradient(55% 50% at 82% 30%, rgba(0, 200, 255, 0.16), transparent 72%),
+    radial-gradient(60% 55% at 52% 90%, rgba(255, 40, 165, 0.16), transparent 70%);
 }
 /* Pojedyncza „wstęga" aurory: szeroka, rozmyta elipsa koloru (radial closest-side na
    prostokątnym boksie → rozciągnięty glow). Kilka różnych barw nakłada się przez
@@ -972,26 +972,31 @@ body.login-active .glass-bg { display: none; }
 .aurora-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
+  /* saturate wypalone razem z blur (blob potem tylko się przesuwa) → jaskrawe HDR
+     barwy bez kosztu na klatkę. */
+  filter: blur(55px) saturate(1.5);
   mix-blend-mode: screen;
   will-change: transform;
   backface-visibility: hidden;
 }
-.aurora-blob.b1 { width: 150vmax; height: 70vmax; top: -15%; left: -20%; opacity: 0.50;
-  background: radial-gradient(closest-side, rgba(79, 70, 229, 0.95), transparent 80%);
+.aurora-blob.b1 { width: 150vmax; height: 70vmax; top: -15%; left: -20%; opacity: 0.62;
+  background: radial-gradient(closest-side, rgba(70, 80, 255, 1), transparent 78%);
   animation: aurora-1 22s ease-in-out infinite alternate; }
-.aurora-blob.b2 { width: 140vmax; height: 62vmax; top: 4%; right: -18%; opacity: 0.46;
-  background: radial-gradient(closest-side, rgba(20, 150, 190, 0.9), transparent 80%);
+.aurora-blob.b2 { width: 140vmax; height: 62vmax; top: 4%; right: -18%; opacity: 0.58;
+  background: radial-gradient(closest-side, rgba(0, 210, 255, 1), transparent 78%);
   animation: aurora-2 27s ease-in-out infinite alternate; }
-.aurora-blob.b3 { width: 145vmax; height: 70vmax; bottom: -16%; left: -15%; opacity: 0.48;
-  background: radial-gradient(closest-side, rgba(150, 50, 190, 0.9), transparent 80%);
+.aurora-blob.b3 { width: 145vmax; height: 70vmax; bottom: -16%; left: -15%; opacity: 0.56;
+  background: radial-gradient(closest-side, rgba(255, 40, 170, 1), transparent 78%);
   animation: aurora-3 24s ease-in-out infinite alternate; }
-.aurora-blob.b4 { width: 140vmax; height: 56vmax; bottom: -6%; right: -12%; opacity: 0.36;
-  background: radial-gradient(closest-side, rgba(20, 185, 135, 0.8), transparent 80%);
+.aurora-blob.b4 { width: 140vmax; height: 56vmax; bottom: -6%; right: -12%; opacity: 0.48;
+  background: radial-gradient(closest-side, rgba(0, 235, 150, 1), transparent 78%);
   animation: aurora-4 31s ease-in-out infinite alternate; }
-.aurora-blob.b5 { width: 120vmax; height: 60vmax; top: 22%; left: 0%; opacity: 0.34;
-  background: radial-gradient(closest-side, rgba(225, 70, 150, 0.8), transparent 80%);
+.aurora-blob.b5 { width: 120vmax; height: 60vmax; top: 22%; left: 0%; opacity: 0.52;
+  background: radial-gradient(closest-side, rgba(165, 60, 255, 1), transparent 78%);
   animation: aurora-5 19s ease-in-out infinite alternate; }
+.aurora-blob.b6 { width: 115vmax; height: 50vmax; top: 40%; right: 5%; opacity: 0.40;
+  background: radial-gradient(closest-side, rgba(255, 120, 30, 1), transparent 78%);
+  animation: aurora-6 26s ease-in-out infinite alternate; }
 
 @keyframes aurora-1 {
   0%   { transform: translate3d(0, 0, 0) rotate(-14deg) scale(1); }
@@ -1017,6 +1022,11 @@ body.login-active .glass-bg { display: none; }
   0%   { transform: translate3d(0, 0, 0) rotate(28deg) scale(1); }
   50%  { transform: translate3d(24%, 12%, 0) rotate(42deg) scale(1.18); }
   100% { transform: translate3d(10%, 26%, 0) rotate(20deg) scale(1.1); }
+}
+@keyframes aurora-6 {
+  0%   { transform: translate3d(0, 0, 0) rotate(6deg) scale(1); }
+  50%  { transform: translate3d(-22%, -14%, 0) rotate(-8deg) scale(1.2); }
+  100% { transform: translate3d(-6%, 10%, 0) rotate(10deg) scale(1.05); }
 }
 /* Szanuj preferencję redukcji ruchu — wtedy wstęgi stoją. */
 @media (prefers-reduced-motion: reduce) {
