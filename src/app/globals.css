@@ -972,29 +972,32 @@ body.login-active .glass-bg { display: none; }
 .aurora-blob.b1 {
   top: -22%; left: -18%;
   background: radial-gradient(circle, rgba(79, 70, 229, 0.95), transparent 60%);
-  animation: aurora-drift-1 26s ease-in-out infinite alternate;
+  animation: aurora-drift-1 19s ease-in-out infinite alternate;
 }
 .aurora-blob.b2 {
   top: 8%; right: -22%;
   background: radial-gradient(circle, rgba(20, 140, 185, 0.9), transparent 60%);
-  animation: aurora-drift-2 34s ease-in-out infinite alternate;
+  animation: aurora-drift-2 23s ease-in-out infinite alternate;
 }
 .aurora-blob.b3 {
   bottom: -26%; left: 18%;
   background: radial-gradient(circle, rgba(140, 45, 175, 0.85), transparent 60%);
-  animation: aurora-drift-3 30s ease-in-out infinite alternate;
+  animation: aurora-drift-3 21s ease-in-out infinite alternate;
 }
 @keyframes aurora-drift-1 {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(28%, 24%, 0) scale(1.25); }
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(48%, 36%, 0) scale(1.35); }
+  100% { transform: translate3d(12%, 62%, 0) scale(1.1); }
 }
 @keyframes aurora-drift-2 {
-  from { transform: translate3d(0, 0, 0) scale(1.1); }
-  to   { transform: translate3d(-26%, 22%, 0) scale(0.9); }
+  0%   { transform: translate3d(0, 0, 0) scale(1.15); }
+  50%  { transform: translate3d(-46%, 30%, 0) scale(0.85); }
+  100% { transform: translate3d(-16%, -26%, 0) scale(1.2); }
 }
 @keyframes aurora-drift-3 {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(22%, -28%, 0) scale(1.2); }
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(40%, -42%, 0) scale(1.3); }
+  100% { transform: translate3d(-22%, -12%, 0) scale(1.05); }
 }
 /* Szanuj preferencję redukcji ruchu — wtedy bloby stoją. */
 @media (prefers-reduced-motion: reduce) {
