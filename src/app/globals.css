@@ -1029,6 +1029,25 @@ body.login-active .glass-bg { display: none; }
   background: rgba(255, 255, 255, 0.05);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   backdrop-filter: blur(30px) saturate(180%);
+  position: relative;
+  z-index: 1; /* nad .hero-glow, żeby frost rozmywał poświatę z tyłu */
+}
+
+/* Liquid glass: kolor ZA hero, który prześwituje przez frost. */
+.hero-wrap { position: relative; }
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 26px;
+  /* Dwie plamy w przeciwnych rogach (indygo / cyan) → rozszczepienie koloru po
+     przekątnej, jak dyspersja w szkle. Wartości celowo nasycone — przez blur(30px)
+     frostu i tak wychodzą subtelnie. */
+  background:
+    radial-gradient(60% 70% at 22% 18%, rgba(124, 92, 255, 0.65), transparent 70%),
+    radial-gradient(58% 66% at 86% 88%, rgba(40, 200, 255, 0.55), transparent 72%);
+  filter: blur(18px);
 }
 
 /* Biały szklany przycisk główny (CTA) */
