@@ -1029,15 +1029,6 @@ body.login-active .glass-bg { display: none; }
   background: rgba(255, 255, 255, 0.05);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   backdrop-filter: blur(30px) saturate(180%);
-  /* Liquid glass: chromatyczna aberracja na rogach. Dwa inset-cienie z przeciwnym
-     offsetem dają różowy fringe w lewym-górnym i cyan w prawym-dolnym — na
-     zaokrąglonych rogach czyta się jak rozszczepienie światła w szkle. Czysty CSS,
-     działa na iOS (bez SVG feDisplacementMap, którego Safari nie wspiera w backdrop). */
-  box-shadow:
-    inset 2px 2px 1px -1px rgba(255, 64, 129, 0.5),
-    inset -2px -2px 1px -1px rgba(64, 224, 255, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 /* Biały szklany przycisk główny (CTA) */
