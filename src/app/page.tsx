@@ -845,7 +845,6 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
 }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
-  const hasImage = !!ev.image_url;
 
   // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
   const weatherDate = slot ? toDateISO(slot.starts_at) : null;
@@ -873,7 +872,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
   return (
     <Link
       href={href}
-      className={`event-rich hero${hasImage ? ' has-image' : ''}`}
+      className="event-rich hero"
       onPointerDown={() => prefetchEvent(ev.id)}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
@@ -881,12 +880,6 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
         navigate(href, 'forward');
       }}
     >
-      {hasImage && (
-        <div className="event-rich-media" aria-hidden="true">
-          <img src={ev.image_url ?? ''} alt="" className="event-rich-img" />
-        </div>
-      )}
-
       <div className="hero-head">
         <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
         <div className="hero-head-main">
