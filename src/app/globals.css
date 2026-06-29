@@ -1065,12 +1065,18 @@ body.login-active .glass-bg { display: none; }
   background-image: linear-gradient(135deg, rgba(91, 87, 242, 0.10), rgba(255, 255, 255, 0.012) 62%);
 }
 
-/* Hero: najbliższy wypad — bogata karta (układ z mockupu). Większa i bardziej zaokrąglona. */
-.glass-page .event-rich.hero {
+/* Hero: najbliższy wypad — bogata karta (układ z mockupu). Większa i bardziej zaokrąglona.
+   Frosted glass: półprzezroczyste tło + rozmycie tego, co za kartą — zamiast solidnego tła
+   i gradientów w środku. (Nadpisuje też opaque #0c0c14 z .has-image.) */
+.glass-page .event-rich.hero,
+.glass-page .event-rich.hero.has-image {
   padding: 20px;
   border-radius: 26px;
   display: flex;
   flex-direction: column;
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
 }
 /* W hero zdjęcie to TŁO pod panelami — przygaszamy je (opacity + luminosity, jak w mockupie),
    żeby avatary/pasek/pogoda były czytelne, a karta minimalistyczna. Kompaktowe karty

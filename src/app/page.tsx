@@ -31,32 +31,7 @@ function toDateISO(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Dominujący kolor zdjęcia (ambient tint hero) — średnia ważona nasyceniem, by trafić w
-// żywy kolor zamiast szarej papki. Zwraca "r, g, b" albo null (np. canvas zabrudzony CORS).
-function dominantColor(img: HTMLImageElement): string | null {
-  try {
-    const c = document.createElement('canvas');
-    c.width = 24;
-    c.height = 24;
-    const ctx = c.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, 24, 24);
-    const { data } = ctx.getImageData(0, 0, 24, 24);
-    let r = 0, g = 0, b = 0, wsum = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] < 128) continue;
-      const R = data[i], G = data[i + 1], B = data[i + 2];
-      const mx = Math.max(R, G, B), mn = Math.min(R, G, B);
-      const sat = mx === 0 ? 0 : (mx - mn) / mx;
-      const w = sat * 0.85 + 0.15; // żywsze piksele ważą więcej, ale szare też się liczą
-      r += R * w; g += G * w; b += B * w; wsum += w;
-    }
-    if (wsum === 0) return null;
-    return `${Math.round(r / wsum)}, ${Math.round(g / wsum)}, ${Math.round(b / wsum)}`;
-  } catch {
-    return null;
-  }
-}
+/* (usunięto ekstrakcję dominującego koloru — hero idzie w frosted glass) */
 function timeAgo(iso: string): string {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (m < 1) return 'teraz';
@@ -872,19 +847,6 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
   const href = `/event/${ev.id}`;
   const hasImage = !!ev.image_url;
 
-  // Ambient tint: dominujący kolor zdjęcia → poświata w tle hero. Próbkujemy OSOBNYM
-  // Image z CORS, żeby widoczne zdjęcie nigdy nie ucierpiało; brak CORS → brak tintu.
-  const [tint, setTint] = useState<string | null>(null);
-  useEffect(() => {
-    if (!ev.image_url) { setTint(null); return; }
-    const im = new Image();
-    im.crossOrigin = 'anonymous';
-    let alive = true;
-    im.onload = () => { if (alive) setTint(dominantColor(im)); };
-    im.src = ev.image_url;
-    return () => { alive = false; };
-  }, [ev.image_url]);
-
   // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
   const weatherDate = slot ? toDateISO(slot.starts_at) : null;
   const meetTime = slot && !slot.all_day
@@ -912,7 +874,6 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
     <Link
       href={href}
       className={`event-rich hero${hasImage ? ' has-image' : ''}`}
-      style={tint ? ({ background: `radial-gradient(135% 115% at 85% 0%, rgba(${tint}, 0.45), rgba(13, 13, 17, 0.92) 60%)` } as React.CSSProperties) : undefined}
       onPointerDown={() => prefetchEvent(ev.id)}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
