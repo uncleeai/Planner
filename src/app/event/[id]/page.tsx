@@ -10,6 +10,8 @@ import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
+import EventEmojiInput from '@/components/EventEmojiInput';
 import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -59,6 +61,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editLocation, setEditLocation] = useState('');
+  const [editCoords, setEditCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [editEmoji, setEditEmoji] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState('');
@@ -272,6 +276,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (!event) return;
     setEditTitle(event.title ?? '');
     setEditLocation(event.location ?? '');
+    setEditCoords(
+      event.latitude != null && event.longitude != null
+        ? { lat: event.latitude, lon: event.longitude }
+        : null,
+    );
+    setEditEmoji(event.emoji ?? null);
     setEditDescription(event.description ?? '');
     setEditError('');
     setEditing(true);
@@ -287,6 +297,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .update({
         title: editTitle.trim(),
         location: editLocation.trim() || null,
+        latitude: editCoords?.lat ?? null,
+        longitude: editCoords?.lon ?? null,
+        emoji: editEmoji,
         description: editDescription.trim() || null,
       })
       .eq('id', eventId);
@@ -438,14 +451,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
           <div className="field">
             <label htmlFor="edit-location">Miejsce (opcjonalnie)</label>
-            <input
+            <LocationAutocomplete
               id="edit-location"
-              type="text"
-              placeholder="np. u Kuby, Zakopane…"
               value={editLocation}
-              onChange={(e) => setEditLocation(e.target.value)}
+              onChange={setEditLocation}
+              onCoords={setEditCoords}
+              placeholder="np. u Kuby, Zakopane…"
             />
           </div>
+          <EventEmojiInput value={editEmoji} onChange={setEditEmoji} />
           <div className="field">
             <label htmlFor="edit-description">Opis (opcjonalnie)</label>
             <DescriptionInput
