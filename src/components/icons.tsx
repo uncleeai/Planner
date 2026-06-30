@@ -86,4 +86,44 @@ export const IconX = (p: IconProps) => (
   </Svg>
 );
 
+// --- Pogoda (jednolity styl stroke; mapowane z kodu WMO przez WeatherIcon) ---
+const CLOUD_LOW = 'M6.5 18.5a4 4 0 0 1 .4-7.98 5.5 5.5 0 0 1 10.6 1A3.5 3.5 0 0 1 17.5 18.5Z';
+const CLOUD_HIGH = 'M6.5 15.5a4 4 0 0 1 .4-7.98 5.5 5.5 0 0 1 10.6 1A3.5 3.5 0 0 1 17.5 15.5Z';
+
+export const IconSun = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M5 5l1.4 1.4M17.6 17.6 19 19M2 12h2M20 12h2M5 19l1.4-1.4M17.6 6.4 19 5" />
+  </Svg>
+);
+export const IconCloud = (p: IconProps) => (
+  <Svg {...p}><path d={CLOUD_LOW} /></Svg>
+);
+export const IconCloudSun = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="13" cy="8" r="2.5" />
+    <path d="M13 3.6v.8M17.4 8h-.8M16.1 4.9l-.5.5M9.9 4.9l.5.5" />
+    <path d="M6.5 19a3.6 3.6 0 0 1 .4-7.18 5 5 0 0 1 9.6.9A3.2 3.2 0 0 1 16.4 19Z" />
+  </Svg>
+);
+export const IconCloudRain = (p: IconProps) => (
+  <Svg {...p}><path d={CLOUD_HIGH} /><path d="M9 19v2.5M13 19v2.5M16.5 19.5v2" /></Svg>
+);
+export const IconCloudSnow = (p: IconProps) => (
+  <Svg {...p}><path d={CLOUD_HIGH} /><path d="M9 20h.01M12.5 21h.01M16 20h.01M10.7 22.5h.01M14.3 22.5h.01" /></Svg>
+);
+export const IconCloudBolt = (p: IconProps) => (
+  <Svg {...p}><path d={CLOUD_HIGH} /><path d="M12.5 18.5l-2 3.5h2.5l-2 3" /></Svg>
+);
+
+// Kod pogody WMO → odpowiednia ikona (spójny styl, jak reszta UI).
+export function WeatherIcon({ code, ...p }: IconProps & { code: number }) {
+  if (code === 0 || code === 1) return <IconSun {...p} />;
+  if (code === 2) return <IconCloudSun {...p} />;
+  if (code === 3 || code === 45 || code === 48) return <IconCloud {...p} />;
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return <IconCloudSnow {...p} />;
+  if (code >= 95) return <IconCloudBolt {...p} />;
+  return <IconCloudRain {...p} />; // mżawka / deszcz / przelotne
+}
+
 

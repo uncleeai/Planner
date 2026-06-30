@@ -11,14 +11,25 @@ import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
+import EventEmojiInput from '@/components/EventEmojiInput';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
+import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
-import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare } from '@/components/icons';
+import { prefetchEvent } from '@/lib/eventPrefetch';
+import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare, IconClock, WeatherIcon } from '@/components/icons';
 
 function progressColor(p: number): string {
   return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
 }
+// Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
+function toDateISO(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/* (usunięto ekstrakcję dominującego koloru — hero idzie w frosted glass) */
 function timeAgo(iso: string): string {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (m < 1) return 'teraz';
@@ -227,6 +238,8 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [emoji, setEmoji] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [busy, setBusy] = useState(false);
@@ -302,6 +315,9 @@ export default function Home() {
       .insert({
         title: title.trim(),
         location: location.trim() || null,
+        latitude: locationCoords?.lat ?? null,
+        longitude: locationCoords?.lon ?? null,
+        emoji,
         description: description.trim() || null,
         created_by: displayName,
         created_by_user_id: userId,
@@ -465,6 +481,51 @@ export default function Home() {
     [recentComments, events, profileById],
   );
 
+  // Hero = wypad z najbliższym (w przyszłości) terminem — czy to ustalony „nadchodzący",
+  // czy aktywny zbierający głosy. Pokazujemy go powiększonego na górze, raz.
+  const heroId = useMemo(() => {
+    const now = Date.now();
+    let bestId: string | null = null;
+    let bestMs = Infinity;
+    const consider = (ev: EventRow) => {
+      let ms = Infinity;
+      for (const s of slots) {
+        if (s.event_id !== ev.id) continue;
+        const end = slotEndMs(s);
+        if (end >= now && end < ms) ms = end;
+      }
+      if (ms < bestMs) {
+        bestMs = ms;
+        bestId = ev.id;
+      }
+    };
+    upcoming.forEach(consider);
+    open.forEach(consider);
+    return bestId;
+  }, [upcoming, open, slots]);
+  const heroEvent = heroId ? events.find((e) => e.id === heroId) ?? null : null;
+  const heroVariant: 'open' | 'upcoming' =
+    heroId && upcoming.some((e) => e.id === heroId) ? 'upcoming' : 'open';
+
+  // Termin hero (do pogody i godziny zbiórki): ustalony, a jak brak — najbliższy proponowany.
+  const heroSlot = useMemo<Slot | null>(() => {
+    if (!heroId) return null;
+    const settled = aggByEvent.get(heroId)?.slot;
+    if (settled) return settled;
+    const now = Date.now();
+    let best: Slot | null = null;
+    let bestMs = Infinity;
+    for (const s of slots) {
+      if (s.event_id !== heroId) continue;
+      const end = slotEndMs(s);
+      if (end >= now && end < bestMs) {
+        bestMs = end;
+        best = s;
+      }
+    }
+    return best;
+  }, [heroId, aggByEvent, slots]);
+
   return (
     <main className="glass-page">
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
@@ -524,12 +585,12 @@ export default function Home() {
             </div>
             <div className="field">
               <label htmlFor="location">Miejsce (opcjonalnie)</label>
-              <input
+              <LocationAutocomplete
                 id="location"
-                type="text"
-                placeholder="np. u Kubusia, u twojej starej…"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={setLocation}
+                onCoords={setLocationCoords}
+                placeholder="np. Zakopane, Łabiszyn…"
               />
             </div>
 
@@ -542,6 +603,8 @@ export default function Home() {
                 placeholder="np. co bierzemy, plan xd, szczegóły…"
               />
             </div>
+
+            <EventEmojiInput value={emoji} onChange={setEmoji} />
 
             <div className="field">
               <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
@@ -654,12 +717,12 @@ export default function Home() {
                   </div>,
                   <div className="field" key="loc">
                     <label htmlFor="location">Miejsce (opcjonalnie)</label>
-                    <input
+                    <LocationAutocomplete
                       id="location"
-                      type="text"
-                      placeholder="np. u Kuby, Zakopane…"
                       value={location}
-                      onChange={(e) => setLocation(e.target.value)}
+                      onChange={setLocation}
+                      onCoords={setLocationCoords}
+                      placeholder="np. Zakopane, Łabiszyn…"
                     />
                   </div>,
                   <div className="field" key="desc">
@@ -671,6 +734,7 @@ export default function Home() {
                       placeholder="np. co bierzemy, plan, szczegóły…"
                     />
                   </div>,
+                  <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
                   <div className="field" key="date">
                     <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
                   </div>,
@@ -706,8 +770,14 @@ export default function Home() {
         </div>
       )}
 
-      <Section title="W trakcie" events={open} agg={aggByEvent} variant="open" />
-      <Section title="Nadchodzące" events={upcoming} agg={aggByEvent} variant="upcoming" />
+      {heroEvent && (
+        <section>
+          <div className="section-label">Najbliższy</div>
+          <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} slot={heroSlot} variant={heroVariant} />
+        </section>
+      )}
+      <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
+      <Section title="Nadchodzące" events={upcoming.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="upcoming" />
       <Section title="Nie ustalono" events={expired} agg={aggByEvent} variant="expired" muted />
       <Section title="Bylim już" events={past} agg={aggByEvent} variant="past" muted />
 
@@ -750,13 +820,113 @@ function Section({
   );
 }
 
-function EventCard({ ev, agg, variant }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past' }) {
+// Bogata karta najbliższego wypadu (układ z mockupu): emoji w kółku + tytuł + status,
+// lokalizacja/data, szklany pod-panel (avatary + „X z Y" + pasek), grid Pogoda + Zbiórka.
+function HeroCard({ ev, agg, memberCount, slot, variant }: {
+  ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming';
+}) {
+  const navigate = useTransitionNavigate();
+  const href = `/event/${ev.id}`;
+
+  // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
+  const weatherDate = slot ? toDateISO(slot.starts_at) : null;
+  const meetTime = slot && !slot.all_day
+    ? new Date(slot.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  // Pogoda na dzień wypadu (gdy są współrzędne i termin w zasięgu).
+  const hasCoords = ev.latitude != null && ev.longitude != null && !!weatherDate;
+  // Inicjalizacja z cache'a — po powrocie z eventu pogoda jest od razu (bez doskoku).
+  const [weather, setWeather] = useState<DayWeather | null>(() =>
+    hasCoords ? peekDayWeather(ev.latitude as number, ev.longitude as number, weatherDate as string) ?? null : null,
+  );
+  useEffect(() => {
+    if (!hasCoords) return;
+    let alive = true;
+    fetchDayWeather(ev.latitude as number, ev.longitude as number, weatherDate as string)
+      .then((r) => alive && setWeather(r));
+    return () => { alive = false; };
+  }, [hasCoords, ev.latitude, ev.longitude, weatherDate]);
+
+  const badge = variant === 'upcoming'
+    ? { label: 'Ustalone', cls: 'hero-badge hero-badge-green' }
+    : { label: 'Aktywny', cls: 'hero-badge hero-badge-blue' };
+
+  const wInfo = weather ? describeWeather(weather.code) : null;
+
+  return (
+    <Link
+      href={href}
+      className="event-rich hero"
+      onPointerDown={() => prefetchEvent(ev.id)}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        navigate(href, 'forward');
+      }}
+    >
+      <div className="hero-head">
+        <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
+        <div className="hero-head-main">
+          <span className="hero-title">{ev.title}</span>
+          <span className={badge.cls}>{badge.label}</span>
+        </div>
+        <IconChevron size={20} className="row-chevron" />
+      </div>
+
+      <div className="hero-meta">
+        {ev.location && <span className="event-meta"><IconPin size={14} /> {ev.location}</span>}
+        <span className="event-meta"><IconCalendar size={14} /> {agg.slot ? formatSlotRange(agg.slot) : 'Zbieramy terminy'}</span>
+      </div>
+
+      <div className="hero-panel">
+        <div className="hero-panel-top">
+          {agg.voters.length > 0
+            ? <AvatarStack people={agg.voters} size={28} />
+            : <span className="small muted">Jeszcze nikt nie dał znać</span>}
+          <span className="small muted">{agg.voters.length} z {memberCount} dało znać</span>
+        </div>
+        <div className="progress">
+          <div className="progress-bar" style={{ width: `${agg.percent}%` }} />
+        </div>
+      </div>
+
+      {(wInfo || meetTime) && (
+        <div className="hero-grid">
+          {wInfo && weather && (
+            <div className="hero-tile">
+              <WeatherIcon code={weather.code} size={22} className="hero-tile-icon" />
+              <div>
+                <div className="hero-tile-main">{weather.tempMax}°</div>
+                <div className="hero-tile-sub">{wInfo.label}</div>
+              </div>
+            </div>
+          )}
+          {meetTime && (
+            <div className="hero-tile">
+              <IconClock size={22} className="hero-tile-icon" />
+              <div>
+                <div className="hero-tile-main">{meetTime}</div>
+                <div className="hero-tile-sub">Godzina</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Link>
+  );
+}
+
+function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
   const navigate = useTransitionNavigate();
   const href = `/event/${ev.id}`;
   return (
     <Link
       href={href}
-      className="event-rich"
+      className={`event-rich${hero ? ' hero' : ''}`}
+      // Dotknięcie karty → pobierz dane wypadu w tle, nim odpali się nawigacja:
+      // round-trip do bazy nakłada się na tap i montowanie strony.
+      onPointerDown={() => prefetchEvent(ev.id)}
       onClick={(e) => {
         // Pozwól na otwieranie w nowej karcie (Cmd/Ctrl/środkowy przycisk); inaczej animowany slide.
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;

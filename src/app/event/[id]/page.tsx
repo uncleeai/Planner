@@ -10,10 +10,13 @@ import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
+import EventEmojiInput from '@/components/EventEmojiInput';
 import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
+import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
 
 
@@ -58,6 +61,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editLocation, setEditLocation] = useState('');
+  const [editCoords, setEditCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [editEmoji, setEditEmoji] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState('');
@@ -67,25 +72,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
 
   const load = useCallback(async () => {
-    const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] = await Promise.all([
-      supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
-      supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
-      supabase.from('votes').select('*').eq('event_id', eventId),
-      supabase.from('profiles').select('*'),
-      supabase.from('comments').select('*').eq('event_id', eventId).order('created_at'),
-    ]);
+    const { event: ev, slots: sl, votes: vo, profiles: pr, comments: cm, notFound: nf } =
+      await loadEventBundle(eventId);
 
-    if (evErr || !ev) {
+    if (nf || !ev) {
       setNotFound(true);
     } else {
-      setEvent(ev as EventRow);
-      setSlots((sl ?? []) as Slot[]);
-      setMembers((pr ?? []) as Profile[]);
-      setComments((cm ?? []) as Comment[]);
+      setEvent(ev);
+      setSlots(sl);
+      setMembers(pr);
+      setComments(cm);
 
       // Nałóż oczekujące głosy bieżącego użytkownika na świeży stan z bazy:
       // jego ostatni wybór wygrywa, dopóki baza go nie potwierdzi (wtedy czyścimy pending).
-      const dbVotes = (vo ?? []) as Vote[];
+      const dbVotes = vo;
       const pending = pendingVotesRef.current;
       const merged = dbVotes.map((v) => {
         if (v.user_id === userId && pending.has(v.slot_id)) {
@@ -115,10 +115,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       // Odśwież cache tego wypadu, by powrót na listę pokazał aktualne dane.
       mergeEventData(eventId, {
-        event: ev as EventRow,
-        slots: (sl ?? []) as Slot[],
+        event: ev,
+        slots: sl,
         votes: dbVotes,
-        profiles: (pr ?? []) as Profile[],
+        profiles: pr,
       });
     }
     setLoading(false);
@@ -276,6 +276,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (!event) return;
     setEditTitle(event.title ?? '');
     setEditLocation(event.location ?? '');
+    setEditCoords(
+      event.latitude != null && event.longitude != null
+        ? { lat: event.latitude, lon: event.longitude }
+        : null,
+    );
+    setEditEmoji(event.emoji ?? null);
     setEditDescription(event.description ?? '');
     setEditError('');
     setEditing(true);
@@ -291,6 +297,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .update({
         title: editTitle.trim(),
         location: editLocation.trim() || null,
+        latitude: editCoords?.lat ?? null,
+        longitude: editCoords?.lon ?? null,
+        emoji: editEmoji,
         description: editDescription.trim() || null,
       })
       .eq('id', eventId);
@@ -442,14 +451,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
           <div className="field">
             <label htmlFor="edit-location">Miejsce (opcjonalnie)</label>
-            <input
+            <LocationAutocomplete
               id="edit-location"
-              type="text"
-              placeholder="np. u Kuby, Zakopane…"
               value={editLocation}
-              onChange={(e) => setEditLocation(e.target.value)}
+              onChange={setEditLocation}
+              onCoords={setEditCoords}
+              placeholder="np. u Kuby, Zakopane…"
             />
           </div>
+          <EventEmojiInput value={editEmoji} onChange={setEditEmoji} />
           <div className="field">
             <label htmlFor="edit-description">Opis (opcjonalnie)</label>
             <DescriptionInput
