@@ -6,7 +6,7 @@ import { IconChevron } from '@/components/icons';
 // Picker emoji-ikony wypadu. Kompaktowy trigger w formularzu → klik otwiera popover z
 // siatką (formularz zostaje czysty). Ponowny wybór tego samego / „Wyczyść" → odznacza.
 // Kuratorowana lista — tylko najważniejsze kategorie wypadów.
-const EVENT_EMOJIS = ['🏀', '🎂', '⛺', '⛰️', '🏖️', '🏠', '🎬', '🔥'];
+const EVENT_EMOJIS = ['🏀', '🎂', '⛺', '⛰️', '🏖️', '🏠', '🎬', '🔥', '🎆', '🍺', '🍕', '🎮', '🃏'];
 
 export default function EventEmojiInput({
   value,

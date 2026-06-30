@@ -1728,7 +1728,7 @@ main::before {
   padding: 12px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
-.emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; } /* 8 emoji → równe 2 rzędy */
+.emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .emoji-chip {
   width: 100%; aspect-ratio: 1; padding: 0; font-size: 22px;
   display: flex; align-items: center; justify-content: center;
