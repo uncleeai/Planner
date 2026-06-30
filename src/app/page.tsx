@@ -12,6 +12,7 @@ import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventEmojiInput from '@/components/EventEmojiInput';
+import { EventIcon } from '@/lib/eventIcons';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { fetchDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
@@ -863,7 +864,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
       }}
     >
       <div className="hero-head">
-        <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
+        <div className="hero-emoji"><EventIcon value={ev.emoji} size={26} /></div>
         <div className="hero-head-main">
           <span className="hero-title">{ev.title}</span>
           <span className={badge.cls}>{badge.label}</span>

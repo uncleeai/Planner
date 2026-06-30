@@ -1,31 +1,30 @@
 'use client';
 
-// Wybór emoji-ikony wypadu (kółko na karcie). Opcjonalne; ponowne kliknięcie odznacza.
-const EVENT_EMOJIS = [
-  '🍺', '🎉', '🏕️', '⛰️', '🏊', '🏖️', '🍕', '🍽️', '🎮', '🎬',
-  '⚽', '🎸', '🚗', '✈️', '🔥', '🎂', '🎯', '🃏', '🏠', '🌲',
-];
+import { EVENT_ICONS } from '@/lib/eventIcons';
 
+// Wybór ikony wypadu (monochromatyczna ikona liniowa). Opcjonalne; ponowne kliknięcie odznacza.
+// value/onChange operują na id ikony (np. "beer"); zob. src/lib/eventIcons.tsx.
 export default function EventEmojiInput({
   value,
   onChange,
 }: {
   value: string | null;
-  onChange: (emoji: string | null) => void;
+  onChange: (icon: string | null) => void;
 }) {
   return (
     <div className="field">
       <label>Ikona (opcjonalnie)</label>
-      <div className="emoji-grid">
-        {EVENT_EMOJIS.map((e) => (
+      <div className="icon-grid">
+        {EVENT_ICONS.map(({ id, Icon }) => (
           <button
             type="button"
-            key={e}
-            className={`emoji-chip${value === e ? ' selected' : ''}`}
-            onClick={() => onChange(value === e ? null : e)}
-            aria-pressed={value === e}
+            key={id}
+            className={`icon-chip${value === id ? ' selected' : ''}`}
+            onClick={() => onChange(value === id ? null : id)}
+            aria-pressed={value === id}
+            aria-label={id}
           >
-            {e}
+            <Icon size={22} />
           </button>
         ))}
       </div>
