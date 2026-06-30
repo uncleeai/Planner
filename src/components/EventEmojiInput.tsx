@@ -38,44 +38,36 @@ export default function EventEmojiInput({
         </button>
 
         {open && (
-          <>
-            <button
-              type="button"
-              className="emoji-backdrop"
-              aria-label="Zamknij"
-              onClick={() => setOpen(false)}
-            />
-            <div className="emoji-popover">
-              <div className="emoji-grid">
-                {EVENT_EMOJIS.map((e) => (
-                  <button
-                    type="button"
-                    key={e}
-                    className={`emoji-chip${value === e ? ' selected' : ''}`}
-                    onClick={() => {
-                      onChange(value === e ? null : e);
-                      setOpen(false);
-                    }}
-                    aria-pressed={value === e}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
-              {value && (
+          <div className="emoji-popover">
+            <div className="emoji-grid">
+              {EVENT_EMOJIS.map((e) => (
                 <button
                   type="button"
-                  className="ghost emoji-clear"
+                  key={e}
+                  className={`emoji-chip${value === e ? ' selected' : ''}`}
                   onClick={() => {
-                    onChange(null);
+                    onChange(value === e ? null : e);
                     setOpen(false);
                   }}
+                  aria-pressed={value === e}
                 >
-                  Wyczyść
+                  {e}
                 </button>
-              )}
+              ))}
             </div>
-          </>
+            {value && (
+              <button
+                type="button"
+                className="ghost emoji-clear"
+                onClick={() => {
+                  onChange(null);
+                  setOpen(false);
+                }}
+              >
+                Wyczyść
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -1701,9 +1701,6 @@ main::before {
 
 /* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
 .emoji-picker { position: relative; }
-/* Gdy otwarty, podnieś CAŁY picker nad późniejsze pola formularza — inaczej z-index
-   popovera liczy się tylko wewnątrz pickera, a kolejne pola malują się na wierzchu. */
-.emoji-picker.open { z-index: 60; }
 .emoji-trigger {
   width: 100%;
   display: flex; align-items: center; gap: 10px;
@@ -1720,15 +1717,16 @@ main::before {
 .emoji-trigger-chev { color: var(--muted); transition: transform 0.2s ease; }
 .emoji-trigger-chev.open { transform: rotate(90deg); }
 
-/* Łapie klik poza popoverem → zamknięcie. */
-.emoji-backdrop { position: fixed; inset: 0; z-index: 40; background: transparent; border: 0; padding: 0; }
+/* Popover W PRZEPŁYWIE (nie absolute) — jak .loc-suggestions. Pola formularza mają
+   animację transform/opacity (reveal), która tworzy konteksty stackingu „więżące"
+   absolutny popover pod kolejnym polem. W przepływie po prostu rozpycha pola pod sobą. */
 .emoji-popover {
-  position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 50;
+  margin-top: 8px;
   background: #14141a;
   border: 1px solid var(--border-strong);
   border-radius: 16px;
   padding: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 .emoji-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; } /* 20 emoji → równe 4 rzędy */
 .emoji-chip {
