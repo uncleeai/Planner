@@ -1699,18 +1699,44 @@ main::before {
 /* Etykieta „X z Y dało znać" w hero — odrobinę czytelniejsza niż globalny .muted. */
 .hero-panel-top .muted { color: rgba(255, 255, 255, 0.62); }
 
-/* ===== Picker ikon wypadu (równa siatka, monochromatyczne ikony liniowe) ===== */
-.icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-.icon-chip {
-  width: 100%; aspect-ratio: 1; padding: 0;
+/* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
+.emoji-picker { position: relative; }
+.emoji-trigger {
+  width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--card-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  text-align: left;
+}
+.emoji-trigger-emoji { flex: 1; font-size: 22px; line-height: 1; }
+.emoji-trigger-ph { flex: 1; color: var(--muted); }
+.emoji-trigger-chev { color: var(--muted); transition: transform 0.2s ease; }
+.emoji-trigger-chev.open { transform: rotate(90deg); }
+
+/* Łapie klik poza popoverem → zamknięcie. */
+.emoji-backdrop { position: fixed; inset: 0; z-index: 40; background: transparent; border: 0; padding: 0; }
+.emoji-popover {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 50;
+  background: #14141a;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+.emoji-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; } /* 20 emoji → równe 4 rzędy */
+.emoji-chip {
+  width: 100%; aspect-ratio: 1; padding: 0; font-size: 22px;
   display: flex; align-items: center; justify-content: center;
-  color: rgba(255, 255, 255, 0.78);
   background: var(--card-2);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  border-radius: 12px;
 }
 @media (hover: hover) {
-  .icon-chip:hover { color: rgba(255, 255, 255, 0.95); border-color: var(--border-strong); }
+  .emoji-chip:hover { border-color: var(--border-strong); }
 }
-.icon-chip.selected { color: #fff; border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.13); }
+.emoji-chip.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.13); }
+.emoji-clear { margin-top: 10px; width: 100%; }

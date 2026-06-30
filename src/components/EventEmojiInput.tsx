@@ -1,32 +1,82 @@
 'use client';
 
-import { EVENT_ICONS } from '@/lib/eventIcons';
+import { useState } from 'react';
+import { IconChevron } from '@/components/icons';
 
-// Wybór ikony wypadu (monochromatyczna ikona liniowa). Opcjonalne; ponowne kliknięcie odznacza.
-// value/onChange operują na id ikony (np. "beer"); zob. src/lib/eventIcons.tsx.
+// Picker emoji-ikony wypadu. Kompaktowy trigger w formularzu → klik otwiera popover z
+// siatką (formularz zostaje czysty). Ponowny wybór tego samego / „Wyczyść" → odznacza.
+const EVENT_EMOJIS = [
+  '🍺', '🎉', '🏕️', '⛰️', '🏊', '🏖️', '🍕', '🍽️', '🎮', '🎬',
+  '⚽', '🎸', '🚗', '✈️', '🔥', '🎂', '🎯', '🃏', '🏠', '🌲',
+];
+
 export default function EventEmojiInput({
   value,
   onChange,
 }: {
   value: string | null;
-  onChange: (icon: string | null) => void;
+  onChange: (emoji: string | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="field">
       <label>Ikona (opcjonalnie)</label>
-      <div className="icon-grid">
-        {EVENT_ICONS.map(({ id, Icon }) => (
-          <button
-            type="button"
-            key={id}
-            className={`icon-chip${value === id ? ' selected' : ''}`}
-            onClick={() => onChange(value === id ? null : id)}
-            aria-pressed={value === id}
-            aria-label={id}
-          >
-            <Icon size={22} />
-          </button>
-        ))}
+      <div className="emoji-picker">
+        <button
+          type="button"
+          className="emoji-trigger"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
+          {value ? (
+            <span className="emoji-trigger-emoji">{value}</span>
+          ) : (
+            <span className="emoji-trigger-ph">Wybierz ikonę</span>
+          )}
+          <IconChevron size={16} className={`emoji-trigger-chev${open ? ' open' : ''}`} />
+        </button>
+
+        {open && (
+          <>
+            <button
+              type="button"
+              className="emoji-backdrop"
+              aria-label="Zamknij"
+              onClick={() => setOpen(false)}
+            />
+            <div className="emoji-popover">
+              <div className="emoji-grid">
+                {EVENT_EMOJIS.map((e) => (
+                  <button
+                    type="button"
+                    key={e}
+                    className={`emoji-chip${value === e ? ' selected' : ''}`}
+                    onClick={() => {
+                      onChange(value === e ? null : e);
+                      setOpen(false);
+                    }}
+                    aria-pressed={value === e}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+              {value && (
+                <button
+                  type="button"
+                  className="ghost emoji-clear"
+                  onClick={() => {
+                    onChange(null);
+                    setOpen(false);
+                  }}
+                >
+                  Wyczyść
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import type { SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-export function Svg({ children, size = 16, ...props }: IconProps & { children: React.ReactNode }) {
+function Svg({ children, size = 16, ...props }: IconProps & { children: React.ReactNode }) {
   return (
     <svg
       width={size}
