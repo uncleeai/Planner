@@ -1615,10 +1615,13 @@ main::before {
   margin: 6px 0 0;
   padding: 6px;
   list-style: none;
-  background: #14141b;
-  border: 1px solid var(--border-strong);
+  /* Ten sam glassowy materiał co karty/popover emoji (zamiast płaskiego #14141b). */
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-sm);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.5);
   max-height: 260px;
   overflow-y: auto;
 }

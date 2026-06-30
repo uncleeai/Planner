@@ -13,7 +13,7 @@ import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventEmojiInput from '@/components/EventEmojiInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
-import { fetchDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
+import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
@@ -836,7 +836,10 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
 
   // Pogoda na dzień wypadu (gdy są współrzędne i termin w zasięgu).
   const hasCoords = ev.latitude != null && ev.longitude != null && !!weatherDate;
-  const [weather, setWeather] = useState<DayWeather | null>(null);
+  // Inicjalizacja z cache'a — po powrocie z eventu pogoda jest od razu (bez doskoku).
+  const [weather, setWeather] = useState<DayWeather | null>(() =>
+    hasCoords ? peekDayWeather(ev.latitude as number, ev.longitude as number, weatherDate as string) ?? null : null,
+  );
   useEffect(() => {
     if (!hasCoords) return;
     let alive = true;

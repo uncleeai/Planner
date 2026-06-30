@@ -41,6 +41,17 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Cache w pamięci (per sesja) — żeby po powrocie z eventu pogoda była od razu, bez
+// doskoku/przeskoku layoutu. Trzymamy też deterministyczne null (poza zasięgiem).
+const weatherCache = new Map<string, DayWeather | null>();
+const wKey = (lat: number, lon: number, dateISO: string) => `${lat},${lon},${dateISO}`;
+
+// Synchroniczny podgląd cache'a (do inicjalizacji stanu bez pop-inu). undefined = jeszcze
+// nie pobrane; null = pobrane, ale brak prognozy.
+export function peekDayWeather(lat: number, lon: number, dateISO: string): DayWeather | null | undefined {
+  return weatherCache.get(wKey(lat, lon, dateISO));
+}
+
 // Prognoza na dzień (lokalna data YYYY-MM-DD). Null gdy poza zasięgiem (przeszłość lub
 // dalej niż ~16 dni) albo przy błędzie sieci.
 export async function fetchDayWeather(
@@ -48,9 +59,16 @@ export async function fetchDayWeather(
   longitude: number,
   dateISO: string,
 ): Promise<DayWeather | null> {
+  const key = wKey(latitude, longitude, dateISO);
+  const cached = weatherCache.get(key);
+  if (cached !== undefined) return cached;
+
   const target = new Date(`${dateISO}T12:00:00`);
   const days = Math.floor((target.getTime() - Date.now()) / DAY_MS);
-  if (Number.isNaN(days) || days < -1 || days > 15) return null;
+  if (Number.isNaN(days) || days < -1 || days > 15) {
+    weatherCache.set(key, null);
+    return null;
+  }
 
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
@@ -58,15 +76,20 @@ export async function fetchDayWeather(
     `&start_date=${dateISO}&end_date=${dateISO}`;
   try {
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) return null; // błąd przejściowy — nie cache'ujemy, pozwól ponowić
     const d = await res.json();
     const code = d.daily?.weather_code?.[0];
     const tMax = d.daily?.temperature_2m_max?.[0];
     const tMin = d.daily?.temperature_2m_min?.[0];
-    if (code == null || tMax == null) return null;
-    return { code, tempMax: Math.round(tMax), tempMin: Math.round(tMin) };
+    if (code == null || tMax == null) {
+      weatherCache.set(key, null);
+      return null;
+    }
+    const result: DayWeather = { code, tempMax: Math.round(tMax), tempMin: Math.round(tMin) };
+    weatherCache.set(key, result);
+    return result;
   } catch {
-    return null;
+    return null; // sieć padła — nie cache'ujemy
   }
 }
 
