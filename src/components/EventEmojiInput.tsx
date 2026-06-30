@@ -22,7 +22,7 @@ export default function EventEmojiInput({
   return (
     <div className="field">
       <label>Ikona (opcjonalnie)</label>
-      <div className="emoji-picker">
+      <div className={`emoji-picker${open ? ' open' : ''}`}>
         <button
           type="button"
           className="emoji-trigger"

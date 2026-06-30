@@ -1701,6 +1701,9 @@ main::before {
 
 /* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
 .emoji-picker { position: relative; }
+/* Gdy otwarty, podnieś CAŁY picker nad późniejsze pola formularza — inaczej z-index
+   popovera liczy się tylko wewnątrz pickera, a kolejne pola malują się na wierzchu. */
+.emoji-picker.open { z-index: 60; }
 .emoji-trigger {
   width: 100%;
   display: flex; align-items: center; gap: 10px;
