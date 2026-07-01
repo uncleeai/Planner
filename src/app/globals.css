@@ -987,8 +987,13 @@ body.login-active .glass-bg { display: none; }
 
 .glass-bg {
   /* Globalne tło na z-index:0 (nad nieprzezroczystym tłem body); cała treść siedzi
-     w .container z z-index:1, więc jest nad aurorą. */
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+     w .container z z-index:1, więc jest nad aurorą.
+     Jawne width/height (zamiast samego inset:0) — na iOS Safari `fixed` + `inset:0`
+     bywa niedociągane do dołu, gdy chowa się pasek adresu i widoczny obszar rośnie;
+     100dvh śledzi aktualny, dynamiczny viewport (fallback 100vh dla starszych silników). */
+  position: fixed; top: 0; left: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  width: 100vw; height: 100vh;
+  width: 100dvw; height: 100dvh;
   background: #050505;
 }
 
