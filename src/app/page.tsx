@@ -662,9 +662,9 @@ export default function Home() {
                   key="cta"
                   onClick={() => setShowForm(true)}
                   style={{
-                    background: 'rgba(10, 132, 255, 0.9)',
-                    border: '1px solid rgba(10, 132, 255, 0.55)',
-                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 16px rgba(10, 132, 255, 0.28)',
+                    background: 'rgba(10, 132, 255, 0.22)',
+                    border: '1px solid rgba(10, 132, 255, 0.4)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px rgba(10, 132, 255, 0.12)',
                     color: '#ffffff',
                     padding: '12px 24px',
                     borderRadius: '16px',
@@ -673,8 +673,8 @@ export default function Home() {
                     margin: '0 auto',
                     display: 'block'
                   }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(24, 142, 255, 0.95)' }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(10, 132, 255, 0.9)' }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(10, 132, 255, 0.3)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(10, 132, 255, 0.22)' }}
                 >
                   + Nowy wypad
                 </button>,
