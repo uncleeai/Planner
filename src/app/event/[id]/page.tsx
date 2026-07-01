@@ -392,9 +392,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
 
   // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
-  const missingVoters = useMemo(() => {
+  const missingVoters = useMemo<Person[]>(() => {
     const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
-    return members.filter((m) => !voted.has(m.id)).map((m) => m.display_name);
+    return members.filter((m) => !voted.has(m.id)).map((m) => ({ name: m.display_name, avatar: m.avatar }));
   }, [members, votes]);
 
   if (loading) return <main className="glass-page"><p className="muted">Wczytuję…</p></main>;
@@ -568,10 +568,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           )}
 
           {memberCount > 0 && (
-            <p className="vote-missing">
-              Cweluchy: {missingVoters.slice(0, 5).join(', ')}
-              {missingVoters.length > 5 && ` …i ${missingVoters.length - 5} innych`}
-            </p>
+            <div className="vote-missing-row">
+              <span className="vote-missing-label">Cweluchy:</span>
+              <AvatarStack people={missingVoters} size={22} />
+            </div>
           )}
         </div>
       )}
@@ -660,7 +660,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     Odznacz termin
                   </button>
                 ) : (
-                  <button type="button" className="ghost slot-confirm-btn" onClick={() => confirmSlot(slot)}>
+                  <button type="button" className="slot-confirm-btn primary" onClick={() => confirmSlot(slot)}>
                     Ustal ten termin
                   </button>
                 )}
