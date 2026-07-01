@@ -35,6 +35,12 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Gdy treść jest krótsza niż ekran (mało wypadów), iOS Safari z viewport-fit=cover
+     potrafi domalować resztę bezpiecznego obszaru u dołu kolorem z theme-color zamiast
+     realną stroną — stąd płaski czarny pasek zamiast tła. Wymuszamy, żeby dokument
+     zawsze wypełniał cały dynamiczny viewport, więc nie ma czego domalowywać. */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .container {
