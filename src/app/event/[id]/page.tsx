@@ -124,6 +124,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setLoading(false);
   }, [eventId, userId, displayName]);
 
+  // Seria zmian z realtime (własny głos + cudze + reconnect) sklejana w jeden load()
+  // zamiast osobnego 5-zapytaniowego pobrania na każdy wiersz — inaczej burst zapychał
+  // główny wątek i UI się zacinało. Trailing debounce.
+  const reloadTimer = useRef<number | null>(null);
+  const scheduleReload = useCallback(() => {
+    if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
+    reloadTimer.current = window.setTimeout(() => {
+      reloadTimer.current = null;
+      load();
+    }, 300);
+  }, [load]);
+
   useEffect(() => {
     load();
 
@@ -132,29 +144,30 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'slots', filter: `event_id=eq.${eventId}` },
-        () => load(),
+        scheduleReload,
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'votes', filter: `event_id=eq.${eventId}` },
-        () => load(),
+        scheduleReload,
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
-        () => load(),
+        scheduleReload,
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'comments', filter: `event_id=eq.${eventId}` },
-        () => load(),
+        scheduleReload,
       )
       .subscribe();
 
     return () => {
+      if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
       supabase.removeChannel(channel);
     };
-  }, [eventId, load]);
+  }, [eventId, load, scheduleReload]);
 
   async function addSlot(e: React.FormEvent) {
     e.preventDefault();
