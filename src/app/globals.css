@@ -1059,6 +1059,9 @@ body.login-active .glass-bg { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none; }
 }
+/* Karta/appka w tle (Page Visibility) — zatrzymaj animację, nikt jej nie widzi,
+   a i tak żre GPU/baterię non-stop gdy leci. */
+.glass-aurora.paused .aurora-blob { animation-play-state: paused; }
 
 .glass-grain {
   position: absolute; inset: 0;
