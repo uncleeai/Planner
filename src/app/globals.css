@@ -1341,15 +1341,16 @@ main::before {
 .form-collapse {
   display: grid;
   grid-template-rows: 0fr;
-  /* Asymetria, żeby było płynnie w obie strony bez janka:
-     OTWIERANIE jest natychmiastowe (patrz .open niżej — transition tylko opacity),
-     bo animowanie grid-template-rows reflowowało formularz co klatkę (~30fps), a
-     płynność i tak daje wsuwanie pól (transform+opacity = kompozytor, 60fps).
-     ZAMYKANIE animujemy (ten transition obowiązuje przy powrocie do stanu bazowego) —
-     treść równocześnie gaśnie, więc layout-jank zwijania jest niewidoczny. */
-  transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              margin-top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              margin-bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+  /* Symetria: grid-template-rows/marginesy (właściwości LAYOUTU — zmiana reflowuje
+     formularz) nigdy nie są animowane rozciągnięte w czasie, tylko zatrzaskiwane
+     natychmiast (duration 0s). OTWIERANIE: snap na początku, treść wjeżdża przez
+     transform+opacity (kompozytor, 60fps, patrz niżej). ZAMYKANIE: treść najpierw
+     gaśnie (transform+opacity, 0.2-0.26s), a grid snapuje dopiero PO tym (delay) —
+     jeden reflow w jednej klatce zamiast rozmazany na ~8 klatek, i niewidoczny,
+     bo w tym momencie opacity jest już 0. */
+  transition: grid-template-rows 0s linear 0.26s,
+              margin-top 0s linear 0.26s,
+              margin-bottom 0s linear 0.26s,
               opacity 0.2s ease 0.06s;
   opacity: 0;
   overflow: hidden;
@@ -1376,10 +1377,12 @@ main::before {
 .form-collapse .card,
 .form-collapse .empty-state {
   margin-bottom: 0;
-  /* Wyłączamy backdrop-filter w zamkniętym stanie, żeby uniknąć przeskoku koloru */
+  /* Wyłączamy backdrop-filter w zamkniętym stanie. Snap w tym samym momencie co
+     grid-template-rows (0.26s) — treść jest już niewidoczna, więc przeskok koloru
+     się nie zobaczy, a nie trzeba już rozciągać tego w osobnym, płynnym transition. */
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  transition: backdrop-filter 0.3s ease 0.35s, -webkit-backdrop-filter 0.3s ease 0.35s;
+  transition: backdrop-filter 0s linear 0.26s, -webkit-backdrop-filter 0s linear 0.26s;
 }
 .form-collapse.open .card,
 .form-collapse.open .empty-state {
