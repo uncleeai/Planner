@@ -43,12 +43,13 @@ html, body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   /* Gdy treść jest krótsza niż ekran (mało wypadów), iOS Safari z viewport-fit=cover
-     potrafi domalować resztę bezpiecznego obszaru u dołu kolorem z theme-color zamiast
-     realną stroną — stąd płaski czarny pasek zamiast tła. Wymuszamy, żeby dokument
-     zawsze wypełniał cały dynamiczny viewport, więc nie ma czego domalowywać. */
+     potrafi zostawić u dołu pasek bez tła. Wymuszamy, żeby dokument zawsze wypełniał
+     ekran. Używamy `lvh` (largest viewport height), nie `dvh`: w standalone PWA na iOS
+     `dvh` bywa policzone za nisko przy zimnym starcie (stąd pasek, znikający dopiero po
+     pierwszej interakcji/resize). `lvh` jest statyczne i odpowiada NAJWIĘKSZEMU
+     viewportowi, więc zawsze raczej nadmiernie pokrywa niż zostawia lukę. */
   min-height: 100vh;
-  min-height: 100dvh;
-  min-height: var(--app-vh, 100dvh);
+  min-height: 100lvh;
   /* Realtime (Supabase) trzyma dane świeże samo, więc pull-to-refresh przeglądarki
      tylko przeszkadza — szarpnięcie w górę listy może przypadkiem przeładować stronę. */
   overscroll-behavior-y: none;
@@ -1028,13 +1029,15 @@ body.login-active .glass-bg { display: none; }
 .glass-bg {
   /* Globalne tło na z-index:0 (nad nieprzezroczystym tłem body); cała treść siedzi
      w .container z z-index:1, więc jest nad aurorą.
-     Wysokość: --app-vh (mierzone w JS w GlassBackground.tsx) ma pierwszeństwo — 100dvh
-     w standalone PWA na iOS bywa niestabilnie przeliczane przy starcie appki (czasem za
-     nisko, stąd czarny pasek u dołu). dvh/vh zostają jako fallback, zanim JS ustawi zmienną. */
+     Wysokość: `lvh` (largest viewport height), nie `dvh`. W standalone PWA na iOS `dvh`
+     bywa policzone za nisko przy zimnym starcie appki — tło (i aurora) nie sięgało wtedy
+     dołu, zostawiając czarny pasek, który znikał dopiero po pierwszej interakcji/resize
+     (np. otwarciu „Nowego wypadu"). `lvh` jest statyczne i odpowiada NAJWIĘKSZEMU
+     viewportowi, więc warstwa zawsze raczej nadmiernie pokrywa dół niż zostawia lukę
+     (nadmiar i tak jest schowany: overflow:hidden, pointer-events:none). */
   position: fixed; top: 0; left: 0; z-index: 0; pointer-events: none; overflow: hidden;
   width: 100vw; height: 100vh;
-  width: 100dvw; height: 100dvh;
-  height: var(--app-vh, 100dvh);
+  width: 100dvw; height: 100lvh;
   background: #050505;
 }
 
