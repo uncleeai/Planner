@@ -41,6 +41,9 @@ html, body {
      zawsze wypełniał cały dynamiczny viewport, więc nie ma czego domalowywać. */
   min-height: 100vh;
   min-height: 100dvh;
+  /* Realtime (Supabase) trzyma dane świeże samo, więc pull-to-refresh przeglądarki
+     tylko przeszkadza — szarpnięcie w górę listy może przypadkiem przeładować stronę. */
+  overscroll-behavior-y: none;
 }
 
 .container {
