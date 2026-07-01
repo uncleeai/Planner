@@ -22,7 +22,14 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  scrollbar-gutter: stable;
+  /* Ukryty scrollbar — appka wygląda jak natywna, scroll dalej działa normalnie.
+     scrollbar-gutter nie jest już potrzebny: skoro scrollbar nigdy się nie renderuje,
+     nie ma czego rezerwować (a rezerwacja zostawiałaby pusty margines bez powodu). */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar {
+  display: none;
 }
 
 html, body {
