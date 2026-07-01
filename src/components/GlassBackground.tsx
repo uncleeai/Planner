@@ -1,30 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useBackground } from '@/lib/background';
 
-// Tło „Liquid Glass": 6 rozmytych, animowanych plam (aurora) pod szklanymi kartami.
-// Wcześniej rozmyte wideo, ale na iOS dekoder bywał ubijany pod presją pamięci
-// (zamrożona klatka = trzeba było odświeżać), a rozmycie odtwarzanego wideo zacinało
-// scroll — animowane bloby są tańsze. Nadal kosztują GPU/baterię cały czas gdy appka
-// jest widoczna, więc pauzujemy animację, gdy karta/appka jest w tle (Page Visibility) —
-// zero sensu animować coś, czego nikt nie widzi. Wyłączalne całkiem przełącznikiem w menu.
+// Tło „Liquid Glass": 6 rozmytych plam (aurora) pod szklanymi kartami — całkiem
+// statyczne (bez animacji). Wcześniej rozmyte wideo, ale na iOS dekoder bywał
+// ubijany pod presją pamięci (zamrożona klatka = trzeba było odświeżać), a rozmycie
+// odtwarzanego wideo zacinało scroll. Ruchoma aurora też kosztowała GPU/baterię
+// bez przerwy, nawet gdy appka była na pierwszym planie — statyczny gradient jest
+// malowany raz i nic go nie przerysowuje. Wyłączalne przełącznikiem w menu profilu.
 export default function GlassBackground() {
   const { enabled } = useBackground();
-  const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    const onVisibility = () => setPaused(document.hidden);
-    onVisibility();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, []);
-
   if (!enabled) return null;
 
   return (
     <div className="glass-bg" aria-hidden="true">
-      <div className={`glass-aurora${paused ? ' paused' : ''}`}>
+      <div className="glass-aurora">
         <i className="aurora-blob b1" />
         <i className="aurora-blob b2" />
         <i className="aurora-blob b3" />
