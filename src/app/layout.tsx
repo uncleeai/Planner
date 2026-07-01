@@ -19,6 +19,10 @@ export const viewport: Viewport = {
   themeColor: '#050505',
   width: 'device-width',
   initialScale: 1,
+  // Stałe UI appki, nie strona z treścią do powiększania — zoom tylko wprowadza
+  // opóźnienie/dwuznaczność w tapach (patrz touch-action w globals.css). maximumScale
+  // równy initialScale wyłącza pinch- i double-tap-zoom w przeglądarkach.
+  maximumScale: 1,
   viewportFit: 'cover',
 };
 
