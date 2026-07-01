@@ -59,7 +59,7 @@ h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.021em; margin: 0 0 
 h2 { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.012em; margin: 0 0 14px; }
 p { margin: 0 0 12px; }
 p.lead { color: var(--muted); margin-top: 0; }
-a { color: var(--primary-hover); text-decoration: none; }
+a { color: var(--primary-hover); text-decoration: none; touch-action: manipulation; }
 @media (hover: hover) {
   a:hover { text-decoration: underline; }
 }
@@ -148,6 +148,13 @@ button {
   background: var(--primary);
   color: white;
   transition: background 0.15s ease, transform 0.06s ease, opacity 0.15s ease;
+  /* Bez tego iOS Safari czeka ~300ms po każdym tapnięciu, żeby sprawdzić, czy nie
+     nadciąga drugi tap do zoomu (podwójne stuknięcie = zoom, bo nie wyłączamy go w
+     meta viewport). :active (animacja "wciśnięcia") reaguje na touchstart natychmiast,
+     więc widać ją zawsze — ale sam click bywa w tym oknie ubity/opóźniony, zwłaszcza
+     przy szybkich/delikatnych tapnięciach. touch-action:manipulation wyłącza tę
+     dwuznaczność tylko na przyciskach (pinch-zoom gdzie indziej nadal działa). */
+  touch-action: manipulation;
 }
 @media (hover: hover) {
   button:hover { background: var(--primary-hover); }
