@@ -48,6 +48,7 @@ html, body {
      zawsze wypełniał cały dynamiczny viewport, więc nie ma czego domalowywać. */
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: var(--app-vh, 100dvh);
   /* Realtime (Supabase) trzyma dane świeże samo, więc pull-to-refresh przeglądarki
      tylko przeszkadza — szarpnięcie w górę listy może przypadkiem przeładować stronę. */
   overscroll-behavior-y: none;
@@ -1027,12 +1028,13 @@ body.login-active .glass-bg { display: none; }
 .glass-bg {
   /* Globalne tło na z-index:0 (nad nieprzezroczystym tłem body); cała treść siedzi
      w .container z z-index:1, więc jest nad aurorą.
-     Jawne width/height (zamiast samego inset:0) — na iOS Safari `fixed` + `inset:0`
-     bywa niedociągane do dołu, gdy chowa się pasek adresu i widoczny obszar rośnie;
-     100dvh śledzi aktualny, dynamiczny viewport (fallback 100vh dla starszych silników). */
+     Wysokość: --app-vh (mierzone w JS w GlassBackground.tsx) ma pierwszeństwo — 100dvh
+     w standalone PWA na iOS bywa niestabilnie przeliczane przy starcie appki (czasem za
+     nisko, stąd czarny pasek u dołu). dvh/vh zostają jako fallback, zanim JS ustawi zmienną. */
   position: fixed; top: 0; left: 0; z-index: 0; pointer-events: none; overflow: hidden;
   width: 100vw; height: 100vh;
   width: 100dvw; height: 100dvh;
+  height: var(--app-vh, 100dvh);
   background: #050505;
 }
 

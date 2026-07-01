@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useBackground } from '@/lib/background';
 
 // Tło „Liquid Glass": 6 rozmytych plam (aurora) pod szklanymi kartami — całkiem
@@ -10,6 +11,26 @@ import { useBackground } from '@/lib/background';
 // malowany raz i nic go nie przerysowuje. Wyłączalne przełącznikiem w menu profilu.
 export default function GlassBackground() {
   const { enabled } = useBackground();
+
+  // 100dvh w standalone PWA na iOS bywa niestabilnie przeliczane przy starcie appki —
+  // czasem daje za niską wartość (stąd czarny pasek u dołu, znikający dopiero po
+  // restarcie). Mierzymy realną wysokość okna w JS i wystawiamy jako zmienną CSS,
+  // zamiast polegać wyłącznie na jednostce przeglądarki. `--app-vh` używane w .glass-bg
+  // i na html/body (globals.css); dvh zostaje jako fallback, zanim ten efekt zdąży się
+  // wykonać (pierwsza klatka przed hydracją).
+  useEffect(() => {
+    const setVh = () => {
+      document.documentElement.style.setProperty('--app-vh', `${window.innerHeight}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    window.visualViewport?.addEventListener('resize', setVh);
+    return () => {
+      window.removeEventListener('resize', setVh);
+      window.visualViewport?.removeEventListener('resize', setVh);
+    };
+  }, []);
+
   if (!enabled) return null;
 
   return (
