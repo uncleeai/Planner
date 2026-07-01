@@ -1071,8 +1071,13 @@ body.login-active .glass-bg { display: none; }
   background: radial-gradient(closest-side, rgba(170, 170, 170, 0.34), transparent 80%); }
 .aurora-blob.b5 { left: 20%; top: 60%; width: 65vw; height: 65vh; margin: -32vh 0 0 -32vw;
   background: radial-gradient(closest-side, rgba(225, 225, 225, 0.50), transparent 80%); }
-.aurora-blob.b6 { left: 60%; top: 90%; width: 50vw; height: 50vh; margin: -25vh 0 0 -25vw;
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.34), transparent 80%); }
+/* b6 celowo szeroka i wyśrodkowana DOKŁADNIE na dolnej krawędzi (top:100%) — gdy tło
+   było animowane, dół ekranu dostawał blask, bo plamy tamtędy wędrowały; teraz stoją
+   nieruchomo, więc żadna z pozostałych (pozycjonowanych "w środku" ekranu) fizycznie
+   tam nie sięga. To jedyna plama, która ma gwarantowane, pełne (nie tylko w ogonie
+   gradientu) pokrycie samego dołu, niezależnie od wysokości ekranu urządzenia. */
+.aurora-blob.b6 { left: 50%; top: 100%; width: 90vw; height: 55vh; margin: -27.5vh 0 0 -45vw;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.4), transparent 80%); }
 
 .glass-grain {
   position: absolute; inset: 0;
