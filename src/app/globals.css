@@ -1,19 +1,26 @@
 :root {
-  --bg: #050505;
-  --card: rgba(255, 255, 255, 0.03);
-  --card-2: rgba(255, 255, 255, 0.05);
-  --text: rgba(255, 255, 255, 0.9);
-  --muted: rgba(255, 255, 255, 0.55);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
-  --primary: rgba(255, 255, 255, 0.12);
-  --primary-hover: rgba(255, 255, 255, 0.18);
-  --yes: #1fc98e;
+  /* Skórka „Lobby": taktyczny scoreboard. Chłodna prawie-czerń, solidne panele
+     (bez glassu), jeden sygnałowy akcent (oranż), zieleń/czerwień wyłącznie jako
+     semantyka głosów. Promienie: karty 12px, kontrolki 8px. */
+  --bg: #0c0e10;
+  --card: #14171b;
+  --card-2: #1a1e23;
+  --text: #e8edf0;
+  --muted: #7f8b94;
+  --border: rgba(232, 237, 240, 0.08);
+  --border-strong: rgba(232, 237, 240, 0.17);
+  --primary: rgba(232, 237, 240, 0.12);
+  --primary-hover: rgba(232, 237, 240, 0.2);
+  --accent: #ff8a3d;
+  --accent-ink: #241103;
+  --accent-dim: rgba(255, 138, 61, 0.12);
+  --yes: #3ddc8b;
   --maybe: #f4b740;
-  --no: #f0455f;
-  --radius: 24px;
-  --radius-sm: 16px;
-  --shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  --no: #ff5d5d;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   /* Ciemny motyw również dla kontrolek natywnych (picker daty, scrollbary) na iOS. */
   color-scheme: dark;
 }
@@ -182,16 +189,16 @@ button.ghost {
   font-weight: 500;
 }
 @media (hover: hover) {
-  button.ghost:hover { background: #262833; border-color: var(--border-strong); }
+  button.ghost:hover { background: #232830; border-color: var(--border-strong); }
 }
 
-button.ghost.danger { color: var(--no); border-color: rgba(240, 69, 95, 0.35); background: rgba(255, 15, 2, 0.08); }
+button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); background: rgba(255, 15, 2, 0.08); }
 @media (hover: hover) {
-  button.ghost.danger:hover { background: rgba(240, 69, 95, 0.14); border-color: var(--no); }
+  button.ghost.danger:hover { background: rgba(255, 93, 93, 0.14); border-color: var(--no); }
 }
 
 .chips { gap: 8px; }
-button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weight: 500; border-radius: 999px; }
+button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weight: 500; border-radius: var(--radius-sm); }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .spacer { flex: 1; }
@@ -217,10 +224,10 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   background: var(--card-2);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.slot.winner { border-color: rgba(31, 201, 142, 0.5); box-shadow: 0 0 0 1px rgba(31, 201, 142, 0.5) inset; }
+.slot.winner { border-color: rgba(61, 220, 139, 0.5); box-shadow: 0 0 0 1px rgba(61, 220, 139, 0.5) inset; }
 
 .slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.slot-date { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; }
+.slot-date { font-family: var(--mono); font-weight: 700; font-size: 0.98rem; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
 .slot-del {
   min-width: 40px; min-height: 40px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -231,13 +238,15 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 }
 
 .badge {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(31, 201, 142, 0.16);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(61, 220, 139, 0.14);
   color: var(--yes);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 .badge-open { background: rgba(244, 183, 64, 0.16); color: var(--maybe); }
@@ -250,28 +259,31 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   border-top: 1px solid var(--border);
 }
 .slot-confirm-btn { width: 100%; font-size: 0.9rem; }
-/* „Ustal ten termin" — jedyna akcja, która realnie finalizuje wypad, więc dostaje
-   ten sam niebieski akcent co główny CTA, zamiast wtapiać się jako kolejny .ghost. */
+/* „Klepnij ten termin" (LOCK IN) — jedyna akcja finalizująca wypad, więc dostaje
+   sygnałowy akcent zamiast wtapiać się jako kolejny .ghost. */
 .slot-confirm-btn.primary {
-  background: rgba(10, 132, 255, 0.22);
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px rgba(10, 132, 255, 0.12);
-  color: #fff;
+  background: transparent;
+  border: 1px solid rgba(255, 138, 61, 0.45);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 @media (hover: hover) {
-  .slot-confirm-btn.primary:hover { background: rgba(10, 132, 255, 0.3); }
+  .slot-confirm-btn.primary:hover { background: var(--accent-dim); }
 }
 /* Ustalony termin w nagłówku — mocniej (zielono) niż „Na czele" */
 .confirmed-inline.settled .confirmed-tag {
-  background: rgba(31, 201, 142, 0.18);
+  background: rgba(61, 220, 139, 0.18);
   color: var(--yes);
 }
 
 .tally { display: flex; gap: 8px; margin-bottom: 12px; }
-.tally span { font-size: 0.8rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
-.tally .yes { color: var(--yes); background: rgba(31, 201, 142, 0.14); }
+.tally span { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.tally .yes { color: var(--yes); background: rgba(61, 220, 139, 0.14); }
 .tally .maybe { color: var(--maybe); background: rgba(244, 183, 64, 0.14); }
-.tally .no { color: var(--no); background: rgba(240, 69, 95, 0.14); }
+.tally .no { color: var(--no); background: rgba(255, 93, 93, 0.14); }
 
 /* Głosowanie jako kontrolka segmentowa (iOS-like). */
 .choices {
@@ -304,9 +316,9 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 /* Przesunięcia slidera */
 .choices.active-index-0 .choices-slider {
   transform: translateX(0);
-  background: rgba(31, 201, 142, 0.18);
-  border: 1px solid rgba(31, 201, 142, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(31, 201, 142, 0.25);
+  background: rgba(61, 220, 139, 0.18);
+  border: 1px solid rgba(61, 220, 139, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(61, 220, 139, 0.25);
 }
 .choices.active-index-1 .choices-slider {
   transform: translateX(calc(100% + 4px));
@@ -316,9 +328,9 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 }
 .choices.active-index-2 .choices-slider {
   transform: translateX(calc((100% + 4px) * 2));
-  background: rgba(240, 69, 95, 0.18);
-  border: 1px solid rgba(240, 69, 95, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(240, 69, 95, 0.25);
+  background: rgba(255, 93, 93, 0.18);
+  border: 1px solid rgba(255, 93, 93, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(255, 93, 93, 0.25);
 }
 .choices button {
   position: relative;
@@ -326,9 +338,12 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   background: transparent;
   border: none;
   color: var(--muted);
-  font-weight: 600;
-  border-radius: 9px;
-  padding: 10px 8px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 6px;
+  padding: 11px 6px;
   z-index: 2;
   transition: color 0.25s ease;
 }
@@ -366,15 +381,15 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   font-size: 0.78rem;
   font-weight: 500;
   border: 1px solid transparent;
   transition: all 0.2s ease;
 }
 .voter-chip.yes {
-  background: rgba(31, 201, 142, 0.1);
-  border-color: rgba(31, 201, 142, 0.25);
+  background: rgba(61, 220, 139, 0.1);
+  border-color: rgba(61, 220, 139, 0.25);
   color: #5eff84;
 }
 .voter-chip.maybe {
@@ -383,8 +398,8 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   color: #ffdf3d;
 }
 .voter-chip.no {
-  background: rgba(240, 69, 95, 0.1);
-  border-color: rgba(240, 69, 95, 0.25);
+  background: rgba(255, 93, 93, 0.1);
+  border-color: rgba(255, 93, 93, 0.25);
   color: #ff6b63;
 }
 
@@ -410,20 +425,22 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 @media (hover: hover) {
-  .title-edit-btn:hover { color: var(--text); background: #262833; border-color: var(--border-strong); }
+  .title-edit-btn:hover { color: var(--text); background: #232830; border-color: var(--border-strong); }
 }
 .title-edit-btn:active { transform: scale(0.94); }
 
-/* Nagłówki sekcji (jak grupy w Ustawieniach iOS) */
+/* Nagłówki sekcji — mono, jak etykiety na scoreboardzie */
 .section-label {
-  font-size: 0.78rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
-  margin: 14px 4px 8px;
+  margin: 20px 4px 10px;
 }
-.section-label.faded { color: #6a6f80; }
+.section-label.faded { color: #5c656d; }
+.section-label.hot { color: var(--accent); }
 
 /* Zgrupowana lista — jedna „wyspa" z cienkimi separatorami */
 .list-group {
@@ -477,30 +494,27 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   border-radius: 999px;
 }
 .pill-wait { color: var(--maybe); background: rgba(244, 183, 64, 0.12); border: 1px solid rgba(244, 183, 64, 0.25); }
-.pill-done { color: var(--yes); background: rgba(31, 201, 142, 0.12); border: 1px solid rgba(31, 201, 142, 0.3); }
+.pill-done { color: var(--yes); background: rgba(61, 220, 139, 0.12); border: 1px solid rgba(61, 220, 139, 0.3); }
 
-/* Back link (iOS) */
+/* Back link */
 .back-btn-round {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   margin-bottom: 18px;
 }
 @media (hover: hover) {
   .back-btn-round:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.18);
+    background: var(--card-2);
+    border-color: var(--border-strong);
     color: #ffffff;
     transform: scale(1.06);
   }
@@ -568,8 +582,8 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
   color: var(--yes);
-  background: rgba(31, 201, 142, 0.14);
-  border: 1px solid rgba(31, 201, 142, 0.3);
+  background: rgba(61, 220, 139, 0.14);
+  border: 1px solid rgba(61, 220, 139, 0.3);
   padding: 3px 8px 3px 6px; border-radius: 999px;
 }
 
@@ -657,7 +671,7 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .vote-missing-row { display: flex; align-items: center; gap: 8px; }
 .vote-missing-label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
 
-.slot.confirmed { border-color: rgba(31, 201, 142, 0.5); box-shadow: 0 0 0 1px rgba(31, 201, 142, 0.5) inset; }
+.slot.confirmed { border-color: rgba(61, 220, 139, 0.5); box-shadow: 0 0 0 1px rgba(61, 220, 139, 0.5) inset; }
 
 /* ===== Hybryda: nagłówek, awatary, karty wypadów, postęp ===== */
 
@@ -707,33 +721,31 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   transform: translateY(0) scale(0.95);
 }
 .avatar-option.selected {
-  border-color: #bf5af2;
-  background: rgba(191, 90, 242, 0.16);
+  border-color: var(--accent);
+  background: var(--accent-dim);
   transform: translateY(-2px) scale(1.15);
-  box-shadow: 0 0 14px rgba(191, 90, 242, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   z-index: 2;
 }
 @media (hover: hover) {
   .avatar-option.selected:hover:not(:disabled) {
     transform: translateY(-3px) scale(1.18);
-    box-shadow: 0 0 18px rgba(191, 90, 242, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 }
 
-/* Główny CTA — kolorowy akcent (ten sam niebieski co .hero-badge-blue), żeby się
-   realnie odróżniał od szarych kart wokół, zamiast wtapiać się w tło. */
+/* Główny CTA — pełny sygnałowy oranż z ciemnym tekstem; jedyny mocny punkt strony. */
 .cta-gradient {
   width: 100%;
-  background: rgba(10, 132, 255, 0.22);
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px rgba(10, 132, 255, 0.12);
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 10px 28px rgba(255, 138, 61, 0.18);
   padding: 15px 18px;
   font-size: 1.02rem;
-  border-radius: var(--radius-sm);
-  color: #fff;
+  font-weight: 700;
+  border-radius: var(--radius);
+  color: var(--accent-ink);
 }
 @media (hover: hover) {
-  .cta-gradient:hover { background: rgba(10, 132, 255, 0.3); }
+  .cta-gradient:hover { background: #ffa05e; }
 }
 
 /* Karta wypadu (bogata) */
@@ -741,7 +753,7 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   display: block;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 13px 14px;
   margin-bottom: 10px;
   text-decoration: none;
@@ -776,7 +788,7 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .progress-inline-wrap { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 8px; }
 .progress { flex: 1; height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .progress-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
-.progress-label { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.progress-label { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 img.avatar { display: inline-block; }
 
@@ -799,7 +811,7 @@ img.avatar { display: inline-block; }
   flex-shrink: 0;
 }
 @media (hover: hover) {
-  .settings-trigger:hover { background: #262833; color: var(--text); border-color: var(--border-strong); }
+  .settings-trigger:hover { background: #232830; color: var(--text); border-color: var(--border-strong); }
 }
 .settings-trigger:active { transform: scale(0.94); }
 
@@ -958,15 +970,15 @@ img.avatar { display: inline-block; }
 }
 
 .profile-modal button.ghost.danger {
-  background: rgba(240, 69, 95, 0.15);
-  border: 1px solid rgba(240, 69, 95, 0.3);
-  color: #f0455f;
+  background: rgba(255, 93, 93, 0.15);
+  border: 1px solid rgba(255, 93, 93, 0.3);
+  color: #ff5d5d;
 }
 
 @media (hover: hover) {
   .profile-modal button.ghost.danger:hover {
-    background: rgba(240, 69, 95, 0.25);
-    border-color: #f0455f;
+    background: rgba(255, 93, 93, 0.25);
+    border-color: #ff5d5d;
   }
 }
 
@@ -1026,7 +1038,7 @@ img.avatar { display: inline-block; }
    dawne globalne tło. Karta logowania frostuje je przez backdrop-filter. */
 .login-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background: #050505;
+  background: #0c0e10;
 }
 /* Na ekranie logowania chowamy globalną aurorę — zostaje lokalna w .login-bg. */
 body.login-active .glass-bg { display: none; }
@@ -1043,151 +1055,76 @@ body.login-active .glass-bg { display: none; }
   position: fixed; top: 0; left: 0; z-index: 0; pointer-events: none; overflow: hidden;
   width: 100vw; height: 100vh;
   width: 100dvw; height: 100lvh;
-  /* Aurora „wypalona" w statyczne gradienty zamiast żywych warstw blur + mix-blend-mode.
-     Blur i blend zmuszały iOS do rekompozycji całego ekranu przy KAŻDYM przerysowaniu
-     (animacja :active karty, scroll) → freeze na słabszym/oszczędnym telefonie. Miękkie
-     radial-gradienty dają ten sam blask, ale są malowane raz i cache'owane jako jedna
-     bitmapa. Na czerni biały „screen" ≈ zwykłe dodanie bieli, więc wygląd zostaje.
-     (Jasności to pokrętło kalibracyjne — podbij/zbij alfy, jeśli za mocne/za słabe.) */
-  background:
-    radial-gradient(42vw 42vh at 30% 20%, rgba(255, 255, 255, 0.22), transparent 70%),
-    radial-gradient(46vw 46vh at 70% 50%, rgba(200, 200, 200, 0.15), transparent 70%),
-    radial-gradient(44vw 44vh at 40% 80%, rgba(255, 255, 255, 0.26), transparent 70%),
-    radial-gradient(38vw 38vh at 80% 15%, rgba(170, 170, 170, 0.15), transparent 70%),
-    radial-gradient(50vw 50vh at 20% 60%, rgba(225, 225, 225, 0.22), transparent 70%),
-    radial-gradient(70vw 46vh at 50% 100%, rgba(255, 255, 255, 0.18), transparent 70%),
-    #050505;
+  /* Skórka „Lobby": płaska, chłodna czerń zamiast aurory. Zero gradientów,
+     zero blur = zero rekompozycji na iOS; element zostaje, bo layout na nim polega. */
+  background: var(--bg);
 }
 
-/* Recepta szkła Apple (Apple Glassmorphism): bg-white/[0.03] + blur(30px) + saturate(200%).
-   Działa bez przeskoku, bo strona NIE animuje już opacity na <main> (patrz page-in niżej) —
-   animowany opacity przodka wyłączał backdrop-filter i powodował „doskok" koloru. */
+/* Solidne panele zamiast szkła: czytelnie, tanio dla GPU, zero „doskoków" koloru. */
 .glass-page .card,
-.glass-page .empty-state,
-.glass-page .tip-banner {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(30px) saturate(200%);
-  backdrop-filter: blur(30px) saturate(200%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 20px 40px rgba(0, 0, 0, 0.4);
-}
-@media (hover: hover) {
-  .glass-page .card:hover { background: rgba(255, 255, 255, 0.05); }
+.glass-page .empty-state {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
 }
 
-/* Szklane karty wydarzeń */
+/* Karty wydarzeń: płaskie panele */
 .glass-page .event-rich {
-  /* Bez backdrop-filter: karty listy powtarzają się N razy, a rozmycie nad
-     odtwarzanym wideo przelicza się co klatkę dla każdej z nich. Zamiast frostowania
-     ciemne półprzezroczyste tło — czyta się jak panel, wygląd zbliżony, koszt ~zerowy. */
-     
-  background: rgba(13, 13, 17, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 20px 40px rgba(0, 0, 0, 0.4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
 }
 @media (hover: hover) {
   .glass-page .event-rich:hover {
-    background: rgba(26, 26, 32, 0.6);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: var(--card-2);
+    border-color: var(--border-strong);
   }
 }
 
-/* Hero: najbliższy wypad — bogata karta (układ z mockupu). Większa i bardziej zaokrąglona.
-   Frosted glass: półprzezroczyste tło + rozmycie tego, co za kartą — zamiast solidnego tła
-   i gradientów w środku. (Nadpisuje też opaque #0c0c14 z .has-image.) */
+/* Hero: najbliższe lobby — jedyna karta z „radarowym" rastrem kropek w tle. */
 .glass-page .event-rich.hero {
-  padding: 20px;
-  border-radius: 26px;
+  padding: 18px 16px;
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  /* Bez backdrop-filter: hero to karta scrollowana NAD nieruchomą aurorą, więc rozmycie
-     musiałoby się przeliczać co klatkę scrolla, a przy :active (scale) co klatkę gestu —
-     stąd zacinanie przy przytrzymaniu i szarpanie przy przewijaniu. Listowe karty już
-     dawno zrezygnowały z rozmycia z tego powodu (zob. .glass-page .event-rich wyżej);
-     hero dostaje to samo tanie, nieprzezroczyste tło panelu. */
-  background: rgba(20, 20, 26, 0.6);
+  background:
+    radial-gradient(rgba(232, 237, 240, 0.045) 1px, transparent 1px) 0 0 / 14px 14px,
+    var(--card);
 }
+/* Hero czekające na TWÓJ głos — sygnałowa ramka. */
+.glass-page .event-rich.hero.needs-you { border-color: rgba(255, 138, 61, 0.35); }
 
-/* Niebieski szklany przycisk główny (CTA) — kolor zamiast bieli, żeby był realnym
-   punktem kontrastu na stronie, nie kolejną szarą kartą. */
+/* Główny CTA: pełny sygnałowy oranż, ciemny tekst — jedyny mocny punkt na stronie. */
 .glass-page .cta-gradient {
-  background: rgba(10, 132, 255, 0.2);
-  border: 1px solid rgba(10, 132, 255, 0.38);
-  -webkit-backdrop-filter: blur(30px) saturate(200%);
-  backdrop-filter: blur(30px) saturate(200%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 6px 16px rgba(10, 132, 255, 0.12);
-  color: #fff;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.06s ease;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 10px 28px rgba(255, 138, 61, 0.18);
+  color: var(--accent-ink);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.06s ease;
 }
 @media (hover: hover) {
-  .glass-page .cta-gradient:hover {
-    background: rgba(10, 132, 255, 0.28);
-    border-color: rgba(10, 132, 255, 0.5);
-  }
+  .glass-page .cta-gradient:hover { background: #ffa05e; }
 }
 
-.glass-page .section-label { color: rgba(255, 255, 255, 0.5); letter-spacing: 0.12em; }
+.glass-page .section-label { color: var(--muted); }
 
-/* Karta terminu w wersji szklanej */
+/* Karta terminu: płaski panel, stan niesie kolor ramki. */
 .glass-page .slot {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 .glass-page .slot.winner {
-  background: linear-gradient(135deg, rgba(31, 201, 142, 0.06), rgba(255, 255, 255, 0.02));
-  border-color: rgba(31, 201, 142, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(31, 201, 142, 0.04);
+  background: rgba(61, 220, 139, 0.05);
+  border-color: rgba(61, 220, 139, 0.35);
 }
 .glass-page .slot.tie {
-  background: linear-gradient(135deg, rgba(244, 183, 64, 0.04), rgba(255, 255, 255, 0.02));
+  background: rgba(244, 183, 64, 0.04);
   border-color: rgba(244, 183, 64, 0.25);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(244, 183, 64, 0.02);
 }
 .glass-page .slot.confirmed {
-  background: linear-gradient(135deg, rgba(31, 201, 142, 0.12), rgba(255, 255, 255, 0.03));
-  border-color: rgba(31, 201, 142, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 32px rgba(31, 201, 142, 0.08);
-}
-
-/* Szklany, ciemny tor paska postępu */
-.glass-page .progress {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-/* Biały świecący pasek postępu */
-.glass-page .progress-bar {
-  background: rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
-}
-
-/* Mokry połysk na górnej krawędzi — jaśniejszy w środku, zanikający po bokach. */
-.glass-page .event-rich,
-.glass-page .card,
-.glass-page .empty-state,
-.glass-page .tip-banner,
-.glass-page .cta-gradient { position: relative; }
-
-.glass-page .event-rich::before,
-.glass-page .card::before,
-.glass-page .empty-state::before,
-.glass-page .tip-banner::before,
-.glass-page .cta-gradient::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 14%; right: 14%;
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.25), transparent);
-  pointer-events: none;
+  background: rgba(61, 220, 139, 0.08);
+  border-color: rgba(61, 220, 139, 0.5);
 }
 
 /* Opis wypadu na stronie wydarzenia */
@@ -1219,7 +1156,7 @@ body.login-active .glass-bg { display: none; }
   border: 1px solid var(--border); border-radius: 8px;
 }
 @media (hover: hover) {
-  .desc-tool:hover { background: #262833; border-color: var(--border-strong); }
+  .desc-tool:hover { background: #232830; border-color: var(--border-strong); }
 }
 .desc-tool b { font-weight: 800; }
 
@@ -1264,13 +1201,11 @@ body.login-active .glass-bg { display: none; }
 .activity .section-label { margin-bottom: 0; }
 .activity-pill-touch {
   position: relative; width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 0 16px;
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 22px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
   overflow: hidden; cursor: pointer;
   touch-action: none; -webkit-tap-highlight-color: transparent;
 }
@@ -1586,7 +1521,7 @@ main::before {
 .danger-link {
   background: transparent;
   border: none;
-  color: rgba(240, 69, 95, 0.6);
+  color: rgba(255, 93, 93, 0.6);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -1597,8 +1532,8 @@ main::before {
 
 @media (hover: hover) {
   .danger-link:hover {
-    color: rgba(240, 69, 95, 0.95);
-    text-shadow: 0 0 10px rgba(240, 69, 95, 0.25);
+    color: rgba(255, 93, 93, 0.95);
+    text-shadow: 0 0 10px rgba(255, 93, 93, 0.25);
   }
 }
 
@@ -1612,13 +1547,10 @@ main::before {
   margin: 6px 0 0;
   padding: 6px;
   list-style: none;
-  /* Ten sam glassowy materiał co karty/popover emoji (zamiast płaskiego #14141b). */
-  background: rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-sm);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.5);
+  background: var(--card-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   max-height: 260px;
   overflow-y: auto;
 }
@@ -1655,49 +1587,37 @@ main::before {
   display: flex; align-items: center; justify-content: center;
   font-size: 24px;
   color: rgba(255, 255, 255, 0.9); /* stroke ikony (currentColor) */
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 .hero-head-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .hero-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
 .hero-badge {
-  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 6px; border: 1px solid; white-space: nowrap;
 }
-.hero-badge-blue { color: #6cb6ff; background: rgba(10, 132, 255, 0.12); border-color: rgba(10, 132, 255, 0.3); }
-.hero-badge-green { color: var(--yes); background: rgba(31, 201, 142, 0.12); border-color: rgba(31, 201, 142, 0.3); }
+.hero-badge-blue { color: #ffb27a; background: rgba(255, 138, 61, 0.12); border-color: rgba(255, 138, 61, 0.3); }
+.hero-badge-green { color: var(--yes); background: rgba(61, 220, 139, 0.12); border-color: rgba(61, 220, 139, 0.3); }
 
 .hero-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 
-/* Szklany pod-panel: avatary + „X z Y" + pasek postępu */
-.hero-panel {
-  background: rgba(10, 10, 16, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 16px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); /* górny highlight → wyraźna wnęka */
+/* Grid: Pogoda + Zbiórka (1 kafelek = pełna szerokość, 2 = podział).
+   Płaskie wiersze bez własnych ramek — mniej kart w kartach. */
+.hero-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 13px; padding-top: 12px;
 }
-.hero-panel-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-
-/* Grid: Pogoda + Zbiórka (1 kafelek = pełna szerokość, 2 = podział) */
-.hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 10px; }
 .hero-tile {
   display: flex; align-items: center; gap: 10px;
-  background: rgba(10, 10, 16, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 14px;
-  padding: 10px 12px;
+  padding: 2px 0;
   min-width: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); /* górny highlight → wyraźna wnęka */
 }
-.hero-tile-icon { color: rgba(255, 255, 255, 0.82); flex-shrink: 0; }
-.hero-tile-main { font-size: 0.9rem; font-weight: 700; color: var(--text); }
-.hero-tile-sub { font-size: 0.72rem; color: rgba(255, 255, 255, 0.62); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Etykieta „X z Y dało znać" w hero — odrobinę czytelniejsza niż globalny .muted. */
-.hero-panel-top .muted { color: rgba(255, 255, 255, 0.62); }
+.hero-tile-icon { color: var(--muted); flex-shrink: 0; }
+.hero-tile-main { font-family: var(--mono); font-size: 0.95rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.hero-tile-sub { font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
 .emoji-picker { position: relative; }
@@ -1722,15 +1642,11 @@ main::before {
    absolutny popover pod kolejnym polem. W przepływie po prostu rozpycha pola pod sobą. */
 .emoji-popover {
   margin-top: 8px;
-  /* Ten sam glassowy materiał co karty (zamiast płaskiego, niebieskawego #14141a) —
-     spójne z resztą apki. */
-  background: rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
+  background: var(--card-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   padding: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .emoji-chip {
@@ -1745,3 +1661,98 @@ main::before {
 }
 .emoji-chip.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.13); }
 .emoji-clear { margin-top: 10px; width: 100%; }
+
+/* ===== Skórka „Lobby": wordmark, skład, segmenty gotowości, MOTD, dok CTA ===== */
+
+/* Wordmark WYPAD.EXE z migającym kursorem */
+.wordmark {
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.wordmark span { color: var(--accent); }
+.cursor::after { content: '_'; color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .cursor::after { animation: cursor-blink 1.1s steps(2, start) infinite; }
+  @keyframes cursor-blink { to { visibility: hidden; } }
+}
+
+/* Skład = sloty graczy (2 kolumny). Pusty slot MA być widoczny —
+   apka powstała, bo ktoś został w domu. */
+.squad {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 14px; padding-top: 13px;
+}
+.slot-p {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  min-width: 0;
+}
+.slot-p .who { min-width: 0; flex: 1; }
+.slot-p .who b {
+  display: block; font-size: 0.8rem; font-weight: 600; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.slot-p .who span {
+  display: block; font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; line-height: 1.5; color: var(--muted);
+}
+.slot-p.s-yes .who span { color: var(--yes); }
+.slot-p.s-no .who span { color: var(--no); }
+/* „może" celowo bez koloru — niezdecydowanie wygląda jak niezdecydowanie */
+.slot-p.s-none { border-style: dashed; border-color: var(--border-strong); background: transparent; }
+.slot-p.s-none .who b { color: var(--muted); }
+.slot-p.s-none .who span { color: var(--accent); }
+/* AFK = szara morda (jak offline na Discordzie) */
+.slot-p.s-none .avatar { filter: grayscale(1); opacity: 0.75; }
+/* TWÓJ pusty slot — sygnałowa dziura w składzie */
+.slot-p.is-you { border-color: rgba(255, 138, 61, 0.55); background: var(--accent-dim); }
+.slot-p.is-you .avatar { filter: none; opacity: 1; }
+.slot-p.is-you .who b { color: var(--text); }
+
+/* Segmenty gotowości: N osób = N segmentów, nie procenty */
+.readybar { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.segs { display: flex; gap: 4px; flex: 1; }
+.segs i { height: 5px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
+.segs i.on { background: var(--yes); border-color: var(--yes); }
+.readybar b {
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.1em; color: var(--text); font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.readybar b span { color: var(--muted); font-weight: 600; }
+
+/* Miniatura segmentów w kartach listy */
+.mini-segs { display: flex; gap: 3px; flex: 1; max-width: 96px; }
+.mini-segs i { height: 4px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
+.mini-segs i.on { background: var(--yes); border-color: var(--yes); }
+
+/* MOTD — cytat dnia jak message of the day serwera (klik losuje kolejny) */
+.motd {
+  margin: 26px 4px 0;
+  display: flex; gap: 10px; align-items: baseline;
+  cursor: pointer; user-select: none;
+}
+.motd-label {
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.16em; color: var(--accent); flex-shrink: 0;
+}
+.motd .quote-text { font-size: 0.85rem; color: var(--muted); font-style: italic; }
+
+/* Dok CTA na dole ekranu — pod kciukiem, nad safe area */
+.cta-dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  padding: 26px 20px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 55%, transparent);
+  display: flex; justify-content: center;
+  pointer-events: none;
+}
+.cta-dock > * { pointer-events: auto; width: 100%; max-width: 640px; }
+/* Miejsce na dok, żeby ostatnia karta nie chowała się pod CTA */
+main.has-dock { padding-bottom: 72px; }

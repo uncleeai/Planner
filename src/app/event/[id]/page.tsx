@@ -21,9 +21,9 @@ import { addToCalendar } from '@/lib/calendar';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
-  { value: 'yes', label: 'Wchodzę', cls: 'active-yes' },
-  { value: 'maybe', label: 'Może', cls: 'active-maybe' },
-  { value: 'no', label: 'Pas', cls: 'active-no' },
+  { value: 'yes', label: 'READY', cls: 'active-yes' },
+  { value: 'maybe', label: 'MOŻE', cls: 'active-maybe' },
+  { value: 'no', label: 'DODGE', cls: 'active-no' },
 ];
 
 function formatCommentTime(iso: string): string {
@@ -432,7 +432,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const memberCount = members.length;
   const votedCount = participantsPeople.length;
-  const votedPct = memberCount > 0 ? Math.min(100, Math.round((votedCount / memberCount) * 100)) : 0;
 
   return (
     <main className="glass-page">
@@ -515,7 +514,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <span><IconPin size={13} /> {event.location}</span>
             )}
             {event?.location && event?.created_by && <span className="sep">·</span>}
-            {event?.created_by && <span>Organizuje {event.created_by}</span>}
+            {event?.created_by && <span>host: {event.created_by}</span>}
           </div>
         )}
         <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
@@ -540,9 +539,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   <IconCheck size={12} />{' '}
                   {status.settled
                     ? status.source === 'auto'
-                      ? 'Ustalone · wszyscy dali znać'
-                      : 'Ustalone'
-                    : 'Na czele'}
+                      ? 'GRAMY · komplet'
+                      : 'GRAMY'
+                    : 'Prowadzi'}
                 </span>
               </>
             )}
@@ -575,8 +574,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           {memberCount > 0 && (
-            <div className="vote-progress">
-              <div className="vote-progress-bar" style={{ width: `${votedPct}%` }} />
+            <div className="segs" aria-hidden="true">
+              {members.map((m, i) => <i key={m.id} className={i < votedCount ? 'on' : ''} />)}
             </div>
           )}
 
@@ -590,7 +589,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
 
       <div className="card">
-        <h2>Proponowane terminy</h2>
+        <h2>Ready check</h2>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
@@ -608,9 +607,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           >
             <div className="slot-head">
               <span className="slot-date">{formatSlotRange(slot)}</span>
-              {isSettledSlot && <span className="badge">✓ Ustalony</span>}
-              {showBestBadge && <span className="badge">na czele</span>}
-              {showTieBadge && <span className="badge badge-open">remis</span>}
+              {isSettledSlot && <span className="badge">✓ GRAMY</span>}
+              {showBestBadge && <span className="badge">Prowadzi</span>}
+              {showTieBadge && <span className="badge badge-open">Remis</span>}
               {canDelete && !isPast && (
                 <>
                   <span className="spacer" />
@@ -670,11 +669,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <div className="slot-confirm-row">
                 {event?.confirmed_slot_id === slot.id ? (
                   <button type="button" className="ghost slot-confirm-btn" onClick={unconfirmSlot}>
-                    Odznacz termin
+                    Odklep termin
                   </button>
                 ) : (
                   <button type="button" className="slot-confirm-btn primary" onClick={() => confirmSlot(slot)}>
-                    Ustal ten termin
+                    LOCK IN: klepnij ten termin
                   </button>
                 )}
               </div>
@@ -720,9 +719,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       <div className="card comments-card">
-        <h2>Komentarze</h2>
+        <h2>Czat</h2>
         {comments.length === 0 ? (
-          <p className="small muted">Brak komentarzy. Napisz pierwszy.</p>
+          <p className="small muted">Cisza. Napisz coś pierwszy.</p>
         ) : (
           <div className="comment-list">
             {comments.map((c) => {

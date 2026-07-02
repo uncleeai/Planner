@@ -18,11 +18,8 @@ import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInpu
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
-import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare, IconClock, WeatherIcon } from '@/components/icons';
+import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
-function progressColor(p: number): string {
-  return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
-}
 // Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
 function toDateISO(iso: string): string {
   const d = new Date(iso);
@@ -41,12 +38,16 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
 }
 
+// Stan gracza w składzie: najlepszy głos w wypadzie (yes > maybe > no) albo null = AFK.
+type SquadMember = { id: string; name: string; avatar: string | null; state: 'yes' | 'maybe' | 'no' | null };
+
 type Agg = {
   voters: Person[];
   percent: number;
   slot: Slot | null;           // USTALONY termin (do formatu zakresu/całodniowego)
+  squad: SquadMember[];        // cała paczka ze stanem — sloty graczy + segmenty
 };
-const EMPTY_AGG: Agg = { voters: [], percent: 0, slot: null };
+const EMPTY_AGG: Agg = { voters: [], percent: 0, slot: null, squad: [] };
 
 const MAJOR_QUOTES = [
   "„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”",
@@ -497,7 +498,19 @@ export default function Home() {
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
       const slot = status.settled ? evSlots.find((s) => s.id === status.slotId) ?? null : null;
-      result.set(ev.id, { voters, percent, slot });
+      // Skład: stan każdego z paczki = najlepszy głos w tym wypadzie (yes > maybe > no),
+      // brak głosu = null (AFK). Kolejność profili stała — sloty nie skaczą między kartami.
+      const squad: SquadMember[] = profiles.map((p) => {
+        let state: SquadMember['state'] = null;
+        for (const v of evVotes) {
+          if (v.user_id !== p.id) continue;
+          if (v.availability === 'yes') { state = 'yes'; break; }
+          if (v.availability === 'maybe') state = 'maybe';
+          else if (state === null) state = 'no';
+        }
+        return { id: p.id, name: p.display_name, avatar: p.avatar, state };
+      });
+      result.set(ev.id, { voters, percent, slot, squad });
     }
     return result;
   }, [events, slots, votes, profiles]);
@@ -544,35 +557,10 @@ export default function Home() {
   }, [heroId, aggByEvent, slots]);
 
   return (
-    <main className="glass-page">
+    <main className={`glass-page${events.length > 0 ? ' has-dock' : ''}`}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
-        {/* Logo */}
-        <div style={{
-          width: 38, height: 38, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 12,
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
-        }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="5" ry="5" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-        </div>
-
-        {/* Nazwa + powitanie */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff', lineHeight: 1.2 }}>
-            Wypad.exe
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.3, marginTop: 1 }}>
-            Hej, {displayName} 👋
-          </div>
-        </div>
-
+        <span className="wordmark cursor">WYPAD<span>.EXE</span></span>
+        <div className="spacer" />
         <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
           <SettingsMenu />
           <ProfileMenu />
@@ -580,15 +568,9 @@ export default function Home() {
       </header>
 
       {events.length > 0 && (
-        <button className="cta-gradient" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Anuluj' : '+ Nowy wypad'}
-        </button>
-      )}
-
-      {events.length > 0 && (
         <div className={`form-collapse ${showForm ? 'open' : ''}`}>
           <form className="card" onSubmit={createEvent}>
-            <h2>Nowy wypad</h2>
+            <h2>Nowe lobby</h2>
             <div className="field">
               <label htmlFor="title">Nazwa</label>
               <input
@@ -629,7 +611,7 @@ export default function Home() {
 
             {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
             <button type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
-              {busy ? 'Tworzę…' : 'Utwórz wypad'}
+              {busy ? 'Odpalam…' : 'Odpal lobby'}
             </button>
           </form>
         </div>
@@ -671,29 +653,29 @@ export default function Home() {
                 }}>
                   <IconCalendar size={26} />
                 </div>,
-                <h2 key="title" style={{ margin: '0 0 4px', textAlign: 'center' }}>Brak wypadów</h2>,
+                <h2 key="title" style={{ margin: '0 0 4px', textAlign: 'center' }}>Cisza w eterze</h2>,
                 <p key="desc" style={{ color: 'var(--muted)', margin: '0 auto 18px', maxWidth: '30ch', textAlign: 'center' }}>
-                  Zaproponuj pierwszy termin i wyślij znajomym.
+                  Załóż pierwsze lobby i wyślij składowi.
                 </p>,
                 <button
                   key="cta"
                   onClick={() => setShowForm(true)}
                   style={{
-                    background: 'rgba(10, 132, 255, 0.22)',
-                    border: '1px solid rgba(10, 132, 255, 0.4)',
-                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px rgba(10, 132, 255, 0.12)',
-                    color: '#ffffff',
+                    background: 'var(--accent)',
+                    border: 'none',
+                    boxShadow: '0 10px 28px rgba(255, 138, 61, 0.18)',
+                    color: 'var(--accent-ink)',
                     padding: '12px 24px',
-                    borderRadius: '16px',
-                    fontWeight: 600,
+                    borderRadius: '12px',
+                    fontWeight: 700,
                     fontSize: '0.95rem',
                     margin: '0 auto',
                     display: 'block'
                   }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(10, 132, 255, 0.3)' }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(10, 132, 255, 0.22)' }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = '#ffa05e' }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent)' }}
                 >
-                  + Nowy wypad
+                  + Nowe lobby
                 </button>,
               ].map((child, i) => (
                 <div
@@ -720,7 +702,7 @@ export default function Home() {
             <div style={{ minHeight: 0, overflow: 'hidden', padding: '0 4px' }}>
               <form onSubmit={createEvent} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
-                  <h2 key="h" style={{ margin: 0 }}>Nowy wypad</h2>,
+                  <h2 key="h" style={{ margin: 0 }}>Nowe lobby</h2>,
                   <div className="field" key="title">
                     <label htmlFor="title">Nazwa</label>
                     <input
@@ -757,7 +739,7 @@ export default function Home() {
                   </div>,
                   error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
                   <button key="submit" type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
-                    {busy ? 'Tworzę…' : 'Utwórz wypad'}
+                    {busy ? 'Odpalam…' : 'Odpal lobby'}
                   </button>,
                   <button
                     key="cancel"
@@ -789,10 +771,17 @@ export default function Home() {
 
       {heroEvent && (
         <section>
-          <div className="section-label">
+          <div className={`section-label${heroMode === 'vote' ? ' hot' : ''}`}>
             {heroMode === 'vote' ? 'Twoja kolej' : heroMode === 'waiting' ? 'Czekamy na resztę' : 'Najbliższy'}
           </div>
-          <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} slot={heroSlot} variant={heroVariant} />
+          <HeroCard
+            ev={heroEvent}
+            agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG}
+            memberCount={profiles.length}
+            slot={heroSlot}
+            variant={heroVariant}
+            needsYou={heroMode === 'vote'}
+          />
         </section>
       )}
       {ahead.length > 0 && (
@@ -806,14 +795,27 @@ export default function Home() {
       <Section title="Bylim już" events={past} agg={aggByEvent} variant="past" muted />
 
       {!loading && events.length > 0 && quote && (
-        <div 
-          className="tip-banner" 
-          onClick={handleNextQuote}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-          title="Kliknij, aby wylosować kolejny cytat"
-        >
-          <IconBulb size={20} className="tip-icon" />
+        <figure className="motd" onClick={handleNextQuote} title="Kliknij, aby wylosować kolejny cytat">
+          <span className="motd-label">MOTD</span>
           <span className={`quote-text ${fade ? 'fade-in' : 'fade-out'}`}>{quote}</span>
+        </figure>
+      )}
+
+      {events.length > 0 && (
+        <div className="cta-dock">
+          <button
+            className="cta-gradient"
+            onClick={() =>
+              setShowForm((v) => {
+                const next = !v;
+                // Formularz mieszka na górze strony — dowieź użytkownika do niego.
+                if (next) window.scrollTo({ top: 0, behavior: 'smooth' });
+                return next;
+              })
+            }
+          >
+            {showForm ? 'Anuluj' : '+ Nowe lobby'}
+          </button>
         </div>
       )}
     </main>
@@ -859,12 +861,13 @@ function useEventNav(eventId: string) {
   return { href, handlers };
 }
 
-// Bogata karta najbliższego wypadu (układ z mockupu): emoji w kółku + tytuł + status,
-// lokalizacja/data, szklany pod-panel (avatary + „X z Y" + pasek), grid Pogoda + Zbiórka.
-function HeroCard({ ev, agg, memberCount, slot, variant }: {
-  ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming';
+// Bogata karta najbliższego lobby: emoji + tytuł + status, lokalizacja/data,
+// skład (sloty graczy z READY/MOŻE/DODGE/AFK), segmenty gotowości, grid Pogoda + Zbiórka.
+function HeroCard({ ev, agg, memberCount, slot, variant, needsYou }: {
+  ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming'; needsYou?: boolean;
 }) {
   const { href, handlers } = useEventNav(ev.id);
+  const { userId } = useAuth();
 
   // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
   const weatherDate = slot ? toDateISO(slot.starts_at) : null;
@@ -887,13 +890,14 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
   }, [hasCoords, ev.latitude, ev.longitude, weatherDate]);
 
   const badge = variant === 'upcoming'
-    ? { label: 'Ustalone', cls: 'hero-badge hero-badge-green' }
-    : { label: 'Aktywny', cls: 'hero-badge hero-badge-blue' };
+    ? { label: 'GRAMY', cls: 'hero-badge hero-badge-green' }
+    : { label: 'ZBIERAMY SKŁAD', cls: 'hero-badge hero-badge-blue' };
 
   const wInfo = weather ? describeWeather(weather.code) : null;
+  const responded = agg.squad.filter((m) => m.state).length;
 
   return (
-    <Link href={href} className="event-rich hero" {...handlers}>
+    <Link href={href} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
       <div className="hero-head">
         <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
         <div className="hero-head-main">
@@ -908,17 +912,36 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
         <span className="event-meta"><IconCalendar size={14} /> {agg.slot ? formatSlotRange(agg.slot) : 'Zbieramy terminy'}</span>
       </div>
 
-      <div className="hero-panel">
-        <div className="hero-panel-top">
-          {agg.voters.length > 0
-            ? <AvatarStack people={agg.voters} size={28} />
-            : <span className="small muted">Jeszcze nikt nie dał znać</span>}
+      {agg.squad.length > 0 ? (
+        <>
+          <div className="squad">
+            {agg.squad.map((m) => {
+              const isYou = m.id === userId;
+              const label =
+                m.state === 'yes' ? 'READY'
+                : m.state === 'maybe' ? 'MOŻE'
+                : m.state === 'no' ? 'DODGE'
+                : isYou ? 'TWÓJ SLOT' : 'AFK';
+              return (
+                <div key={m.id} className={`slot-p ${m.state ? `s-${m.state}` : 's-none'}${isYou && !m.state ? ' is-you' : ''}`}>
+                  <Avatar name={m.name} avatar={m.avatar} size={26} />
+                  <span className="who"><b>{m.name}</b><span>{label}</span></span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="readybar">
+            <span className="segs" aria-hidden="true">
+              {agg.squad.map((m, i) => <i key={m.id} className={i < responded ? 'on' : ''} />)}
+            </span>
+            <b>{responded}/{agg.squad.length} <span>DAŁO ZNAĆ</span></b>
+          </div>
+        </>
+      ) : (
+        <div className="readybar">
           <span className="small muted">{agg.voters.length} z {memberCount} dało znać</span>
         </div>
-        <div className="progress">
-          <div className="progress-bar" style={{ width: `${agg.percent}%` }} />
-        </div>
-      </div>
+      )}
 
       {(wInfo || meetTime) && (
         <div className="hero-grid">
@@ -978,23 +1001,22 @@ function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant
           <span className="small muted">Jeszcze nikt nie dał znać</span>
         )}
 
-        {variant === 'open' ? (
+        {variant === 'open' && agg.squad.length > 0 ? (
           <div className="progress-inline-wrap">
-            <div className="progress">
-              <div
-                className="progress-bar"
-                style={{ width: `${agg.percent}%` }}
-              />
-            </div>
+            <span className="mini-segs" aria-hidden="true">
+              {agg.squad.map((m, i) => (
+                <i key={m.id} className={i < agg.squad.filter((s) => s.state).length ? 'on' : ''} />
+              ))}
+            </span>
             <span className="progress-label">
-              {agg.percent}% <span className="label-sub">dało znać</span>
+              {agg.squad.filter((s) => s.state).length}/{agg.squad.length}
             </span>
           </div>
         ) : (
           <>
             <span className="spacer" />
-            {variant === 'past' && <span className="badge">✓ Bylim już</span>}
-            {variant === 'upcoming' && <span className="badge">Ustalone</span>}
+            {variant === 'past' && <span className="badge badge-muted">GG</span>}
+            {variant === 'upcoming' && <span className="badge">GRAMY</span>}
             {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
           </>
         )}
