@@ -356,13 +356,21 @@ export default function Home() {
     navigate(`/event/${data.id}`, 'forward');
   }
 
-  const { open, upcoming, expired, past } = useMemo(() => {
+  // Kategoryzacja + wybór hero. Hero działa jak skrzynka odbiorcza:
+  // (1) wypad czekający na TWÓJ głos, (2) czekamy na innych, (3) najbliższy
+  // klepnięty. Data rozstrzyga dopiero remisy w obrębie klasy. Reszta listy
+  // to jedna chronologiczna sekcja „Przed nami" — status niesie plakietka
+  // przy wierszu, nie osobny nagłówek sekcji (4 nagłówki na kilka wypadów
+  // robiły więcej szumu niż treści).
+  const { heroId, heroMode, heroVariant, ahead, past } = useMemo(() => {
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
-    const open: EventRow[] = [];
-    const upcoming: EventRow[] = [];
-    const expired: EventRow[] = [];
-    const past: EventRow[] = [];
+
+    type AheadItem = { ev: EventRow; variant: 'open' | 'upcoming' | 'expired'; sortMs: number };
+    const openItems: AheadItem[] = [];
+    const upcomingItems: AheadItem[] = [];
+    const expiredItems: AheadItem[] = [];
+    const pastItems: { ev: EventRow; endMs: number }[] = [];
 
     const slotsByEvent = new Map<string, Slot[]>();
     for (const s of slots) {
@@ -376,9 +384,6 @@ export default function Home() {
       arr.push(v);
       votesByEvent.set(v.event_id, arr);
     }
-
-    const confirmedDateMap = new Map<string, string>();
-    const expiredAtMap = new Map<string, number>();
     const memberIds = profiles.map((p) => p.id);
 
     for (const ev of events) {
@@ -386,18 +391,17 @@ export default function Home() {
       const evVotes = votesByEvent.get(ev.id) ?? [];
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
 
-      // Ustalony (ręcznie LUB wszyscy dali znać) → Nadchodzące / Bylim już.
+      // Ustalony (ręcznie LUB wszyscy dali znać) → nadchodzący / Bylim już.
       // Liczone od KOŃCA terminu (zakres/cały dzień trwa do końca ostatniego dnia).
       if (status.settled && status.date) {
-        confirmedDateMap.set(ev.id, status.date);
         const settledSlot = evSlots.find((s) => s.id === status.slotId);
         const endMs = settledSlot ? slotEndMs(settledSlot) : new Date(status.date).getTime();
         if (endMs >= now) {
-          upcoming.push(ev);
+          upcomingItems.push({ ev, variant: 'upcoming', sortMs: endMs });
         } else if (endMs >= now - 7 * DAY) {
           // „Bylim już" pokazujemy do tygodnia po wypadzie; starsze → archiwum
           // (pomijamy z listy, zostają w bazie pod przyszły widok archiwum).
-          past.push(ev);
+          pastItems.push({ ev, endMs });
         }
         continue;
       }
@@ -409,32 +413,56 @@ export default function Home() {
       if (evSlots.length > 0 && !hasFuture) {
         // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono". Pokazujemy do 24h
         // po ostatnim terminie, potem archiwizujemy (pomijamy → znika z listy, zostaje w bazie).
-        if (latest >= now - DAY) {
-          expired.push(ev);
-          expiredAtMap.set(ev.id, latest);
-        }
+        if (latest >= now - DAY) expiredItems.push({ ev, variant: 'expired', sortMs: latest });
       } else {
-        // Ma przyszły termin albo brak terminów → wciąż „W trakcie".
-        open.push(ev);
+        // Ma przyszły termin albo brak terminów → wciąż zbiera głosy.
+        // Klucz sortowania: najbliższy przyszły termin (brak terminów → na koniec).
+        const nearest = evSlots.reduce((m, s) => {
+          const end = slotEndMs(s);
+          return end > now && end < m ? end : m;
+        }, Infinity);
+        openItems.push({ ev, variant: 'open', sortMs: nearest });
       }
     }
 
-    upcoming.sort((a, b) => {
-      const da = new Date(confirmedDateMap.get(a.id)!).getTime();
-      const db = new Date(confirmedDateMap.get(b.id)!).getTime();
-      return da - db;
-    });
+    const byNearest = (a: AheadItem, b: AheadItem) => a.sortMs - b.sortMs;
 
-    past.sort((a, b) => {
-      const da = new Date(confirmedDateMap.get(a.id)!).getTime();
-      const db = new Date(confirmedDateMap.get(b.id)!).getTime();
-      return db - da;
-    });
+    // Klasa 1: czeka na MÓJ głos (jest na co głosować i nie oddałem głosu).
+    const myVotedEventIds = new Set(
+      votes.filter((v) => v.user_id === userId).map((v) => v.event_id),
+    );
+    const needsMyVote = (it: AheadItem) =>
+      it.sortMs !== Infinity && !myVotedEventIds.has(it.ev.id);
+    const classVote = openItems.filter(needsMyVote).sort(byNearest);
+    const classWaiting = openItems.filter((it) => !needsMyVote(it)).sort(byNearest);
+    const classLocked = upcomingItems.slice().sort(byNearest);
 
-    expired.sort((a, b) => (expiredAtMap.get(b.id) ?? 0) - (expiredAtMap.get(a.id) ?? 0));
+    const heroItem = classVote[0] ?? classWaiting[0] ?? classLocked[0] ?? null;
+    const heroMode: 'vote' | 'waiting' | 'locked' | null = !heroItem
+      ? null
+      : heroItem === classVote[0] ? 'vote'
+      : heroItem === classWaiting[0] ? 'waiting'
+      : 'locked';
 
-    return { open, upcoming, expired, past };
-  }, [events, slots, votes, profiles]);
+    // „Przed nami": aktywne + klepnięte chronologicznie (bez hero);
+    // minione-nieustalone na końcu, najświeższe pierwsze.
+    const ahead = [
+      ...[...openItems, ...upcomingItems]
+        .filter((it) => it.ev.id !== heroItem?.ev.id)
+        .sort(byNearest),
+      ...expiredItems.sort((a, b) => b.sortMs - a.sortMs),
+    ];
+
+    pastItems.sort((a, b) => b.endMs - a.endMs);
+
+    return {
+      heroId: heroItem?.ev.id ?? null,
+      heroMode,
+      heroVariant: (heroItem?.variant === 'upcoming' ? 'upcoming' : 'open') as 'open' | 'upcoming',
+      ahead,
+      past: pastItems.map((p) => p.ev),
+    };
+  }, [events, slots, votes, profiles, userId]);
 
   const aggByEvent = useMemo(() => {
     const profileById = new Map(profiles.map((p) => [p.id, p]));
@@ -494,31 +522,7 @@ export default function Home() {
     [recentComments, events, profileById],
   );
 
-  // Hero = wypad z najbliższym (w przyszłości) terminem — czy to ustalony „nadchodzący",
-  // czy aktywny zbierający głosy. Pokazujemy go powiększonego na górze, raz.
-  const heroId = useMemo(() => {
-    const now = Date.now();
-    let bestId: string | null = null;
-    let bestMs = Infinity;
-    const consider = (ev: EventRow) => {
-      let ms = Infinity;
-      for (const s of slots) {
-        if (s.event_id !== ev.id) continue;
-        const end = slotEndMs(s);
-        if (end >= now && end < ms) ms = end;
-      }
-      if (ms < bestMs) {
-        bestMs = ms;
-        bestId = ev.id;
-      }
-    };
-    upcoming.forEach(consider);
-    open.forEach(consider);
-    return bestId;
-  }, [upcoming, open, slots]);
   const heroEvent = heroId ? events.find((e) => e.id === heroId) ?? null : null;
-  const heroVariant: 'open' | 'upcoming' =
-    heroId && upcoming.some((e) => e.id === heroId) ? 'upcoming' : 'open';
 
   // Termin hero (do pogody i godziny zbiórki): ustalony, a jak brak — najbliższy proponowany.
   const heroSlot = useMemo<Slot | null>(() => {
@@ -785,13 +789,20 @@ export default function Home() {
 
       {heroEvent && (
         <section>
-          <div className="section-label">Najbliższy</div>
+          <div className="section-label">
+            {heroMode === 'vote' ? 'Twoja kolej' : heroMode === 'waiting' ? 'Czekamy na resztę' : 'Najbliższy'}
+          </div>
           <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} slot={heroSlot} variant={heroVariant} />
         </section>
       )}
-      <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
-      <Section title="Nadchodzące" events={upcoming.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="upcoming" />
-      <Section title="Nie ustalono" events={expired} agg={aggByEvent} variant="expired" muted />
+      {ahead.length > 0 && (
+        <section>
+          <div className="section-label">Przed nami</div>
+          {ahead.map(({ ev, variant }) => (
+            <EventCard key={ev.id} ev={ev} agg={aggByEvent.get(ev.id) ?? EMPTY_AGG} variant={variant} />
+          ))}
+        </section>
+      )}
       <Section title="Bylim już" events={past} agg={aggByEvent} variant="past" muted />
 
       {!loading && events.length > 0 && quote && (

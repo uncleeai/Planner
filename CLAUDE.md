@@ -42,6 +42,7 @@ Guidance for AI assistants (and humans) working in this repository.
 │   └── functions/
 │       ├── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
 │       └── notify-reminders/     # Edge Function: cykliczny push „nie dałeś znać" (pg_cron)
+├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
 │   ├── sw.js                     # Service worker (Web Push: push + notificationclick)
