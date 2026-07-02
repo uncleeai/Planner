@@ -277,25 +277,38 @@ export default function Home() {
     setLoading(false);
   }, []);
 
+  // Realtime potrafi przysłać serię zmian naraz (własny głos + cudze + reconnect po
+  // uśpieniu). Bez tego każdy wiersz wołał osobny load() = 5 zapytań + pełny re-render
+  // pod rząd, co na telefonie (zwł. w trybie oszczędzania) zapychało główny wątek i
+  // taps przez chwilę nie łapały. Sklejamy serię w jeden load() (trailing debounce).
+  const reloadTimer = useRef<number | null>(null);
+  const scheduleReload = useCallback(() => {
+    if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
+    reloadTimer.current = window.setTimeout(() => {
+      reloadTimer.current = null;
+      load();
+    }, 300);
+  }, [load]);
+
   useEffect(() => {
     load();
     const channel = supabase
       .channel('dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, scheduleReload)
       .subscribe();
     // Zmiany w `events` łapie JEDNA globalna subskrypcja (NewEventToast) i rozgłasza je
     // tym zdarzeniem. Dwa kanały Realtime na tej samej tabeli gubiły dostawy (toast
     // łapał tylko pierwszy wypad), więc dashboard nie subskrybuje `events` osobno.
-    const onEvents = () => load();
-    window.addEventListener('planner:events-changed', onEvents);
+    window.addEventListener('planner:events-changed', scheduleReload);
     return () => {
+      if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
       supabase.removeChannel(channel);
-      window.removeEventListener('planner:events-changed', onEvents);
+      window.removeEventListener('planner:events-changed', scheduleReload);
     };
-  }, [load]);
+  }, [load, scheduleReload]);
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
