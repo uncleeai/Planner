@@ -3,11 +3,22 @@
 Koncepty wizualne — statyczny HTML, bez zależności. Otwórz plik w przeglądarce
 (`open mockups/<plik>.html`) albo przez dowolny serwer statyczny.
 
-## `wypad-lobby.html` — koncept „Lobby" (faworyt)
+## `wypad-lobby.html` — koncept „Lobby" (faworyt, v2)
 
 Apka jako ready check z gier: wypad = lobby, głos = READY/MOŻE/PAS,
 zapominalski = AFK, klepnięty termin = LOCK IN, odbyty = GG. Metafora
 mapuje się 1:1 na funkcję apki, więc nie jest gimmickiem.
+
+Layout v2 (trzy ekrany):
+
+- **Hero = skrzynka odbiorcza** — na górę idzie lobby, w którym twój slot
+  jest pusty (nie najbliższe datą); ready check prowadzącego terminu jest
+  w hero, więc głosujesz bez wchodzenia w wypad.
+- **Dwie sekcje zamiast czterech**: „Przed nami" (chronologicznie, status
+  jako tag przy wierszu) i „Bylim już" (tag GG).
+- **Layout adaptacyjny**: jeden aktywny wypad = hero rośnie w kartę misji
+  (pełny skład z imionami, Szturchnij przy AFK, pogoda, zbiórka, zajawka
+  czatu) zamiast wisieć nad pustą listą.
 
 Kluczowe decyzje:
 

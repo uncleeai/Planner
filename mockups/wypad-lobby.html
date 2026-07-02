@@ -8,11 +8,20 @@
 <body>
 <style>
   /* ============================================================
-     WYPAD.EXE · koncept „LOBBY"
+     WYPAD.EXE · koncept „LOBBY" · v2 (poprawiony layout)
      Apka jako ready check z gier: lobby, skład, AFK, lock in.
-     Estetyka: taktyczny scoreboard. Cisza w formie, humor w treści.
-     Jeden akcent (sygnałowy oranż), zieleń/czerwień = tylko semantyka
-     ready/pas. System promieni: karty 12px, kontrolki 8px, bez pigułek.
+
+     Layout v2:
+     1) Hero = skrzynka odbiorcza. Na górę idzie lobby, w którym
+        TWÓJ slot jest pusty; głosujesz bez wchodzenia w wypad.
+     2) Dwie sekcje zamiast czterech: PRZED NAMI (status jako tag
+        przy wierszu) i BYLIM JUŻ.
+     3) Layout adaptacyjny: jeden aktywny wypad = hero rośnie
+        w pełnoekranową kartę misji (ekran 02).
+
+     Estetyka: taktyczny scoreboard. Jeden akcent (sygnałowy oranż),
+     zieleń/czerwień = tylko semantyka ready/pas. Promienie: karty
+     12px, kontrolki 8px, bez pigułek.
      ============================================================ */
   :root {
     --studio: #08090b;
@@ -23,7 +32,7 @@
     --line-strong: rgba(232, 237, 240, 0.17);
     --text: #e8edf0;
     --muted: #7f8b94;
-    --accent: #ff8a3d;          /* sygnałowy oranż: countdown, lock, CTA */
+    --accent: #ff8a3d;          /* sygnałowy oranż: twoja kolej, lock, CTA */
     --accent-dim: rgba(255, 138, 61, 0.12);
     --accent-ink: #241103;
     --ready: #3ddc8b;           /* semantyka: READY */
@@ -47,7 +56,7 @@
   }
 
   /* ---------- strona-prezentacja ---------- */
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 56px 24px 80px; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 56px 24px 80px; }
   .intro { max-width: 62ch; }
   .intro h1 {
     font-size: clamp(1.6rem, 4vw, 2.2rem);
@@ -68,7 +77,7 @@
   .swatch i { width: 18px; height: 18px; border-radius: 5px; display: block; border: 1px solid var(--line-strong); }
 
   .stage {
-    display: flex; flex-wrap: wrap; gap: 48px;
+    display: flex; flex-wrap: wrap; gap: 40px;
     justify-content: center; align-items: flex-start;
     margin-top: 44px;
   }
@@ -131,13 +140,14 @@
     font-family: var(--mono); font-size: 10.5px; font-weight: 600;
     letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
   }
+  .rail-label.hot-label { color: var(--accent); }
   .chip {
     font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em;
     padding: 3px 10px; border-radius: var(--r-sm);
   }
   .chip.hot { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
 
-  /* ---------- HERO: najbliższe lobby ---------- */
+  /* ---------- HERO / karta misji ---------- */
   .lobby {
     background:
       radial-gradient(rgba(232, 237, 240, 0.045) 1px, transparent 1px) 0 0 / 14px 14px,
@@ -147,6 +157,7 @@
     padding: 16px;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
   }
+  .lobby.needs-you { border-color: rgba(255, 138, 61, 0.3); }
   .lobby-head { display: flex; align-items: center; gap: 12px; }
   .lobby-title { flex: 1; min-width: 0; }
   .lobby-title h3 { margin: 0 0 4px; font-size: 23px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
@@ -156,11 +167,8 @@
   .lobby-meta .sep { opacity: 0.45; }
   .chev { color: var(--muted); flex-shrink: 0; }
 
-  /* skład: 4 sloty, pusty slot MA być widoczny */
-  .squad {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    margin-top: 14px;
-  }
+  /* skład: 4 sloty; pusty i TWÓJ slot mają być widoczne */
+  .squad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
   .slot-p {
     display: flex; align-items: center; gap: 9px;
     background: var(--panel-2);
@@ -174,7 +182,7 @@
     font-size: 11.5px; font-weight: 700;
     background: #232830; color: var(--text);
   }
-  .slot-p .who { min-width: 0; }
+  .slot-p .who { min-width: 0; flex: 1; }
   .slot-p .who b { display: block; font-size: 12.5px; font-weight: 600; line-height: 1.2; }
   .slot-p .who span {
     display: block; font-family: var(--mono); font-size: 9.5px; font-weight: 700;
@@ -182,15 +190,16 @@
   }
   .slot-p.is-ready .who span { color: var(--ready); }
   .slot-p.is-maybe .who span { color: var(--muted); }
-  .slot-p.is-afk {
-    border-style: dashed; border-color: var(--line-strong);
-    background: transparent;
-  }
+  .slot-p.is-afk { border-style: dashed; border-color: var(--line-strong); background: transparent; }
   .slot-p.is-afk .pax { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted); }
   .slot-p.is-afk .who b { color: var(--muted); }
   .slot-p.is-afk .who span { color: var(--accent); }
+  /* twój pusty slot: to on wywindował lobby na górę ekranu */
+  .slot-p.is-you { border: 1.5px dashed rgba(255, 138, 61, 0.55); background: var(--accent-dim); }
+  .slot-p.is-you .pax { background: transparent; border: 1.5px dashed rgba(255, 138, 61, 0.55); color: var(--accent); }
+  .slot-p.is-you .who span { color: var(--accent); }
 
-  /* segmenty gotowości: 4 osoby = 4 segmenty, nie procenty */
+  /* segmenty: 4 osoby = 4 segmenty, nie procenty */
   .readybar { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
   .segs { display: flex; gap: 4px; flex: 1; }
   .segs i { height: 5px; flex: 1; border-radius: 2px; background: var(--panel-2); border: 1px solid var(--line); }
@@ -200,6 +209,27 @@
     letter-spacing: 0.1em; color: var(--text); font-variant-numeric: tabular-nums;
   }
   .readybar b span { color: var(--muted); font-weight: 600; }
+
+  /* głosowanie inline w hero: odpowiadasz bez wchodzenia w wypad */
+  .hero-vote { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+  .hero-vote-label {
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.14em; color: var(--muted); margin-bottom: 8px;
+  }
+  .hero-vote-label b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .hero-vote-label .more { color: var(--muted); font-weight: 600; letter-spacing: 0.1em; }
+
+  .seg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .seg3 button {
+    font: 700 12px/1 var(--mono); letter-spacing: 0.08em;
+    padding: 12px 6px; border-radius: var(--r-sm); cursor: pointer;
+    background: var(--panel-2); color: var(--muted);
+    border: 1px solid var(--line);
+  }
+  .seg3 button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .seg3 button.on-ready { background: var(--ready); border-color: var(--ready); color: #062b18; }
+  .seg3 button.on-pas { background: var(--pas); border-color: var(--pas); color: #fff; }
 
   .lobby-facts {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
@@ -214,7 +244,42 @@
   }
   .fact span { display: block; font-size: 11px; color: var(--muted); line-height: 1.2; }
 
-  /* ---------- lista lobby: płaskie wiersze ---------- */
+  /* ---------- karta misji (wariant: jeden aktywny wypad) ---------- */
+  .squad.roster { grid-template-columns: 1fr; gap: 6px; margin-top: 12px; }
+  .squad.roster .slot-p { padding: 9px 10px; }
+  .squad.roster .who b { font-size: 13.5px; }
+  .slot-p .side {
+    flex-shrink: 0; font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.12em; color: var(--muted);
+  }
+  .nudge-sm {
+    flex-shrink: 0; cursor: pointer;
+    font: 600 11px/1 var(--sans);
+    color: var(--accent); background: var(--accent-dim);
+    border: 1px solid rgba(255, 138, 61, 0.32);
+    padding: 7px 10px; border-radius: 6px;
+  }
+  .nudge-sm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .peek {
+    display: flex; gap: 9px; align-items: flex-start;
+    border-top: 1px solid var(--line);
+    margin-top: 14px; padding-top: 12px;
+  }
+  .peek .pax {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 700;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line-strong);
+  }
+  .peek-body { min-width: 0; flex: 1; }
+  .peek-head { display: flex; align-items: baseline; gap: 7px; }
+  .peek-head b { font-size: 12.5px; font-weight: 700; }
+  .peek-head time { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .peek-body p { margin: 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---------- listy: płaskie wiersze, status jako tag ---------- */
   .board { border-top: 1px solid var(--line); }
   .row {
     display: flex; align-items: center; gap: 12px;
@@ -238,12 +303,11 @@
   }
   .tag.locked { color: var(--ready); background: var(--ready-dim); }
   .tag.gg { color: var(--muted); background: var(--panel-2); }
+  .tag.you { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
+  .tag.lead-tag { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
 
-  /* ---------- MOTD: cytat dnia ---------- */
-  .motd {
-    margin: 26px 4px 0;
-    display: flex; gap: 10px; align-items: baseline;
-  }
+  /* ---------- MOTD ---------- */
+  .motd { margin: 26px 4px 0; display: flex; gap: 10px; align-items: baseline; }
   .motd-label {
     font-family: var(--mono); font-size: 10px; font-weight: 700;
     letter-spacing: 0.16em; color: var(--accent); flex-shrink: 0;
@@ -270,7 +334,7 @@
   .homebar { width: 128px; height: 4.5px; border-radius: 999px; background: var(--line-strong); }
 
   /* ============================================================
-     EKRAN 2: lobby wypadu (ready check)
+     EKRAN: lobby wypadu (ready check)
      ============================================================ */
   .nav-row { display: flex; align-items: center; gap: 12px; padding: 8px 4px 16px; }
   .back {
@@ -285,7 +349,6 @@
   }
 
   .ev-head { padding: 0 4px; }
-  .ev-head .status-line { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .ev-head h3 { margin: 0 0 5px; font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; }
   .ev-meta { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13.5px; flex-wrap: wrap; }
   .ev-meta svg { opacity: 0.8; }
@@ -334,7 +397,6 @@
     font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   }
   .check-when span { display: block; font-size: 12px; color: var(--muted); }
-  .tag.lead-tag { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
 
   .check-votes {
     display: flex; flex-wrap: wrap; gap: 6px;
@@ -357,16 +419,7 @@
   .vchip.v-pas { border-color: rgba(255, 93, 93, 0.4); background: var(--pas-dim); color: var(--pas); }
   /* „może" celowo bez koloru: niezdecydowanie wygląda jak niezdecydowanie */
 
-  .seg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 12px; }
-  .seg3 button {
-    font: 700 12px/1 var(--mono); letter-spacing: 0.08em;
-    padding: 12px 6px; border-radius: var(--r-sm); cursor: pointer;
-    background: var(--panel-2); color: var(--muted);
-    border: 1px solid var(--line);
-  }
-  .seg3 button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-  .seg3 button.on-ready { background: var(--ready); border-color: var(--ready); color: #062b18; }
-  .seg3 button.on-pas { background: var(--pas); border-color: var(--pas); color: #fff; }
+  .check .seg3 { margin-top: 12px; }
 
   .lockin {
     width: 100%; margin: 4px 0 0; cursor: pointer;
@@ -436,14 +489,14 @@
 
 <div class="wrap">
   <header class="intro">
-    <h1>Wypad<span class="exe">.exe</span>, koncept: „Lobby”</h1>
-    <p><strong>Teza:</strong> mechanika tej apki to ready check z gier. Ktoś zakłada lobby,
-    skład klika READY, gra startuje, jak wszyscy dadzą znać. Metafora nie jest naklejką,
-    tylko nazwaniem tego, czym apka naprawdę jest, więc każdy element UI ma swój odpowiednik:
-    wypad = lobby, głos = ready, zapominalski = AFK, klepnięty termin = LOCK IN.</p>
-    <p>Estetyka: taktyczny scoreboard, nie „gamer RGB”. Głęboka ciemność, mono na liczbach
-    i statusach, jeden sygnałowy oranż. Pusty slot w składzie jest zawsze widoczny,
-    bo cała apka powstała przez jedno puste miejsce na wakacjach.</p>
+    <h1>Wypad<span class="exe">.exe</span>, koncept: „Lobby” <span style="font-size:0.55em;color:var(--muted);font-family:var(--mono)">v2</span></h1>
+    <p><strong>Teza:</strong> mechanika tej apki to ready check z gier. Wypad = lobby, głos = READY,
+    zapominalski = AFK, klepnięty termin = LOCK IN.</p>
+    <p><strong>Layout v2:</strong> hero działa jak skrzynka odbiorcza. Na górę nie idzie wypad
+    najbliższy w kalendarzu, tylko ten, w którym <strong>twój slot jest pusty</strong>, i głosujesz
+    prosto z dashboardu. Cztery sekcje zlane do dwóch (PRZED NAMI + BYLIM JUŻ, status jako tag
+    przy wierszu). A gdy aktywny wypad jest jeden, hero rośnie w pełnoekranową kartę misji,
+    zamiast wisieć nad pustą listą.</p>
 
     <div class="tokens" aria-label="Paleta">
       <span class="swatch"><i style="background:#0c0e10"></i>tło #0C0E10</span>
@@ -457,7 +510,7 @@
 
   <div class="stage">
 
-    <!-- ================= EKRAN 1: DASHBOARD ================= -->
+    <!-- ============ EKRAN 1: DASHBOARD (kilka wypadów) ============ -->
     <div class="shot">
       <div class="phone">
         <div class="screen">
@@ -478,11 +531,11 @@
             </div>
 
             <div class="rail rise">
-              <span class="rail-label">Najbliższe lobby</span>
+              <span class="rail-label hot-label">Twoja kolej</span>
               <span class="chip hot">START ZA 10 DNI</span>
             </div>
 
-            <section class="lobby rise" aria-label="Najbliższy wypad: baseniary">
+            <section class="lobby needs-you rise" aria-label="Baseniary czeka na twój głos">
               <div class="lobby-head">
                 <div class="lobby-title">
                   <h3>baseniary</h3>
@@ -490,16 +543,16 @@
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                     Łabiszyn
                     <span class="sep">·</span>
-                    <span class="mono">SOB 12.07</span>
+                    host: Wojtas
                   </div>
                 </div>
                 <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
               </div>
 
               <div class="squad">
-                <div class="slot-p is-ready">
+                <div class="slot-p is-you">
                   <span class="pax">L</span>
-                  <span class="who"><b>Lukens</b><span>READY</span></span>
+                  <span class="who"><b>Lukens</b><span>TWÓJ SLOT</span></span>
                 </div>
                 <div class="slot-p is-ready">
                   <span class="pax">W</span>
@@ -516,24 +569,25 @@
               </div>
 
               <div class="readybar">
-                <span class="segs" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
-                <b>3/4 <span>READY</span></b>
+                <span class="segs" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+                <b>2/4 <span>DAŁO ZNAĆ</span></b>
               </div>
 
-              <div class="lobby-facts">
-                <div class="fact">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 14.9"/></svg>
-                  <span><b>23°</b><span>pochmurno</span></span>
+              <div class="hero-vote">
+                <div class="hero-vote-label">
+                  <span>READY CHECK: <b>SOB 12.07</b></span>
+                  <span class="more">+1 TERMIN W LOBBY</span>
                 </div>
-                <div class="fact">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  <span><b>10:37</b><span>zbiórka</span></span>
+                <div class="seg3" role="group" aria-label="Twój głos: sobota 12 lipca">
+                  <button type="button">READY</button>
+                  <button type="button">MOŻE</button>
+                  <button type="button">PAS</button>
                 </div>
               </div>
             </section>
 
             <div class="rail rise">
-              <span class="rail-label">Skład się zbiera</span>
+              <span class="rail-label">Przed nami</span>
             </div>
 
             <div class="board rise">
@@ -542,7 +596,7 @@
                   <b>Baskecik na orliku</b>
                   <span>PT 24.07 · od 18:00</span>
                 </div>
-                <span class="mini-segs" aria-label="1 z 4 gotowych"><i class="on"></i><i></i><i></i><i></i></span>
+                <span class="mini-segs" aria-label="1 z 4 dało znać"><i class="on"></i><i></i><i></i><i></i></span>
                 <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
               </div>
               <div class="row">
@@ -550,16 +604,9 @@
                   <b>Grzyby u Wojtasa</b>
                   <span>SOB 1-2.08 · z nocowaniem</span>
                 </div>
-                <span class="mini-segs" aria-label="2 z 4 gotowych"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+                <span class="mini-segs" aria-label="2 z 4 dało znać"><i class="on"></i><i class="on"></i><i></i><i></i></span>
                 <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
               </div>
-            </div>
-
-            <div class="rail rise">
-              <span class="rail-label">Locked in</span>
-            </div>
-
-            <div class="board">
               <div class="row">
                 <div class="row-main">
                   <b>Urodziny Madzi</b>
@@ -597,10 +644,112 @@
           </div>
         </div>
       </div>
-      <span class="shot-label">01 · Dashboard</span>
+      <span class="shot-label">01 · Dashboard: twoja kolej</span>
     </div>
 
-    <!-- ================= EKRAN 2: LOBBY WYPADU ================= -->
+    <!-- ============ EKRAN 2: DASHBOARD (jeden wypad = karta misji) ============ -->
+    <div class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="statusbar">
+            <span>21:37</span>
+            <span class="sb-right">
+              <span class="sb-cell" aria-hidden="true">
+                <b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:10px"></b>
+              </span>
+              <span class="sb-batt" aria-hidden="true"><i></i></span>
+            </span>
+          </div>
+
+          <div class="content">
+            <div class="topbar">
+              <span class="wordmark cursor">WYPAD<span>.EXE</span></span>
+              <span class="me">L</span>
+            </div>
+
+            <div class="rail rise">
+              <span class="rail-label">Jedyne lobby</span>
+              <span class="chip hot">START ZA 10 DNI</span>
+            </div>
+
+            <section class="lobby rise" aria-label="Karta misji: baseniary">
+              <div class="lobby-head">
+                <div class="lobby-title">
+                  <h3>baseniary</h3>
+                  <div class="lobby-meta">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Łabiszyn
+                    <span class="sep">·</span>
+                    <span class="mono">SOB 12.07</span>
+                  </div>
+                </div>
+                <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+
+              <!-- jeden wypad = jest miejsce na pełny skład z imionami -->
+              <div class="squad roster">
+                <div class="slot-p is-ready">
+                  <span class="pax">L</span>
+                  <span class="who"><b>Lukens</b><span>READY</span></span>
+                  <span class="side">TY</span>
+                </div>
+                <div class="slot-p is-ready">
+                  <span class="pax">W</span>
+                  <span class="who"><b>Wojtas</b><span>READY</span></span>
+                  <span class="side">HOST</span>
+                </div>
+                <div class="slot-p is-maybe">
+                  <span class="pax">G</span>
+                  <span class="who"><b>Grzesiek</b><span>MOŻE</span></span>
+                </div>
+                <div class="slot-p is-afk">
+                  <span class="pax">M</span>
+                  <span class="who"><b>Madzia</b><span>AFK 3 DNI</span></span>
+                  <button class="nudge-sm" type="button">Szturchnij</button>
+                </div>
+              </div>
+
+              <div class="readybar">
+                <span class="segs" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+                <b>3/4 <span>DAŁO ZNAĆ</span></b>
+              </div>
+
+              <div class="lobby-facts">
+                <div class="fact">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 14.9"/></svg>
+                  <span><b>23°</b><span>pochmurno</span></span>
+                </div>
+                <div class="fact">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span><b>10:37</b><span>zbiórka</span></span>
+                </div>
+              </div>
+
+              <div class="peek">
+                <span class="pax">W</span>
+                <span class="peek-body">
+                  <span class="peek-head"><b>Wojtas</b><time>2 godz</time></span>
+                  <p>biorę pompkę i te flambirowane kiełbasy</p>
+                </span>
+              </div>
+            </section>
+
+            <figure class="motd">
+              <span class="motd-label">MOTD</span>
+              <p>„Nie ma takiego czegoś, żeby było coś…” <cite>~ Major</cite></p>
+            </figure>
+          </div>
+
+          <div class="cta-dock">
+            <button class="cta" type="button">+ Załóż lobby</button>
+            <span class="homebar" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div>
+      <span class="shot-label">02 · Dashboard: jeden wypad</span>
+    </div>
+
+    <!-- ============ EKRAN 3: LOBBY WYPADU ============ -->
     <div class="shot">
       <div class="phone">
         <div class="screen">
@@ -628,7 +777,7 @@
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                 Łabiszyn
                 <span class="sep">·</span>
-                host: Lukens
+                host: Wojtas
               </div>
               <p class="ev-desc">Zgrzewka, pompka i dmuchany flaming. Wjazd od rana, kto śpi ten traci miejsce na leżaku.</p>
             </header>
@@ -644,7 +793,7 @@
 
             <div class="rail rise">
               <span class="rail-label">Ready check</span>
-              <span class="chip hot">3/4 READY</span>
+              <span class="chip hot">3/4 DAŁO ZNAĆ</span>
             </div>
 
             <section class="check lead rise" aria-label="Termin: sobota 12 lipca">
@@ -716,30 +865,30 @@
           </div>
         </div>
       </div>
-      <span class="shot-label">02 · Lobby wypadu</span>
+      <span class="shot-label">03 · Lobby wypadu</span>
     </div>
   </div>
 
   <section class="notes">
-    <h2>Dlaczego to działa</h2>
+    <h2>Co zmienił layout v2</h2>
     <ol>
-      <li><strong>Metafora = funkcja.</strong> Lobby, ready check, AFK i lock in to nie skórka,
-      tylko dokładny opis tego, co apka robi. Dlatego nie zestarzeje się jak gimmick:
-      nawet jak żart spowszednieje, UI dalej będzie czytelny.</li>
+      <li><strong>Hero to skrzynka odbiorcza, nie kalendarz.</strong> Na górę idzie lobby,
+      w którym twój slot jest pusty (pomarańczowa przerywana ramka „TWÓJ SLOT”), a nie wypad
+      najbliższy datą. Priorytet: twoja kolej → czekamy na innych → najbliższy klepnięty.</li>
+      <li><strong>Głosujesz z dashboardu.</strong> Ready check prowadzącego terminu jest w hero:
+      READY, MOŻE albo PAS klikasz bez wchodzenia w wypad. Wchodzenie głębiej jest tylko
+      po szczegóły: inne terminy, czat, lock in.</li>
+      <li><strong>Dwie sekcje zamiast czterech.</strong> „Przed nami” trzyma wszystko aktywne
+      i klepnięte chronologicznie, a status niesie tag przy wierszu (segmenty gotowości,
+      GRAMY). „Bylim już” z tagiem GG. Mniej nagłówków niż treści, nie odwrotnie.</li>
+      <li><strong>Jeden wypad = karta misji, nie lista z jednym elementem.</strong> Gdy aktywne
+      jest tylko jedno lobby, hero rośnie: pełny skład z imionami (z „Szturchnij” przy AFK),
+      pogoda, zbiórka i zajawka ostatniej wiadomości z czatu. Ekran nigdy nie wygląda na pusty.</li>
       <li><strong>Pusty slot jest zawsze widoczny.</strong> Apka powstała, bo ktoś został w domu.
-      Skład to 4 sloty, a ten bez odpowiedzi ma przerywaną ramkę: brak decyzji wygląda
-      jak dziura w drużynie, nie jak brak wiersza na liście.</li>
-      <li><strong>AFK to funkcja, nie wyrzut.</strong> Zapominalski dostaje status AFK i licznik dni,
-      a reszta przycisk „Szturchnij cytatem”: przypominajka losuje tekst Majora.
-      Czarny humor ekipy robi robotę, którą w innych apkach robi smutny push.</li>
-      <li><strong>Segmenty zamiast procentów.</strong> 4 osoby = 4 segmenty gotowości.
-      „3/4 READY” mówi więcej niż pasek 75% i skanuje się z metra.</li>
-      <li><strong>Scoreboard, nie gamer RGB.</strong> Jeden sygnałowy oranż (start, lock in, AFK, CTA),
-      zieleń i czerwień wyłącznie jako semantyka ready/pas, „może” celowo bez koloru.
-      Mono niesie liczby i statusy, sans niesie treść. Zero poświat i skosów.</li>
-      <li><strong>Język ekipy zostaje w UI.</strong> „Bylim już” + tag GG, MOTD z cytatem dnia,
-      godzina zbiórki 10:37. To są rzeczy, których nie da się wygenerować z prompta,
-      bo istnieją tylko u was.</li>
+      Skład to 4 sloty; brak odpowiedzi wygląda jak dziura w drużynie, nie jak brak wiersza.</li>
+      <li><strong>Scoreboard, nie gamer RGB.</strong> Jeden sygnałowy oranż (twoja kolej, AFK,
+      lock in, CTA), zieleń/czerwień wyłącznie jako semantyka ready/pas, „może” celowo bez
+      koloru. Mono niesie liczby i statusy, sans treść. CTA na dole, pod kciukiem.</li>
     </ol>
   </section>
 </div>
