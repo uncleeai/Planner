@@ -833,13 +833,53 @@ function Section({
   );
 }
 
+// Wejście w wypad z karty. Nawigujemy na `pointerup` przy realnym tapnięciu, a nie na
+// `click`: iOS po dłuższym przytrzymaniu opóźnia/„duplikuje" click (ghost click), przez co
+// zwykły tap zamierał, a potem wskakiwał w przytrzymany wypad. Klik zawsze blokujemy
+// (poza klawiaturą i modyfikatorami — nowa karta). Długie przytrzymanie nie nawiguje,
+// tak jak na desktopie. Ruch palcem (scroll) anuluje tap.
+function useEventNav(eventId: string) {
+  const navigate = useTransitionNavigate();
+  const href = `/event/${eventId}`;
+  const start = useRef<{ x: number; y: number; t: number } | null>(null);
+  const moved = useRef(false);
+
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent) => {
+      prefetchEvent(eventId);
+      start.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+      moved.current = false;
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const s = start.current;
+      if (s && (Math.abs(e.clientX - s.x) > 10 || Math.abs(e.clientY - s.y) > 10)) moved.current = true;
+    },
+    onPointerCancel: () => { start.current = null; },
+    onPointerUp: (e: React.PointerEvent) => {
+      const s = start.current;
+      start.current = null;
+      if (!s || moved.current) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return;          // klik zrobi nową kartę
+      if (e.pointerType === 'mouse' && e.button !== 0) return;    // tylko lewy przycisk
+      if (Date.now() - s.t > 500) return;                        // long-press → nie nawiguj
+      e.preventDefault();
+      navigate(href);
+    },
+    onClick: (e: React.MouseEvent) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return;          // nowa karta
+      if (e.detail === 0) { e.preventDefault(); navigate(href); return; } // klawiatura (Enter)
+      e.preventDefault();                                        // klik z dotyku (w tym ghost-click) — obsługuje pointerup
+    },
+  };
+  return { href, handlers };
+}
+
 // Bogata karta najbliższego wypadu (układ z mockupu): emoji w kółku + tytuł + status,
 // lokalizacja/data, szklany pod-panel (avatary + „X z Y" + pasek), grid Pogoda + Zbiórka.
 function HeroCard({ ev, agg, memberCount, slot, variant }: {
   ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming';
 }) {
-  const navigate = useTransitionNavigate();
-  const href = `/event/${ev.id}`;
+  const { href, handlers } = useEventNav(ev.id);
 
   // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
   const weatherDate = slot ? toDateISO(slot.starts_at) : null;
@@ -868,16 +908,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
   const wInfo = weather ? describeWeather(weather.code) : null;
 
   return (
-    <Link
-      href={href}
-      className="event-rich hero"
-      onPointerDown={() => prefetchEvent(ev.id)}
-      onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        e.preventDefault();
-        navigate(href, 'forward');
-      }}
-    >
+    <Link href={href} className="event-rich hero" {...handlers}>
       <div className="hero-head">
         <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
         <div className="hero-head-main">
@@ -931,22 +962,9 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
 }
 
 function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
-  const navigate = useTransitionNavigate();
-  const href = `/event/${ev.id}`;
+  const { href, handlers } = useEventNav(ev.id);
   return (
-    <Link
-      href={href}
-      className={`event-rich${hero ? ' hero' : ''}`}
-      // Dotknięcie karty → pobierz dane wypadu w tle, nim odpali się nawigacja:
-      // round-trip do bazy nakłada się na tap i montowanie strony.
-      onPointerDown={() => prefetchEvent(ev.id)}
-      onClick={(e) => {
-        // Pozwól na otwieranie w nowej karcie (Cmd/Ctrl/środkowy przycisk); inaczej animowany slide.
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        e.preventDefault();
-        navigate(href, 'forward');
-      }}
-    >
+    <Link href={href} className={`event-rich${hero ? ' hero' : ''}`} {...handlers}>
       <div className="event-rich-head">
         <span className="event-rich-title">{ev.title}</span>
         <IconChevron size={18} className="row-chevron" />
