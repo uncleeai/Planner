@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
-import type { EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
+import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
 import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
@@ -537,6 +537,29 @@ export default function Home() {
 
   const heroEvent = heroId ? events.find((e) => e.id === heroId) ?? null : null;
 
+  // Ile innych (przyszłych) terminów czeka w lobby poza tym pokazanym w hero.
+  const heroOtherSlots = useMemo(() => {
+    if (!heroId) return 0;
+    const now = Date.now();
+    const future = slots.filter((s) => s.event_id === heroId && slotEndMs(s) > now).length;
+    return Math.max(0, future - 1);
+  }, [heroId, slots]);
+
+  // Karta misji: gdy hero jest JEDYNYM wypadem przed nami, dostaje zajawkę
+  // ostatniej wiadomości z czatu — ekran z jednym lobby nie wygląda na pusty.
+  const heroPeek = useMemo(() => {
+    if (!heroId || ahead.length > 0) return null;
+    const c = recentComments.find((cm) => cm.event_id === heroId);
+    if (!c) return null;
+    const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+    return {
+      name: prof?.display_name ?? c.author_name,
+      avatar: prof?.avatar ?? null,
+      body: c.body,
+      createdAt: c.created_at,
+    };
+  }, [heroId, ahead, recentComments, profileById]);
+
   // Termin hero (do pogody i godziny zbiórki): ustalony, a jak brak — najbliższy proponowany.
   const heroSlot = useMemo<Slot | null>(() => {
     if (!heroId) return null;
@@ -781,6 +804,8 @@ export default function Home() {
             slot={heroSlot}
             variant={heroVariant}
             needsYou={heroMode === 'vote'}
+            otherSlots={heroOtherSlots}
+            peek={heroPeek}
           />
         </section>
       )}
@@ -863,11 +888,29 @@ function useEventNav(eventId: string) {
 
 // Bogata karta najbliższego lobby: emoji + tytuł + status, lokalizacja/data,
 // skład (sloty graczy z READY/MOŻE/DODGE/AFK), segmenty gotowości, grid Pogoda + Zbiórka.
-function HeroCard({ ev, agg, memberCount, slot, variant, needsYou }: {
+// Gdy czeka na twój głos — ready check prowadzącego terminu prosto w karcie.
+function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek }: {
   ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming'; needsYou?: boolean;
+  otherSlots?: number;
+  peek?: { name: string; avatar: string | null; body: string; createdAt: string } | null;
 }) {
   const { href, handlers } = useEventNav(ev.id);
-  const { userId } = useAuth();
+  const { userId, displayName } = useAuth();
+
+  // Głos z dashboardu: optymistyczne zaznaczenie od razu, realtime dociągnie prawdę
+  // (i przełączy hero w tryb „Czekamy na resztę").
+  const [myPick, setMyPick] = useState<Availability | null>(null);
+  async function castVote(e: React.MouseEvent, availability: Availability) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!slot || myPick === availability) return;
+    setMyPick(availability);
+    const { error } = await supabase.from('votes').upsert(
+      { event_id: ev.id, slot_id: slot.id, user_id: userId, participant_name: displayName, availability },
+      { onConflict: 'slot_id,user_id' },
+    );
+    if (error) setMyPick(null);
+  }
 
   // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
   const weatherDate = slot ? toDateISO(slot.starts_at) : null;
@@ -943,6 +986,20 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou }: {
         </div>
       )}
 
+      {needsYou && slot && (
+        <div className="hero-vote">
+          <div className="hero-vote-label">
+            <span>Ready check: <b>{formatSlotRange(slot)}</b></span>
+            {otherSlots > 0 && <span className="more">+{otherSlots} w lobby</span>}
+          </div>
+          <div className="seg3">
+            <button type="button" className={myPick === 'yes' ? 'on-yes' : ''} onClick={(e) => castVote(e, 'yes')}>READY</button>
+            <button type="button" className={myPick === 'maybe' ? 'on-maybe' : ''} onClick={(e) => castVote(e, 'maybe')}>MOŻE</button>
+            <button type="button" className={myPick === 'no' ? 'on-no' : ''} onClick={(e) => castVote(e, 'no')}>DODGE</button>
+          </div>
+        </div>
+      )}
+
       {(wInfo || meetTime) && (
         <div className="hero-grid">
           {wInfo && weather && (
@@ -963,6 +1020,16 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou }: {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {peek && (
+        <div className="peek">
+          <Avatar name={peek.name} avatar={peek.avatar} size={26} />
+          <span className="peek-body">
+            <span className="peek-head"><b>{peek.name}</b><time>{timeAgo(peek.createdAt)}</time></span>
+            <p>{peek.body}</p>
+          </span>
         </div>
       )}
     </Link>

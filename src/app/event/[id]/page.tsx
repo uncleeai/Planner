@@ -404,11 +404,44 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }, [votes, profileById]);
 
 
-  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
-  const missingVoters = useMemo<Person[]>(() => {
+  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie (= AFK).
+  const missingMembers = useMemo<Profile[]>(() => {
     const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
-    return members.filter((m) => !voted.has(m.id)).map((m) => ({ name: m.display_name, avatar: m.avatar }));
+    return members.filter((m) => !voted.has(m.id));
   }, [members, votes]);
+
+  // „Pinguj kurwę": push do jednej osoby z losowym cytatem (Edge Function ping-user).
+  // Limit po stronie klienta: 1 ping / osoba / wypad / 12h (localStorage).
+  const [pinged, setPinged] = useState<Set<string>>(new Set());
+  async function pingUser(m: Profile) {
+    const key = `ping-${eventId}-${m.id}`;
+    const last = Number(localStorage.getItem(key) ?? 0);
+    if (Date.now() - last < 12 * 3600 * 1000) {
+      window.alert(`${m.display_name} już dziś oberwał(a) pingiem. Daj odetchnąć.`);
+      return;
+    }
+    setPinged((prev) => new Set(prev).add(m.id));
+    const { error } = await supabase.functions.invoke('ping-user', {
+      body: { target_user_id: m.id, event_id: eventId },
+    });
+    if (error) {
+      setPinged((prev) => {
+        const next = new Set(prev);
+        next.delete(m.id);
+        return next;
+      });
+      window.alert('Ping nie doszedł. Może nie ma włączonych powiadomień?');
+      return;
+    }
+    localStorage.setItem(key, String(Date.now()));
+  }
+
+  // Ile dni wisi lobby bez odpowiedzi — liczone od założenia wypadu.
+  const afkLabel = useMemo(() => {
+    if (!event?.created_at) return 'AFK';
+    const d = Math.floor((Date.now() - new Date(event.created_at).getTime()) / (24 * 3600 * 1000));
+    return d <= 0 ? 'AFK OD DZIŚ' : d === 1 ? 'AFK OD WCZORAJ' : `AFK OD ${d} DNI`;
+  }, [event?.created_at]);
 
   if (loading) return <main className="glass-page"><p className="muted">Wczytuję…</p></main>;
 
@@ -558,7 +591,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <p className="readonly-note">Ten wypad już się odbył — to tylko podgląd.</p>
       )}
 
-      {!isPast && slots.length > 0 && missingVoters.length > 0 && (
+      {!isPast && slots.length > 0 && missingMembers.length > 0 && (
         <div className="vote-status">
           <div className="vote-status-row">
             {votedCount > 0 && <AvatarStack people={participantsPeople} size={26} />}
@@ -579,12 +612,25 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             </div>
           )}
 
-          {memberCount > 0 && (
-            <div className="vote-missing-row">
-              <span className="vote-missing-label">Cweluchy:</span>
-              <AvatarStack people={missingVoters} size={22} />
+          {memberCount > 0 && missingMembers.map((m) => (
+            <div key={m.id} className="afk">
+              <Avatar name={m.display_name} avatar={m.avatar} size={28} />
+              <span className="afk-text">
+                <b>{m.id === userId ? 'Ty się opierdalasz…' : `${m.display_name} się opierdala…`}</b>
+                <span>{afkLabel}</span>
+              </span>
+              {isOrganizer && m.id !== userId && (
+                <button
+                  type="button"
+                  className="nudge"
+                  disabled={pinged.has(m.id)}
+                  onClick={() => pingUser(m)}
+                >
+                  {pinged.has(m.id) ? 'Spingowano ✓' : 'Pinguj kurwę'}
+                </button>
+              )}
             </div>
-          )}
+          ))}
         </div>
       )}
 

@@ -179,6 +179,21 @@ wypad jest przypominany **raz** (znacznik `events.reminded_at`).
    Jeśli ustawiłeś `WEBHOOK_SECRET`, dopisz do URL `?key=<sekret>`. Wyłączenie:
    `select cron.unschedule('notify-reminders-hourly');`.
 
+### „Pinguj kurwę" (celowany ping do jednej osoby)
+
+Na stronie wypadu, przy osobach ze statusem AFK (bez głosu), organizator ma przycisk
+**„Pinguj kurwę”** — wysyła Web Push do tej jednej osoby z losowym cytatem Majora.
+Obsługuje to funkcja `ping-user`:
+
+```bash
+supabase functions deploy ping-user
+```
+
+**Uwaga:** w odróżnieniu od funkcji webhookowych **bez** `--no-verify-jwt` —
+wywołać ją może tylko zalogowany użytkownik apki (klient przekazuje token sam,
+przez `supabase.functions.invoke`). Używa tych samych sekretów VAPID.
+Limit: klient pozwala pingować tę samą osobę w tym samym wypadzie raz na 12h.
+
 ## Utrzymanie i analityka
 
 ### Keepalive bazy (żeby Supabase nie zasypiało)

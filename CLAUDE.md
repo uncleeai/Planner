@@ -41,7 +41,8 @@ Guidance for AI assistants (and humans) working in this repository.
 │   ├── schema.sql                # Schemat bazy + RLS + publikacja Realtime
 │   └── functions/
 │       ├── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
-│       └── notify-reminders/     # Edge Function: cykliczny push „nie dałeś znać" (pg_cron)
+│       ├── notify-reminders/     # Edge Function: cykliczny push „nie dałeś znać" (pg_cron)
+│       └── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
 ├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA

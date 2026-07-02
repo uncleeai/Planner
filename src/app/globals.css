@@ -1756,3 +1756,62 @@ main::before {
 .cta-dock > * { pointer-events: auto; width: 100%; max-width: 640px; }
 /* Miejsce na dok, żeby ostatnia karta nie chowała się pod CTA */
 main.has-dock { padding-bottom: 72px; }
+
+/* Ready check w hero — głosujesz prosto z dashboardu */
+.hero-vote { border-top: 1px solid var(--border); margin-top: 13px; padding-top: 12px; }
+.hero-vote-label {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--muted); margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.hero-vote-label b { color: var(--text); font-variant-numeric: tabular-nums; }
+.hero-vote-label .more { color: var(--muted); font-weight: 600; letter-spacing: 0.1em; white-space: nowrap; }
+.seg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.seg3 button {
+  font-family: var(--mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+  padding: 12px 6px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--card-2); color: var(--muted); border: 1px solid var(--border);
+}
+.seg3 button.on-yes { background: var(--yes); border-color: var(--yes); color: #062b18; }
+.seg3 button.on-maybe { background: var(--card-2); border-color: var(--border-strong); color: var(--text); }
+.seg3 button.on-no { background: var(--no); border-color: var(--no); color: #fff; }
+
+/* Zajawka ostatniej wiadomości z czatu w karcie misji (jeden aktywny wypad) */
+.peek {
+  display: flex; gap: 9px; align-items: flex-start;
+  border-top: 1px solid var(--border);
+  margin-top: 13px; padding-top: 12px;
+}
+.peek-body { min-width: 0; flex: 1; }
+.peek-head { display: flex; align-items: baseline; gap: 7px; }
+.peek-head b { font-size: 0.8rem; font-weight: 700; }
+.peek-head time { font-family: var(--mono); font-size: 0.64rem; color: var(--muted); }
+.peek-body p { margin: 0; font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* AFK + „Pinguj kurwę" (strona wypadu): kto się opierdala, z przyciskiem pinga */
+.afk {
+  display: flex; align-items: center; gap: 11px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.afk + .afk { margin-top: 8px; }
+.afk .avatar { filter: grayscale(1); opacity: 0.8; }
+.afk-text { flex: 1; min-width: 0; }
+.afk-text b { display: block; font-size: 0.82rem; font-weight: 600; }
+.afk-text span {
+  display: block; font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--accent);
+}
+.nudge {
+  flex-shrink: 0;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid rgba(255, 138, 61, 0.32);
+  padding: 9px 12px; border-radius: var(--radius-sm);
+}
+@media (hover: hover) {
+  .nudge:hover:not(:disabled) { background: rgba(255, 138, 61, 0.2); }
+}
+.nudge:disabled { opacity: 0.55; cursor: default; }
