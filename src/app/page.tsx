@@ -833,42 +833,16 @@ function Section({
   );
 }
 
-// Wejście w wypad z karty. Nawigujemy na `pointerup` przy realnym tapnięciu, a nie na
-// `click`: iOS po dłuższym przytrzymaniu opóźnia/„duplikuje" click (ghost click), przez co
-// zwykły tap zamierał, a potem wskakiwał w przytrzymany wypad. Klik zawsze blokujemy
-// (poza klawiaturą i modyfikatorami — nowa karta). Długie przytrzymanie nie nawiguje,
-// tak jak na desktopie. Ruch palcem (scroll) anuluje tap.
+// Wejście w wypad z karty: prefetch danych na dotknięcie + nawigacja na klik.
 function useEventNav(eventId: string) {
   const navigate = useTransitionNavigate();
   const href = `/event/${eventId}`;
-  const start = useRef<{ x: number; y: number; t: number } | null>(null);
-  const moved = useRef(false);
-
   const handlers = {
-    onPointerDown: (e: React.PointerEvent) => {
-      prefetchEvent(eventId);
-      start.current = { x: e.clientX, y: e.clientY, t: Date.now() };
-      moved.current = false;
-    },
-    onPointerMove: (e: React.PointerEvent) => {
-      const s = start.current;
-      if (s && (Math.abs(e.clientX - s.x) > 10 || Math.abs(e.clientY - s.y) > 10)) moved.current = true;
-    },
-    onPointerCancel: () => { start.current = null; },
-    onPointerUp: (e: React.PointerEvent) => {
-      const s = start.current;
-      start.current = null;
-      if (!s || moved.current) return;
-      if (e.metaKey || e.ctrlKey || e.shiftKey) return;          // klik zrobi nową kartę
-      if (e.pointerType === 'mouse' && e.button !== 0) return;    // tylko lewy przycisk
-      if (Date.now() - s.t > 500) return;                        // long-press → nie nawiguj
+    onPointerDown: () => prefetchEvent(eventId),
+    onClick: (e: React.MouseEvent) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return; // pozwól otworzyć w nowej karcie
       e.preventDefault();
       navigate(href);
-    },
-    onClick: (e: React.MouseEvent) => {
-      if (e.metaKey || e.ctrlKey || e.shiftKey) return;          // nowa karta
-      if (e.detail === 0) { e.preventDefault(); navigate(href); return; } // klawiatura (Enter)
-      e.preventDefault();                                        // klik z dotyku (w tym ghost-click) — obsługuje pointerup
     },
   };
   return { href, handlers };
