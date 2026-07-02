@@ -2,34 +2,16 @@
 
 import { useBackground } from '@/lib/background';
 
-// Tło „Liquid Glass": 6 rozmytych plam (aurora) pod szklanymi kartami — całkiem
-// statyczne (bez animacji). Wcześniej rozmyte wideo, ale na iOS dekoder bywał
-// ubijany pod presją pamięci (zamrożona klatka = trzeba było odświeżać), a rozmycie
-// odtwarzanego wideo zacinało scroll. Ruchoma aurora też kosztowała GPU/baterię
-// bez przerwy, nawet gdy appka była na pierwszym planie — statyczny gradient jest
-// malowany raz i nic go nie przerysowuje. Wyłączalne przełącznikiem w menu profilu.
+// Tło „Liquid Glass": statyczna aurora (miękkie plamy światła na czerni) pod szklanymi
+// kartami. Cały blask jest teraz wypalony w `background` (.glass-bg, globals.css) jako
+// radial-gradienty — bez `filter: blur` i `mix-blend-mode`, które zmuszały iOS do
+// rekompozycji całego ekranu przy każdym przerysowaniu (freeze przy naciśnięciu/scrollu
+// na słabszym telefonie). Ten element to więc tylko pojedyncza, cache'owana warstwa.
+// Wysokość: `100lvh` (patrz komentarz przy .glass-bg). Wyłączalne w Ustawieniach.
 export default function GlassBackground() {
   const { enabled } = useBackground();
 
-  // Wysokość tła jest sterowana czystym CSS-em (`100lvh` w .glass-bg) — nie mierzymy
-  // już viewportu w JS. Wcześniejszy pomiar `window.innerHeight` bywał na iOS nieświeży
-  // przy zimnym starcie PWA (zwracał za małą wartość aż do pierwszego resize/interakcji),
-  // więc zamiast go naprawiać, tło opiera się teraz o statyczne `lvh`, które zawsze
-  // pokrywa cały ekran. Zob. komentarz przy .glass-bg w globals.css.
-
   if (!enabled) return null;
 
-  return (
-    <div className="glass-bg" aria-hidden="true">
-      <div className="glass-aurora">
-        <i className="aurora-blob b1" />
-        <i className="aurora-blob b2" />
-        <i className="aurora-blob b3" />
-        <i className="aurora-blob b4" />
-        <i className="aurora-blob b5" />
-        <i className="aurora-blob b6" />
-      </div>
-      <div className="glass-grain" />
-    </div>
-  );
+  return <div className="glass-bg" aria-hidden="true" />;
 }
