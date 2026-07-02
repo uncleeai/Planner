@@ -1,7 +1,26 @@
 # Mockupy
 
 Koncepty wizualne — statyczny HTML, bez zależności. Otwórz plik w przeglądarce
-(`open mockups/wypad-tablica.html`) albo przez dowolny serwer statyczny.
+(`open mockups/<plik>.html`) albo przez dowolny serwer statyczny.
+
+## `wypad-lobby.html` — koncept „Lobby" (faworyt)
+
+Apka jako ready check z gier: wypad = lobby, głos = READY/MOŻE/PAS,
+zapominalski = AFK, klepnięty termin = LOCK IN, odbyty = GG. Metafora
+mapuje się 1:1 na funkcję apki, więc nie jest gimmickiem.
+
+Kluczowe decyzje:
+
+- **Skład = 4 sloty, pusty slot zawsze widoczny** (przerywana ramka) — apka
+  powstała, bo ktoś został w domu; brak odpowiedzi wygląda jak dziura w drużynie.
+- **AFK jako funkcja**: licznik dni bez odpowiedzi + „Szturchnij cytatem"
+  (przypominajka losuje cytat Majora).
+- **Segmenty gotowości zamiast procentów**: 4 osoby = 4 segmenty, „3/4 READY".
+- **Scoreboard, nie gamer RGB**: jeden sygnałowy oranż `#FF8A3D`, zieleń/czerwień
+  tylko jako semantyka ready/pas, „może" bez koloru; mono na liczbach i statusach.
+- **MOTD** — cytat dnia jako message of the day serwera.
+- Paleta: tło `#0C0E10`, tekst `#E8EDF0`, wygaszony `#7F8B94`, sygnał `#FF8A3D`,
+  ready `#3DDC8B`, pas `#FF5D5D`. Promienie: karty 12px, kontrolki 8px, bez pigułek.
 
 ## `wypad-tablica.html` — koncept „Tablica odjazdów"
 

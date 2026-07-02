@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wypad.exe · Lobby</title>
+</head>
+<body>
+<style>
+  /* ============================================================
+     WYPAD.EXE · koncept „LOBBY"
+     Apka jako ready check z gier: lobby, skład, AFK, lock in.
+     Estetyka: taktyczny scoreboard. Cisza w formie, humor w treści.
+     Jeden akcent (sygnałowy oranż), zieleń/czerwień = tylko semantyka
+     ready/pas. System promieni: karty 12px, kontrolki 8px, bez pigułek.
+     ============================================================ */
+  :root {
+    --studio: #08090b;
+    --bg: #0c0e10;              /* chłodna prawie-czerń */
+    --panel: #14171b;
+    --panel-2: #1a1e23;
+    --line: rgba(232, 237, 240, 0.08);
+    --line-strong: rgba(232, 237, 240, 0.17);
+    --text: #e8edf0;
+    --muted: #7f8b94;
+    --accent: #ff8a3d;          /* sygnałowy oranż: countdown, lock, CTA */
+    --accent-dim: rgba(255, 138, 61, 0.12);
+    --accent-ink: #241103;
+    --ready: #3ddc8b;           /* semantyka: READY */
+    --ready-dim: rgba(61, 220, 139, 0.12);
+    --pas: #ff5d5d;             /* semantyka: PAS */
+    --pas-dim: rgba(255, 93, 93, 0.1);
+    --r: 12px;
+    --r-sm: 8px;
+    --sans: -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--studio);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- strona-prezentacja ---------- */
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 56px 24px 80px; }
+  .intro { max-width: 62ch; }
+  .intro h1 {
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    letter-spacing: -0.02em; line-height: 1.15;
+    margin: 0 0 10px; text-wrap: balance;
+  }
+  .intro h1 .exe { color: var(--accent); font-family: var(--mono); font-size: 0.85em; }
+  .intro p { color: var(--muted); margin: 0 0 8px; }
+  .intro strong { color: var(--text); font-weight: 600; }
+
+  .tokens { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 8px; }
+  .swatch {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: 6px 12px 6px 7px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .swatch i { width: 18px; height: 18px; border-radius: 5px; display: block; border: 1px solid var(--line-strong); }
+
+  .stage {
+    display: flex; flex-wrap: wrap; gap: 48px;
+    justify-content: center; align-items: flex-start;
+    margin-top: 44px;
+  }
+  .shot { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .shot-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  .notes { margin: 56px auto 0; max-width: 62ch; border-top: 1px solid var(--line); padding-top: 28px; }
+  .notes h2 { font-size: 1.05rem; margin: 0 0 16px; letter-spacing: -0.01em; }
+  .notes ol { margin: 0; padding-left: 20px; color: var(--muted); }
+  .notes li { margin-bottom: 10px; }
+  .notes li strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- rama telefonu ---------- */
+  .phone {
+    width: 396px; max-width: calc(100vw - 32px);
+    background: #050607;
+    border: 1px solid #24282d;
+    border-radius: 52px; padding: 11px;
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+  .screen {
+    background: var(--bg);
+    border-radius: 42px; overflow: hidden;
+    position: relative; display: flex; flex-direction: column;
+  }
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 26px 6px;
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .sb-right { display: flex; align-items: center; gap: 5px; }
+  .sb-cell { display: inline-flex; gap: 2px; align-items: flex-end; }
+  .sb-cell b { width: 3px; border-radius: 1px; background: var(--text); display: block; }
+  .sb-batt {
+    width: 22px; height: 11px; border: 1px solid var(--muted); border-radius: 3.5px;
+    padding: 1.5px; margin-left: 3px;
+  }
+  .sb-batt i { display: block; height: 100%; width: 62%; background: var(--text); border-radius: 1.5px; }
+
+  .content { padding: 10px 18px 96px; }
+
+  /* ---------- topbar ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px 18px; }
+  .wordmark { font-family: var(--mono); font-size: 14px; font-weight: 700; letter-spacing: 0.06em; }
+  .wordmark span { color: var(--accent); }
+  .me {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--panel-2); border: 1px solid var(--line-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+
+  /* ---------- etykiety sekcji ---------- */
+  .rail { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 4px 10px; }
+  .rail-label {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
+  }
+  .chip {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em;
+    padding: 3px 10px; border-radius: var(--r-sm);
+  }
+  .chip.hot { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
+
+  /* ---------- HERO: najbliższe lobby ---------- */
+  .lobby {
+    background:
+      radial-gradient(rgba(232, 237, 240, 0.045) 1px, transparent 1px) 0 0 / 14px 14px,
+      var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    padding: 16px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  }
+  .lobby-head { display: flex; align-items: center; gap: 12px; }
+  .lobby-title { flex: 1; min-width: 0; }
+  .lobby-title h3 { margin: 0 0 4px; font-size: 23px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .lobby-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+  .lobby-meta .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
+  .lobby-meta svg { flex-shrink: 0; opacity: 0.8; }
+  .lobby-meta .sep { opacity: 0.45; }
+  .chev { color: var(--muted); flex-shrink: 0; }
+
+  /* skład: 4 sloty, pusty slot MA być widoczny */
+  .squad {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-top: 14px;
+  }
+  .slot-p {
+    display: flex; align-items: center; gap: 9px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 8px 10px;
+  }
+  .slot-p .pax {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11.5px; font-weight: 700;
+    background: #232830; color: var(--text);
+  }
+  .slot-p .who { min-width: 0; }
+  .slot-p .who b { display: block; font-size: 12.5px; font-weight: 600; line-height: 1.2; }
+  .slot-p .who span {
+    display: block; font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.14em; line-height: 1.4;
+  }
+  .slot-p.is-ready .who span { color: var(--ready); }
+  .slot-p.is-maybe .who span { color: var(--muted); }
+  .slot-p.is-afk {
+    border-style: dashed; border-color: var(--line-strong);
+    background: transparent;
+  }
+  .slot-p.is-afk .pax { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted); }
+  .slot-p.is-afk .who b { color: var(--muted); }
+  .slot-p.is-afk .who span { color: var(--accent); }
+
+  /* segmenty gotowości: 4 osoby = 4 segmenty, nie procenty */
+  .readybar { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .segs { display: flex; gap: 4px; flex: 1; }
+  .segs i { height: 5px; flex: 1; border-radius: 2px; background: var(--panel-2); border: 1px solid var(--line); }
+  .segs i.on { background: var(--ready); border-color: var(--ready); }
+  .readybar b {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+    letter-spacing: 0.1em; color: var(--text); font-variant-numeric: tabular-nums;
+  }
+  .readybar b span { color: var(--muted); font-weight: 600; }
+
+  .lobby-facts {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    border-top: 1px solid var(--line);
+    margin-top: 14px; padding-top: 12px;
+  }
+  .fact { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .fact svg { flex-shrink: 0; color: var(--muted); }
+  .fact b {
+    display: block; font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 15px; font-weight: 700; line-height: 1.2;
+  }
+  .fact span { display: block; font-size: 11px; color: var(--muted); line-height: 1.2; }
+
+  /* ---------- lista lobby: płaskie wiersze ---------- */
+  .board { border-top: 1px solid var(--line); }
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 4px; border-bottom: 1px solid var(--line);
+  }
+  .row-main { flex: 1; min-width: 0; }
+  .row-main b {
+    display: block; font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .row-main span {
+    display: block; font-family: var(--mono); font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+  }
+  .row .mini-segs { display: flex; gap: 3px; width: 44px; flex-shrink: 0; }
+  .row .mini-segs i { height: 4px; flex: 1; border-radius: 2px; background: var(--panel-2); border: 1px solid var(--line); }
+  .row .mini-segs i.on { background: var(--ready); border-color: var(--ready); }
+  .tag {
+    font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em;
+    padding: 3px 8px; border-radius: 6px; flex-shrink: 0;
+  }
+  .tag.locked { color: var(--ready); background: var(--ready-dim); }
+  .tag.gg { color: var(--muted); background: var(--panel-2); }
+
+  /* ---------- MOTD: cytat dnia ---------- */
+  .motd {
+    margin: 26px 4px 0;
+    display: flex; gap: 10px; align-items: baseline;
+  }
+  .motd-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.16em; color: var(--accent); flex-shrink: 0;
+  }
+  .motd p { margin: 0; font-size: 13px; color: var(--muted); font-style: italic; }
+  .motd p cite { font-style: normal; font-family: var(--mono); font-size: 10.5px; opacity: 0.75; }
+
+  /* ---------- CTA ---------- */
+  .cta-dock {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 28px 18px 14px;
+    background: linear-gradient(to top, var(--bg) 55%, transparent);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .cta {
+    width: 100%; border: none; cursor: pointer;
+    background: var(--accent); color: var(--accent-ink);
+    font: 700 15.5px/1 var(--sans); letter-spacing: -0.01em;
+    padding: 16px; border-radius: var(--r);
+    box-shadow: 0 10px 28px rgba(255, 138, 61, 0.18);
+  }
+  .cta:active { transform: scale(0.98); }
+  .cta:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+  .homebar { width: 128px; height: 4.5px; border-radius: 999px; background: var(--line-strong); }
+
+  /* ============================================================
+     EKRAN 2: lobby wypadu (ready check)
+     ============================================================ */
+  .nav-row { display: flex; align-items: center; gap: 12px; padding: 8px 4px 16px; }
+  .back {
+    width: 34px; height: 34px; border-radius: var(--r-sm);
+    background: var(--panel); border: 1px solid var(--line-strong);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); cursor: pointer;
+  }
+  .nav-label {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  .ev-head { padding: 0 4px; }
+  .ev-head .status-line { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .ev-head h3 { margin: 0 0 5px; font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; }
+  .ev-meta { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13.5px; flex-wrap: wrap; }
+  .ev-meta svg { opacity: 0.8; }
+  .ev-meta .sep { opacity: 0.45; }
+  .ev-desc { margin: 12px 4px 0; font-size: 13.5px; color: var(--muted); max-width: 46ch; }
+
+  /* AFK: emocjonalny rdzeń apki (żeby nikt nie został) */
+  .afk {
+    display: flex; align-items: center; gap: 11px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r);
+    padding: 11px 12px;
+    margin-top: 16px;
+  }
+  .afk .pax {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    border: 1.5px dashed var(--line-strong); color: var(--muted);
+  }
+  .afk-text { flex: 1; min-width: 0; }
+  .afk-text b { display: block; font-size: 13px; font-weight: 600; }
+  .afk-text span { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--accent); }
+  .nudge {
+    flex-shrink: 0; cursor: pointer;
+    font: 600 12px/1 var(--sans);
+    color: var(--accent); background: var(--accent-dim);
+    border: 1px solid rgba(255, 138, 61, 0.32);
+    padding: 9px 12px; border-radius: var(--r-sm);
+  }
+  .nudge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* karta terminu = ready check */
+  .check {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .check.lead { border-color: rgba(255, 138, 61, 0.35); }
+  .check-head { display: flex; align-items: center; gap: 12px; }
+  .check-when { flex: 1; min-width: 0; }
+  .check-when b {
+    display: block; font-family: var(--mono); font-size: 17px; font-weight: 700;
+    font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+  }
+  .check-when span { display: block; font-size: 12px; color: var(--muted); }
+  .tag.lead-tag { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
+
+  .check-votes {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
+  }
+  .vchip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em;
+    padding: 4px 10px 4px 5px; border-radius: var(--r-sm);
+    border: 1px solid var(--line-strong); color: var(--muted);
+  }
+  .vchip i {
+    width: 19px; height: 19px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9.5px; font-weight: 700; font-style: normal;
+    background: var(--panel-2); color: var(--text);
+    font-family: var(--sans);
+  }
+  .vchip.v-ready { border-color: rgba(61, 220, 139, 0.4); background: var(--ready-dim); color: var(--ready); }
+  .vchip.v-pas { border-color: rgba(255, 93, 93, 0.4); background: var(--pas-dim); color: var(--pas); }
+  /* „może" celowo bez koloru: niezdecydowanie wygląda jak niezdecydowanie */
+
+  .seg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 12px; }
+  .seg3 button {
+    font: 700 12px/1 var(--mono); letter-spacing: 0.08em;
+    padding: 12px 6px; border-radius: var(--r-sm); cursor: pointer;
+    background: var(--panel-2); color: var(--muted);
+    border: 1px solid var(--line);
+  }
+  .seg3 button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .seg3 button.on-ready { background: var(--ready); border-color: var(--ready); color: #062b18; }
+  .seg3 button.on-pas { background: var(--pas); border-color: var(--pas); color: #fff; }
+
+  .lockin {
+    width: 100%; margin: 4px 0 0; cursor: pointer;
+    background: transparent; color: var(--accent);
+    border: 1px solid rgba(255, 138, 61, 0.45);
+    font: 700 13px/1 var(--mono); letter-spacing: 0.08em;
+    padding: 14px; border-radius: var(--r);
+  }
+  .lockin:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* czat */
+  .chat { border-top: 1px solid var(--line); margin-top: 8px; }
+  .msg { display: flex; gap: 10px; padding: 12px 4px 0; }
+  .msg .pax {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line-strong);
+  }
+  .msg-body { min-width: 0; }
+  .msg-head { display: flex; align-items: baseline; gap: 8px; }
+  .msg-head b { font-size: 13px; font-weight: 700; }
+  .msg-head time { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .msg-body p { margin: 1px 0 0; font-size: 13.5px; }
+  .chat-input {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 4px 0;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--r);
+    padding: 6px 6px 6px 14px;
+    color: var(--muted); font-size: 13.5px;
+  }
+  .chat-input .send {
+    margin-left: auto; flex-shrink: 0;
+    width: 32px; height: 32px; border-radius: var(--r-sm);
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    border: none; cursor: pointer;
+  }
+
+  /* ---------- ruch: kursor, segmenty, kaskada ---------- */
+  @media (prefers-reduced-motion: no-preference) {
+    .cursor::after { content: "_"; color: var(--accent); animation: blink 1.1s steps(2, start) infinite; }
+    @keyframes blink { to { visibility: hidden; } }
+
+    .segs i.on { animation: segIn 0.4s ease backwards; }
+    .segs i.on:nth-child(2) { animation-delay: 0.12s; }
+    .segs i.on:nth-child(3) { animation-delay: 0.24s; }
+    @keyframes segIn { from { opacity: 0; transform: scaleX(0.4); } to { opacity: 1; transform: scaleX(1); } }
+
+    .rise { animation: rise 0.5s ease backwards; }
+    .rise:nth-of-type(2) { animation-delay: 0.05s; }
+    .rise:nth-of-type(3) { animation-delay: 0.1s; }
+    .rise:nth-of-type(4) { animation-delay: 0.15s; }
+    @keyframes rise { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cursor::after { content: "_"; color: var(--accent); }
+  }
+
+  @media (max-width: 900px) {
+    .stage { gap: 36px; }
+    .wrap { padding-top: 36px; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Wypad<span class="exe">.exe</span>, koncept: „Lobby”</h1>
+    <p><strong>Teza:</strong> mechanika tej apki to ready check z gier. Ktoś zakłada lobby,
+    skład klika READY, gra startuje, jak wszyscy dadzą znać. Metafora nie jest naklejką,
+    tylko nazwaniem tego, czym apka naprawdę jest, więc każdy element UI ma swój odpowiednik:
+    wypad = lobby, głos = ready, zapominalski = AFK, klepnięty termin = LOCK IN.</p>
+    <p>Estetyka: taktyczny scoreboard, nie „gamer RGB”. Głęboka ciemność, mono na liczbach
+    i statusach, jeden sygnałowy oranż. Pusty slot w składzie jest zawsze widoczny,
+    bo cała apka powstała przez jedno puste miejsce na wakacjach.</p>
+
+    <div class="tokens" aria-label="Paleta">
+      <span class="swatch"><i style="background:#0c0e10"></i>tło #0C0E10</span>
+      <span class="swatch"><i style="background:#e8edf0"></i>tekst #E8EDF0</span>
+      <span class="swatch"><i style="background:#7f8b94"></i>wygaszony #7F8B94</span>
+      <span class="swatch"><i style="background:#ff8a3d"></i>sygnał #FF8A3D</span>
+      <span class="swatch"><i style="background:#3ddc8b"></i>ready #3DDC8B</span>
+      <span class="swatch"><i style="background:#ff5d5d"></i>pas #FF5D5D</span>
+    </div>
+  </header>
+
+  <div class="stage">
+
+    <!-- ================= EKRAN 1: DASHBOARD ================= -->
+    <div class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="statusbar">
+            <span>21:37</span>
+            <span class="sb-right">
+              <span class="sb-cell" aria-hidden="true">
+                <b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:10px"></b>
+              </span>
+              <span class="sb-batt" aria-hidden="true"><i></i></span>
+            </span>
+          </div>
+
+          <div class="content">
+            <div class="topbar">
+              <span class="wordmark cursor">WYPAD<span>.EXE</span></span>
+              <span class="me">L</span>
+            </div>
+
+            <div class="rail rise">
+              <span class="rail-label">Najbliższe lobby</span>
+              <span class="chip hot">START ZA 10 DNI</span>
+            </div>
+
+            <section class="lobby rise" aria-label="Najbliższy wypad: baseniary">
+              <div class="lobby-head">
+                <div class="lobby-title">
+                  <h3>baseniary</h3>
+                  <div class="lobby-meta">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Łabiszyn
+                    <span class="sep">·</span>
+                    <span class="mono">SOB 12.07</span>
+                  </div>
+                </div>
+                <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+
+              <div class="squad">
+                <div class="slot-p is-ready">
+                  <span class="pax">L</span>
+                  <span class="who"><b>Lukens</b><span>READY</span></span>
+                </div>
+                <div class="slot-p is-ready">
+                  <span class="pax">W</span>
+                  <span class="who"><b>Wojtas</b><span>READY</span></span>
+                </div>
+                <div class="slot-p is-maybe">
+                  <span class="pax">G</span>
+                  <span class="who"><b>Grzesiek</b><span>MOŻE</span></span>
+                </div>
+                <div class="slot-p is-afk">
+                  <span class="pax">M</span>
+                  <span class="who"><b>Madzia</b><span>AFK 3 DNI</span></span>
+                </div>
+              </div>
+
+              <div class="readybar">
+                <span class="segs" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+                <b>3/4 <span>READY</span></b>
+              </div>
+
+              <div class="lobby-facts">
+                <div class="fact">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 14.9"/></svg>
+                  <span><b>23°</b><span>pochmurno</span></span>
+                </div>
+                <div class="fact">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span><b>10:37</b><span>zbiórka</span></span>
+                </div>
+              </div>
+            </section>
+
+            <div class="rail rise">
+              <span class="rail-label">Skład się zbiera</span>
+            </div>
+
+            <div class="board rise">
+              <div class="row">
+                <div class="row-main">
+                  <b>Baskecik na orliku</b>
+                  <span>PT 24.07 · od 18:00</span>
+                </div>
+                <span class="mini-segs" aria-label="1 z 4 gotowych"><i class="on"></i><i></i><i></i><i></i></span>
+                <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <b>Grzyby u Wojtasa</b>
+                  <span>SOB 1-2.08 · z nocowaniem</span>
+                </div>
+                <span class="mini-segs" aria-label="2 z 4 gotowych"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+                <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+            </div>
+
+            <div class="rail rise">
+              <span class="rail-label">Locked in</span>
+            </div>
+
+            <div class="board">
+              <div class="row">
+                <div class="row-main">
+                  <b>Urodziny Madzi</b>
+                  <span>SOB 8.08 · Bydgoszcz, 19:00</span>
+                </div>
+                <span class="tag locked">GRAMY</span>
+                <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+            </div>
+
+            <div class="rail">
+              <span class="rail-label">Bylim już</span>
+            </div>
+
+            <div class="board">
+              <div class="row">
+                <div class="row-main">
+                  <b>Majówka, domek</b>
+                  <span>1-3.05 · Borówno</span>
+                </div>
+                <span class="tag gg">GG</span>
+                <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+            </div>
+
+            <figure class="motd">
+              <span class="motd-label">MOTD</span>
+              <p>„W którym lesie ty byłeś? Gdzie schowałeś SUOMĘ?” <cite>~ Major</cite></p>
+            </figure>
+          </div>
+
+          <div class="cta-dock">
+            <button class="cta" type="button">+ Załóż lobby</button>
+            <span class="homebar" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div>
+      <span class="shot-label">01 · Dashboard</span>
+    </div>
+
+    <!-- ================= EKRAN 2: LOBBY WYPADU ================= -->
+    <div class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="statusbar">
+            <span>21:38</span>
+            <span class="sb-right">
+              <span class="sb-cell" aria-hidden="true">
+                <b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:10px"></b>
+              </span>
+              <span class="sb-batt" aria-hidden="true"><i></i></span>
+            </span>
+          </div>
+
+          <div class="content">
+            <div class="nav-row">
+              <button class="back" type="button" aria-label="Wróć">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <span class="nav-label">Lobby</span>
+            </div>
+
+            <header class="ev-head rise">
+              <h3>baseniary</h3>
+              <div class="ev-meta">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                Łabiszyn
+                <span class="sep">·</span>
+                host: Lukens
+              </div>
+              <p class="ev-desc">Zgrzewka, pompka i dmuchany flaming. Wjazd od rana, kto śpi ten traci miejsce na leżaku.</p>
+            </header>
+
+            <div class="afk rise" aria-label="Madzia nie odpowiedziała">
+              <span class="pax">M</span>
+              <span class="afk-text">
+                <b>Madzia nie dała znaku życia</b>
+                <span>AFK OD 3 DNI</span>
+              </span>
+              <button class="nudge" type="button">Szturchnij cytatem</button>
+            </div>
+
+            <div class="rail rise">
+              <span class="rail-label">Ready check</span>
+              <span class="chip hot">3/4 READY</span>
+            </div>
+
+            <section class="check lead rise" aria-label="Termin: sobota 12 lipca">
+              <div class="check-head">
+                <div class="check-when">
+                  <b>SOB 12.07</b>
+                  <span>cały dzień</span>
+                </div>
+                <span class="tag lead-tag">PROWADZI</span>
+              </div>
+              <div class="check-votes">
+                <span class="vchip v-ready"><i>L</i>READY</span>
+                <span class="vchip v-ready"><i>W</i>READY</span>
+                <span class="vchip"><i>G</i>MOŻE</span>
+              </div>
+              <div class="seg3" role="group" aria-label="Twój głos: sobota 12 lipca">
+                <button class="on-ready" type="button">READY</button>
+                <button type="button">MOŻE</button>
+                <button type="button">PAS</button>
+              </div>
+            </section>
+
+            <section class="check rise" aria-label="Termin: niedziela 13 lipca">
+              <div class="check-head">
+                <div class="check-when">
+                  <b>NIE 13.07</b>
+                  <span>od 12:00</span>
+                </div>
+              </div>
+              <div class="check-votes">
+                <span class="vchip v-ready"><i>W</i>READY</span>
+                <span class="vchip v-pas"><i>G</i>PAS</span>
+              </div>
+              <div class="seg3" role="group" aria-label="Twój głos: niedziela 13 lipca">
+                <button type="button">READY</button>
+                <button type="button">MOŻE</button>
+                <button type="button">PAS</button>
+              </div>
+            </section>
+
+            <button class="lockin rise" type="button">LOCK IN: SOB 12.07</button>
+
+            <div class="rail">
+              <span class="rail-label">Czat</span>
+            </div>
+
+            <div class="chat">
+              <div class="msg">
+                <span class="pax">W</span>
+                <div class="msg-body">
+                  <div class="msg-head"><b>Wojtas</b><time>2 godz</time></div>
+                  <p>biorę pompkę i te flambirowane kiełbasy</p>
+                </div>
+              </div>
+              <div class="msg">
+                <span class="pax">G</span>
+                <div class="msg-body">
+                  <div class="msg-head"><b>Grzesiek</b><time>44 min</time></div>
+                  <p>żujesz jakąś SUOME?</p>
+                </div>
+              </div>
+              <div class="chat-input">
+                Napisz coś…
+                <button class="send" type="button" aria-label="Wyślij">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 14 0"/><path d="m13 6 6 6-6 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="shot-label">02 · Lobby wypadu</span>
+    </div>
+  </div>
+
+  <section class="notes">
+    <h2>Dlaczego to działa</h2>
+    <ol>
+      <li><strong>Metafora = funkcja.</strong> Lobby, ready check, AFK i lock in to nie skórka,
+      tylko dokładny opis tego, co apka robi. Dlatego nie zestarzeje się jak gimmick:
+      nawet jak żart spowszednieje, UI dalej będzie czytelny.</li>
+      <li><strong>Pusty slot jest zawsze widoczny.</strong> Apka powstała, bo ktoś został w domu.
+      Skład to 4 sloty, a ten bez odpowiedzi ma przerywaną ramkę: brak decyzji wygląda
+      jak dziura w drużynie, nie jak brak wiersza na liście.</li>
+      <li><strong>AFK to funkcja, nie wyrzut.</strong> Zapominalski dostaje status AFK i licznik dni,
+      a reszta przycisk „Szturchnij cytatem”: przypominajka losuje tekst Majora.
+      Czarny humor ekipy robi robotę, którą w innych apkach robi smutny push.</li>
+      <li><strong>Segmenty zamiast procentów.</strong> 4 osoby = 4 segmenty gotowości.
+      „3/4 READY” mówi więcej niż pasek 75% i skanuje się z metra.</li>
+      <li><strong>Scoreboard, nie gamer RGB.</strong> Jeden sygnałowy oranż (start, lock in, AFK, CTA),
+      zieleń i czerwień wyłącznie jako semantyka ready/pas, „może” celowo bez koloru.
+      Mono niesie liczby i statusy, sans niesie treść. Zero poświat i skosów.</li>
+      <li><strong>Język ekipy zostaje w UI.</strong> „Bylim już” + tag GG, MOTD z cytatem dnia,
+      godzina zbiórki 10:37. To są rzeczy, których nie da się wygenerować z prompta,
+      bo istnieją tylko u was.</li>
+    </ol>
+  </section>
+</div>
+</body>
+</html>
