@@ -35,6 +35,33 @@ function formatCommentTime(iso: string): string {
   });
 }
 
+// Termin w nagłówku slotu: jednodniowy dostaje „liść daty" (SOB / 12 / LIP)
+// + dzień tygodnia i godzinę; zakres („dłuższy wypad") — mono-linię, bo liść
+// by go nie pomieścił.
+function SlotWhen({ slot }: { slot: Slot }) {
+  if (slot.ends_at) return <span className="slot-date">{formatSlotRange(slot)}</span>;
+  const d = new Date(slot.starts_at);
+  const up = (s: string) => s.replace('.', '').toUpperCase();
+  const weekday = d.toLocaleDateString('pl-PL', { weekday: 'long' });
+  return (
+    <span className="slot-when-wrap" aria-label={formatSlotRange(slot)}>
+      <span className="leaf" aria-hidden="true">
+        <span className="dow">{up(d.toLocaleDateString('pl-PL', { weekday: 'short' }))}</span>
+        <span className="day">{d.getDate()}</span>
+        <span className="mon">{up(d.toLocaleDateString('pl-PL', { month: 'short' }))}</span>
+      </span>
+      <span className="slot-when" aria-hidden="true">
+        <b>{weekday.charAt(0).toUpperCase() + weekday.slice(1)}</b>
+        <span>
+          {slot.all_day
+            ? 'cały dzień'
+            : `od ${d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
   const navigate = useTransitionNavigate();
@@ -634,8 +661,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </div>
       )}
 
-      <div className="card">
-        <h2>Ready check</h2>
+      <section className="ev-section">
+        <div className="section-label">Ready check</div>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
@@ -652,7 +679,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
           >
             <div className="slot-head">
-              <span className="slot-date">{formatSlotRange(slot)}</span>
+              <SlotWhen slot={slot} />
               {isSettledSlot && <span className="badge">✓ GRAMY</span>}
               {showBestBadge && <span className="badge">Prowadzi</span>}
               {showTieBadge && <span className="badge badge-open">Remis</span>}
@@ -762,10 +789,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
         )}
-      </div>
+      </section>
 
-      <div className="card comments-card">
-        <h2>Czat</h2>
+      <section className="ev-section">
+        <div className="section-label">Czat</div>
         {comments.length === 0 ? (
           <p className="small muted">Cisza. Napisz coś pierwszy.</p>
         ) : (
@@ -809,7 +836,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           />
           <button type="submit" disabled={!newComment.trim()}>Wyślij</button>
         </form>
-      </div>
+      </section>
 
       {isOrganizer && !editing && (
         <div className="event-danger-zone">

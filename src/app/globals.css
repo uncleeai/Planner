@@ -1815,3 +1815,24 @@ main.has-dock { padding-bottom: 72px; }
   .nudge:hover:not(:disabled) { background: rgba(255, 138, 61, 0.2); }
 }
 .nudge:disabled { opacity: 0.55; cursor: default; }
+
+/* Sekcje strony wypadu — płasko, bez zewnętrznych kart (karta w karcie = szum) */
+.ev-section { margin: 24px 0; }
+.ev-section > .section-label { margin-left: 4px; }
+
+/* Liść daty: jednodniowy termin jak kartka z rozkładu (zakres zostaje mono-linią) */
+.slot-when-wrap { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+.leaf {
+  font-family: var(--mono);
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 40px; line-height: 1.15; flex-shrink: 0;
+}
+.leaf .dow { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); }
+.leaf .day { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.leaf .mon { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); }
+.slot-when { min-width: 0; }
+.slot-when b { display: block; font-size: 0.95rem; font-weight: 600; line-height: 1.25; }
+.slot-when span {
+  display: block; font-family: var(--mono); font-size: 0.68rem;
+  color: var(--muted); letter-spacing: 0.04em;
+}
