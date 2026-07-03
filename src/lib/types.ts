@@ -55,6 +55,21 @@ function fmtTimeOnly(iso: string): string {
   return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Krótki, mono-przyjazny zapis terminu (rozkładowy): „SOB 12.07",
+// zakres „1-2.08" albo „30.07-2.08". Do wierszy list i chipów.
+const DOW_SHORT = ['NIE', 'PON', 'WT', 'ŚR', 'CZW', 'PT', 'SOB'];
+export function formatSlotShort(slot: Pick<Slot, 'starts_at' | 'ends_at'>): string {
+  const s = new Date(slot.starts_at);
+  const mm = (d: Date) => String(d.getMonth() + 1).padStart(2, '0');
+  if (slot.ends_at) {
+    const e = new Date(slot.ends_at);
+    return s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()
+      ? `${s.getDate()}-${e.getDate()}.${mm(s)}`
+      : `${s.getDate()}.${mm(s)}-${e.getDate()}.${mm(e)}`;
+  }
+  return `${DOW_SHORT[s.getDay()]} ${s.getDate()}.${mm(s)}`;
+}
+
 // Ludzki opis terminu wg modelu (moment / cały dzień / zakres / zakres z godziną).
 export function formatSlotRange(slot: Pick<Slot, 'starts_at' | 'ends_at' | 'all_day'>): string {
   if (slot.ends_at) {

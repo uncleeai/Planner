@@ -4,9 +4,9 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
+import { getEventStatus, formatSlotRange, formatSlotShort, slotEndMs } from '@/lib/types';
 import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib/types';
-import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
+import { Avatar, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
@@ -18,12 +18,13 @@ import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
 import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
+import { pingUser } from '@/lib/ping';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
-  { value: 'yes', label: 'READY', cls: 'active-yes' },
-  { value: 'maybe', label: 'MOŻE', cls: 'active-maybe' },
-  { value: 'no', label: 'DODGE', cls: 'active-no' },
+  { value: 'yes', label: 'READY', cls: 'on-yes' },
+  { value: 'maybe', label: 'MOŻE', cls: 'on-maybe' },
+  { value: 'no', label: 'DODGE', cls: 'on-no' },
 ];
 
 function formatCommentTime(iso: string): string {
@@ -437,30 +438,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return members.filter((m) => !voted.has(m.id));
   }, [members, votes]);
 
-  // „Pinguj kurwę": push do jednej osoby z losowym cytatem (Edge Function ping-user).
-  // Limit po stronie klienta: 1 ping / osoba / wypad / 12h (localStorage).
+  // „Pinguj kurwę": push do jednej osoby z losowym cytatem (wspólna logika w lib/ping).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
-  async function pingUser(m: Profile) {
-    const key = `ping-${eventId}-${m.id}`;
-    const last = Number(localStorage.getItem(key) ?? 0);
-    if (Date.now() - last < 12 * 3600 * 1000) {
-      window.alert(`${m.display_name} już dziś oberwał(a) pingiem. Daj odetchnąć.`);
+  async function doPing(m: Profile) {
+    const err = await pingUser(eventId, m.id, m.display_name);
+    if (err) {
+      window.alert(err);
       return;
     }
     setPinged((prev) => new Set(prev).add(m.id));
-    const { error } = await supabase.functions.invoke('ping-user', {
-      body: { target_user_id: m.id, event_id: eventId },
-    });
-    if (error) {
-      setPinged((prev) => {
-        const next = new Set(prev);
-        next.delete(m.id);
-        return next;
-      });
-      window.alert('Ping nie doszedł. Może nie ma włączonych powiadomień?');
-      return;
-    }
-    localStorage.setItem(key, String(Date.now()));
   }
 
   // Ile dni wisi lobby bez odpowiedzi — liczone od założenia wypadu.
@@ -495,18 +481,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main className="glass-page">
-      <Link
-        href="/"
-        className="back-btn-round"
-        onClick={(e) => {
-          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-          e.preventDefault();
-          navigate('/', 'back');
-        }}
-        aria-label="Wróć"
-      >
-        <IconChevronLeft size={20} />
-      </Link>
+      <div className="nav-row">
+        <Link
+          href="/"
+          className="back-btn-round"
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            navigate('/', 'back');
+          }}
+          aria-label="Wróć"
+        >
+          <IconChevronLeft size={20} />
+        </Link>
+        <span className="nav-label">Lobby</span>
+      </div>
 
       {editing && (
         <form className="card" onSubmit={saveEdit}>
@@ -618,28 +607,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <p className="readonly-note">Ten wypad już się odbył — to tylko podgląd.</p>
       )}
 
-      {!isPast && slots.length > 0 && missingMembers.length > 0 && (
+      {!isPast && slots.length > 0 && memberCount > 0 && missingMembers.length > 0 && (
         <div className="vote-status">
-          <div className="vote-status-row">
-            {votedCount > 0 && <AvatarStack people={participantsPeople} size={26} />}
-            <span className="vote-status-count">
-              {votedCount > 0 ? (
-                <>
-                  <strong>{votedCount}{memberCount > 0 ? ` / ${memberCount}` : ''}</strong> dało znać
-                </>
-              ) : (
-                'Jeszcze nikt nie dał znać'
-              )}
-            </span>
-          </div>
-
-          {memberCount > 0 && (
-            <div className="segs" aria-hidden="true">
-              {members.map((m, i) => <i key={m.id} className={i < votedCount ? 'on' : ''} />)}
-            </div>
-          )}
-
-          {memberCount > 0 && missingMembers.map((m) => (
+          {missingMembers.map((m) => (
             <div key={m.id} className="afk">
               <Avatar name={m.display_name} avatar={m.avatar} size={28} />
               <span className="afk-text">
@@ -651,7 +621,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   type="button"
                   className="nudge"
                   disabled={pinged.has(m.id)}
-                  onClick={() => pingUser(m)}
+                  onClick={() => doPing(m)}
                 >
                   {pinged.has(m.id) ? 'Spingowano ✓' : 'Pinguj kurwę'}
                 </button>
@@ -662,12 +632,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
 
       <section className="ev-section">
-        <div className="section-label">Ready check</div>
+        <div className="rail">
+          <div className="section-label">Ready check</div>
+          {memberCount > 0 && !isPast && slots.length > 0 && (
+            <span className="chip hot">{votedCount}/{memberCount} DAŁO ZNAĆ</span>
+          )}
+        </div>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
 
-        {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
+        {stats.map(({ slot, yes, mine, votes: slotVotes }) => {
           const isBest = yes > 0 && yes === maxYes;
           const isSettledSlot = status.settled && status.slotId === slot.id;
           const showBestBadge = !isSettledSlot && isBest && !isTie;
@@ -698,62 +673,65 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               )}
             </div>
 
-            <div className="tally">
-              <span className="yes">✓ {yes}</span>
-              <span className="maybe">~ {maybe}</span>
-              <span className="no">✗ {no}</span>
-            </div>
-
-            {!isPast && (() => {
-              const selectedIndex = CHOICES.findIndex((c) => c.value === mine);
-              return (
-                <div className={`choices ${selectedIndex !== -1 ? `active-index-${selectedIndex}` : 'no-active'}`}>
-                  <div className="choices-slider" />
-                  {CHOICES.map((c) => (
-                    <button
-                      key={c.value}
-                      className={mine === c.value ? `${c.cls} active` : ''}
-                      onClick={() => vote(slot.id, c.value)}
-                      style={{ position: 'relative', zIndex: 1 }}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
-
             {slotVotes.length > 0 && (
               <div className="voters">
                 {slotVotes.map((v) => {
                   const prof = v.user_id ? profileById.get(v.user_id) : undefined;
                   const name = prof?.display_name ?? v.participant_name;
                   return (
-                    <span key={v.id} className={`voter-chip ${v.availability}`}>
-                      <Avatar name={name} avatar={prof?.avatar ?? null} size={16} />
-                      <span className="name">{name}</span>
+                    <span key={v.id} className={`voter-chip ${v.availability}`} title={name}>
+                      <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
+                      {v.availability === 'yes' ? 'READY' : v.availability === 'maybe' ? 'MOŻE' : 'DODGE'}
                     </span>
                   );
                 })}
               </div>
             )}
 
-            {isOrganizer && !isPast && (
-              <div className="slot-confirm-row">
-                {event?.confirmed_slot_id === slot.id ? (
-                  <button type="button" className="ghost slot-confirm-btn" onClick={unconfirmSlot}>
-                    Odklep termin
+            {!isPast && (
+              <div className="seg3 slot-seg3" role="group" aria-label="Twój głos">
+                {CHOICES.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    className={mine === c.value ? c.cls : ''}
+                    onClick={() => vote(slot.id, c.value)}
+                  >
+                    {c.label}
                   </button>
-                ) : (
-                  <button type="button" className="slot-confirm-btn primary" onClick={() => confirmSlot(slot)}>
-                    LOCK IN: klepnij ten termin
-                  </button>
-                )}
+                ))}
               </div>
             )}
           </div>
           );
         })}
+
+        {/* LOCK IN — jeden przycisk pod terminami (prowadzący; przy remisie po jednym
+            na każdy remisujący termin). Odklepanie tylko przy ręcznym ustaleniu. */}
+        {isOrganizer && !isPast && stats.length > 0 && (
+          status.settled ? (
+            status.source === 'manual' && (
+              <button type="button" className="ghost lockin-btn" onClick={unconfirmSlot}>
+                Odklep termin
+              </button>
+            )
+          ) : (
+            stats
+              .filter(({ slot, yes }) =>
+                isTie ? yes > 0 && yes === maxYes : slot.id === status.leadingSlotId,
+              )
+              .map(({ slot }) => (
+                <button
+                  key={slot.id}
+                  type="button"
+                  className="slot-confirm-btn primary lockin-btn"
+                  onClick={() => confirmSlot(slot)}
+                >
+                  LOCK IN: {formatSlotShort(slot)}
+                </button>
+              ))
+          )
+        )}
 
 
 
@@ -829,12 +807,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <form className="comment-form" onSubmit={addComment}>
           <input
             type="text"
-            placeholder="Napisz komentarz…"
+            placeholder="Napisz coś…"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             maxLength={500}
           />
-          <button type="submit" disabled={!newComment.trim()}>Wyślij</button>
+          <button type="submit" className="send" disabled={!newComment.trim()} aria-label="Wyślij">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+          </button>
         </form>
       </section>
 

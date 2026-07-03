@@ -1127,16 +1127,13 @@ body.login-active .glass-bg { display: none; }
   border-color: rgba(61, 220, 139, 0.5);
 }
 
-/* Opis wypadu na stronie wydarzenia */
+/* Opis wypadu na stronie wydarzenia — płaski tekst, bez ramki (jak w mockupie) */
 .event-description {
-  margin: 0 0 18px;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: rgba(255, 255, 255, 0.78);
+  margin: 0 4px 18px;
+  color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.5;
+  max-width: 52ch;
 }
 /* Render markdownu w opisie */
 .event-description p { margin: 0 0 8px; }
@@ -1835,4 +1832,92 @@ main.has-dock { padding-bottom: 72px; }
 .slot-when span {
   display: block; font-family: var(--mono); font-size: 0.68rem;
   color: var(--muted); letter-spacing: 0.04em;
+}
+
+/* ===== Zgodność 1:1 z mockupem „Lobby" v2 ===== */
+
+/* Rail: etykieta sekcji + chip statusu w jednej linii */
+.rail { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 20px 4px 10px; }
+.rail .section-label { margin: 0; }
+.chip {
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.12em; padding: 3px 10px; border-radius: 6px; white-space: nowrap;
+}
+.chip.hot { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
+
+/* Rozkład: płaskie wiersze list zamiast kart */
+.board { border-top: 1px solid var(--border); }
+.trow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none; color: var(--text);
+  transition: background 0.15s ease, transform 0.06s ease;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none;
+}
+@media (hover: hover) {
+  .trow:hover { background: var(--card); text-decoration: none; }
+}
+.trow:active { transform: scale(0.995); }
+.trow-main { flex: 1; min-width: 0; }
+.trow-main b {
+  display: block; font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trow-main > span {
+  display: block; font-family: var(--mono); font-size: 0.68rem; color: var(--muted);
+  letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trow .mini-segs { flex: none; width: 44px; }
+
+/* Nagłówek hero: tytuł + meta (miejsce · mono-data), bez boxa emoji i plakietki */
+.hero-title-block { flex: 1; min-width: 0; }
+.hero-title-block .hero-title { display: block; }
+.hero-title-block .hero-meta { margin: 3px 0 0; gap: 8px; align-items: center; }
+.hero-meta .sep { opacity: 0.45; color: var(--muted); }
+.mono-date {
+  font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--text);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+
+/* Karta misji: skład jako pionowy roster + etykiety TY/HOST + mały Pinguj */
+.squad.roster { grid-template-columns: 1fr; gap: 6px; }
+.squad.roster .slot-p { padding: 9px 10px; }
+.squad.roster .who b { font-size: 0.86rem; }
+.slot-p .side {
+  flex-shrink: 0; font-family: var(--mono); font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--muted);
+}
+.nudge-sm {
+  flex-shrink: 0; cursor: pointer;
+  font-size: 0.72rem; font-weight: 600;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid rgba(255, 138, 61, 0.32);
+  padding: 7px 10px; border-radius: 6px;
+}
+
+/* Strona wypadu: nav „LOBBY" obok wstecz */
+.nav-row { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.nav-row .back-btn-round { margin-bottom: 0; }
+.nav-label {
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
+}
+
+/* Chipy głosów przy terminie: morda + mono-status (READY/MOŻE/DODGE) */
+.voter-chip {
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
+}
+
+/* Głosowanie w slocie + LOCK IN pod terminami */
+.slot-seg3 { margin-top: 12px; }
+.lockin-btn { width: 100%; margin: 2px 0 12px; }
+
+/* Ikonkowy przycisk wysyłki w czacie */
+.comment-form .send {
+  flex-shrink: 0; width: 46px; height: 46px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--accent-ink);
+  border-radius: var(--radius-sm);
 }

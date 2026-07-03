@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
+import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
+import { pingUser } from '@/lib/ping';
 import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
-import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
+import { Avatar, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
@@ -367,7 +368,7 @@ export default function Home() {
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
 
-    type AheadItem = { ev: EventRow; variant: 'open' | 'upcoming' | 'expired'; sortMs: number };
+    type AheadItem = { ev: EventRow; variant: 'open' | 'upcoming' | 'expired'; sortMs: number; slot: Slot | null };
     const openItems: AheadItem[] = [];
     const upcomingItems: AheadItem[] = [];
     const expiredItems: AheadItem[] = [];
@@ -395,10 +396,10 @@ export default function Home() {
       // Ustalony (ręcznie LUB wszyscy dali znać) → nadchodzący / Bylim już.
       // Liczone od KOŃCA terminu (zakres/cały dzień trwa do końca ostatniego dnia).
       if (status.settled && status.date) {
-        const settledSlot = evSlots.find((s) => s.id === status.slotId);
+        const settledSlot = evSlots.find((s) => s.id === status.slotId) ?? null;
         const endMs = settledSlot ? slotEndMs(settledSlot) : new Date(status.date).getTime();
         if (endMs >= now) {
-          upcomingItems.push({ ev, variant: 'upcoming', sortMs: endMs });
+          upcomingItems.push({ ev, variant: 'upcoming', sortMs: endMs, slot: settledSlot });
         } else if (endMs >= now - 7 * DAY) {
           // „Bylim już" pokazujemy do tygodnia po wypadzie; starsze → archiwum
           // (pomijamy z listy, zostają w bazie pod przyszły widok archiwum).
@@ -408,21 +409,31 @@ export default function Home() {
       }
 
       // Nieustalony: czy jest jeszcze jakiś termin, który się nie skończył?
-      const latest = evSlots.reduce((m, s) => Math.max(m, slotEndMs(s)), 0);
+      const latestSlot = evSlots.reduce<Slot | null>(
+        (m, s) => (!m || slotEndMs(s) > slotEndMs(m) ? s : m),
+        null,
+      );
+      const latest = latestSlot ? slotEndMs(latestSlot) : 0;
       const hasFuture = evSlots.some((s) => slotEndMs(s) > now);
 
       if (evSlots.length > 0 && !hasFuture) {
         // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono". Pokazujemy do 24h
         // po ostatnim terminie, potem archiwizujemy (pomijamy → znika z listy, zostaje w bazie).
-        if (latest >= now - DAY) expiredItems.push({ ev, variant: 'expired', sortMs: latest });
+        if (latest >= now - DAY) expiredItems.push({ ev, variant: 'expired', sortMs: latest, slot: latestSlot });
       } else {
         // Ma przyszły termin albo brak terminów → wciąż zbiera głosy.
         // Klucz sortowania: najbliższy przyszły termin (brak terminów → na koniec).
-        const nearest = evSlots.reduce((m, s) => {
+        let nearestSlot: Slot | null = null;
+        for (const s of evSlots) {
           const end = slotEndMs(s);
-          return end > now && end < m ? end : m;
-        }, Infinity);
-        openItems.push({ ev, variant: 'open', sortMs: nearest });
+          if (end > now && (!nearestSlot || end < slotEndMs(nearestSlot))) nearestSlot = s;
+        }
+        openItems.push({
+          ev,
+          variant: 'open',
+          sortMs: nearestSlot ? slotEndMs(nearestSlot) : Infinity,
+          slot: nearestSlot,
+        });
       }
     }
 
@@ -578,6 +589,21 @@ export default function Home() {
     }
     return best;
   }, [heroId, aggByEvent, slots]);
+
+  // Chip odliczania na railu hero: dni do STARTU pokazywanego terminu.
+  const heroCountdown = useMemo(() => {
+    if (!heroSlot) return null;
+    const mid = (t: number) => {
+      const d = new Date(t);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    };
+    const days = Math.round((mid(new Date(heroSlot.starts_at).getTime()) - mid(Date.now())) / (24 * 3600 * 1000));
+    if (days < 0) return 'TRWA';
+    if (days === 0) return 'DZIŚ';
+    if (days === 1) return 'JUTRO';
+    return `START ZA ${days} DNI`;
+  }, [heroSlot]);
 
   return (
     <main className={`glass-page${events.length > 0 ? ' has-dock' : ''}`}>
@@ -794,8 +820,11 @@ export default function Home() {
 
       {heroEvent && (
         <section>
-          <div className={`section-label${heroMode === 'vote' ? ' hot' : ''}`}>
-            {heroMode === 'vote' ? 'Twoja kolej' : heroMode === 'waiting' ? 'Czekamy na resztę' : 'Najbliższy'}
+          <div className="rail">
+            <div className={`section-label${heroMode === 'vote' ? ' hot' : ''}`}>
+              {heroMode === 'vote' ? 'Twoja kolej' : heroMode === 'waiting' ? 'Czekamy na resztę' : 'Najbliższy'}
+            </div>
+            {heroCountdown && <span className="chip hot">{heroCountdown}</span>}
           </div>
           <HeroCard
             ev={heroEvent}
@@ -806,18 +835,17 @@ export default function Home() {
             needsYou={heroMode === 'vote'}
             otherSlots={heroOtherSlots}
             peek={heroPeek}
+            mission={ahead.length === 0}
           />
         </section>
       )}
-      {ahead.length > 0 && (
-        <section>
-          <div className="section-label">Przed nami</div>
-          {ahead.map(({ ev, variant }) => (
-            <EventCard key={ev.id} ev={ev} agg={aggByEvent.get(ev.id) ?? EMPTY_AGG} variant={variant} />
-          ))}
-        </section>
-      )}
-      <Section title="Bylim już" events={past} agg={aggByEvent} variant="past" muted />
+      <Board title="Przed nami" items={ahead} agg={aggByEvent} />
+      <Board
+        title="Bylim już"
+        items={past.map((ev) => ({ ev, variant: 'past' as const, slot: aggByEvent.get(ev.id)?.slot ?? null }))}
+        agg={aggByEvent}
+        muted
+      />
 
       {!loading && events.length > 0 && quote && (
         <figure className="motd" onClick={handleNextQuote} title="Kliknij, aby wylosować kolejny cytat">
@@ -847,27 +875,65 @@ export default function Home() {
   );
 }
 
-function Section({
-  title,
-  events,
-  agg,
-  variant,
-  muted,
-}: {
+type RowVariant = 'open' | 'upcoming' | 'expired' | 'past';
+
+// Sekcja rozkładu: mono-etykieta + płaskie wiersze z cienkimi liniami (bez kart).
+function Board({ title, items, agg, muted }: {
   title: string;
-  events: EventRow[];
+  items: { ev: EventRow; variant: RowVariant; slot: Slot | null }[];
   agg: Map<string, Agg>;
-  variant: 'open' | 'upcoming' | 'expired' | 'past';
   muted?: boolean;
 }) {
-  if (events.length === 0) return null;
+  if (items.length === 0) return null;
   return (
     <section>
       <div className={`section-label${muted ? ' faded' : ''}`}>{title}</div>
-      {events.map((ev) => (
-        <EventCard key={ev.id} ev={ev} agg={agg.get(ev.id) ?? EMPTY_AGG} variant={variant} />
-      ))}
+      <div className="board">
+        {items.map(({ ev, variant, slot }) => (
+          <Row key={ev.id} ev={ev} variant={variant} slot={slot} agg={agg.get(ev.id) ?? EMPTY_AGG} />
+        ))}
+      </div>
     </section>
+  );
+}
+
+// Płaski wiersz: tytuł + mono-podpis (data · godzina · miejsce);
+// po prawej segmenty gotowości albo plakietka statusu.
+function Row({ ev, variant, slot, agg }: {
+  ev: EventRow; variant: RowVariant; slot: Slot | null; agg: Agg;
+}) {
+  const { href, handlers } = useEventNav(ev.id);
+  const responded = agg.squad.filter((m) => m.state).length;
+
+  const parts: string[] = [];
+  if (variant === 'expired') {
+    parts.push('Termin minął');
+  } else if (slot) {
+    parts.push(formatSlotShort(slot));
+    if (!slot.ends_at && !slot.all_day) {
+      parts.push(`od ${new Date(slot.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`);
+    }
+  } else {
+    parts.push('Zbieramy terminy');
+  }
+  if (ev.location) parts.push(ev.location);
+
+  return (
+    <Link href={href} className="trow" {...handlers}>
+      <span className="trow-main">
+        <b>{ev.emoji ? `${ev.emoji} ` : ''}{ev.title}</b>
+        <span>{parts.join(' · ')}</span>
+      </span>
+      {variant === 'open' && agg.squad.length > 0 && (
+        <span className="mini-segs" aria-label={`${responded} z ${agg.squad.length} dało znać`}>
+          {agg.squad.map((m, i) => <i key={m.id} className={i < responded ? 'on' : ''} />)}
+        </span>
+      )}
+      {variant === 'upcoming' && <span className="badge">GRAMY</span>}
+      {variant === 'past' && <span className="badge badge-muted">GG</span>}
+      {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
+      <IconChevron size={16} className="row-chevron" />
+    </Link>
   );
 }
 
@@ -886,16 +952,33 @@ function useEventNav(eventId: string) {
   return { href, handlers };
 }
 
-// Bogata karta najbliższego lobby: emoji + tytuł + status, lokalizacja/data,
-// skład (sloty graczy z READY/MOŻE/DODGE/AFK), segmenty gotowości, grid Pogoda + Zbiórka.
-// Gdy czeka na twój głos — ready check prowadzącego terminu prosto w karcie.
-function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek }: {
+// Karta najbliższego lobby: tytuł + meta (miejsce · mono-data), skład (sloty graczy
+// z READY/MOŻE/DODGE/AFK), segmenty gotowości. Gdy czeka na twój głos — ready check
+// prosto w karcie (fakty pogoda/zbiórka wtedy schodzą z drogi). W trybie misji
+// (jedyny wypad) skład rośnie do pionowego rosteru z „Pinguj" przy AFK.
+function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek, mission }: {
   ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming'; needsYou?: boolean;
   otherSlots?: number;
   peek?: { name: string; avatar: string | null; body: string; createdAt: string } | null;
+  mission?: boolean;
 }) {
   const { href, handlers } = useEventNav(ev.id);
-  const { userId, displayName } = useAuth();
+  const { userId, displayName, isAdmin } = useAuth();
+  const isOrg = isAdmin || !ev.created_by_user_id || ev.created_by_user_id === userId;
+
+  // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
+  const [pinged, setPinged] = useState<Set<string>>(new Set());
+  async function nudge(e: React.MouseEvent, m: SquadMember) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (pinged.has(m.id)) return;
+    const err = await pingUser(ev.id, m.id, m.name);
+    if (err) {
+      window.alert(err);
+      return;
+    }
+    setPinged((p) => new Set(p).add(m.id));
+  }
 
   // Głos z dashboardu: optymistyczne zaznaczenie od razu, realtime dociągnie prawdę
   // (i przełączy hero w tryb „Czekamy na resztę").
@@ -932,32 +1015,30 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
     return () => { alive = false; };
   }, [hasCoords, ev.latitude, ev.longitude, weatherDate]);
 
-  const badge = variant === 'upcoming'
-    ? { label: 'GRAMY', cls: 'hero-badge hero-badge-green' }
-    : { label: 'ZBIERAMY SKŁAD', cls: 'hero-badge hero-badge-blue' };
-
   const wInfo = weather ? describeWeather(weather.code) : null;
   const responded = agg.squad.filter((m) => m.state).length;
 
   return (
     <Link href={href} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
       <div className="hero-head">
-        <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
-        <div className="hero-head-main">
-          <span className="hero-title">{ev.title}</span>
-          <span className={badge.cls}>{badge.label}</span>
+        <div className="hero-title-block">
+          <span className="hero-title">{ev.emoji ? `${ev.emoji} ` : ''}{ev.title}</span>
+          <div className="hero-meta">
+            {ev.location && (
+              <>
+                <span className="event-meta"><IconPin size={13} /> {ev.location}</span>
+                <span className="sep">·</span>
+              </>
+            )}
+            <span className="mono-date">{slot ? formatSlotShort(slot) : 'Zbieramy terminy'}</span>
+          </div>
         </div>
         <IconChevron size={20} className="row-chevron" />
       </div>
 
-      <div className="hero-meta">
-        {ev.location && <span className="event-meta"><IconPin size={14} /> {ev.location}</span>}
-        <span className="event-meta"><IconCalendar size={14} /> {agg.slot ? formatSlotRange(agg.slot) : 'Zbieramy terminy'}</span>
-      </div>
-
       {agg.squad.length > 0 ? (
         <>
-          <div className="squad">
+          <div className={`squad${mission ? ' roster' : ''}`}>
             {agg.squad.map((m) => {
               const isYou = m.id === userId;
               const label =
@@ -965,10 +1046,20 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
                 : m.state === 'maybe' ? 'MOŻE'
                 : m.state === 'no' ? 'DODGE'
                 : isYou ? 'TWÓJ SLOT' : 'AFK';
+              const showNudge = mission && isOrg && !m.state && !isYou;
               return (
                 <div key={m.id} className={`slot-p ${m.state ? `s-${m.state}` : 's-none'}${isYou && !m.state ? ' is-you' : ''}`}>
                   <Avatar name={m.name} avatar={m.avatar} size={26} />
                   <span className="who"><b>{m.name}</b><span>{label}</span></span>
+                  {showNudge ? (
+                    <button type="button" className="nudge-sm" onClick={(e) => nudge(e, m)}>
+                      {pinged.has(m.id) ? '✓' : 'Pinguj'}
+                    </button>
+                  ) : mission && isYou ? (
+                    <span className="side">TY</span>
+                  ) : mission && ev.created_by_user_id === m.id ? (
+                    <span className="side">HOST</span>
+                  ) : null}
                 </div>
               );
             })}
@@ -989,7 +1080,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
       {needsYou && slot && (
         <div className="hero-vote">
           <div className="hero-vote-label">
-            <span>Ready check: <b>{formatSlotRange(slot)}</b></span>
+            <span>Ready check: <b>{formatSlotShort(slot)}</b></span>
             {otherSlots > 0 && <span className="more">+{otherSlots} w lobby</span>}
           </div>
           <div className="seg3">
@@ -1000,7 +1091,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
         </div>
       )}
 
-      {(wInfo || meetTime) && (
+      {!needsYou && (wInfo || meetTime) && (
         <div className="hero-grid">
           {wInfo && weather && (
             <div className="hero-tile">
@@ -1036,58 +1127,3 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   );
 }
 
-function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
-  const { href, handlers } = useEventNav(ev.id);
-  return (
-    <Link href={href} className={`event-rich${hero ? ' hero' : ''}`} {...handlers}>
-      <div className="event-rich-head">
-        <span className="event-rich-title">{ev.title}</span>
-        <IconChevron size={18} className="row-chevron" />
-      </div>
-
-      {ev.location && (
-        <div className="event-meta" style={{ marginTop: 6 }}>
-          <IconPin size={14} /> {ev.location}
-        </div>
-      )}
-
-      <div className="event-meta-row">
-        {variant === 'expired' ? (
-          <span className="event-meta"><IconCalendar size={14} /> Termin minął</span>
-        ) : agg.slot ? (
-          <span className="event-meta"><IconCalendar size={14} /> {formatSlotRange(agg.slot)}</span>
-        ) : (
-          <span className="event-meta"><IconCalendar size={14} /> Zbieramy terminy</span>
-        )}
-      </div>
-
-      <div className="event-rich-foot">
-        {agg.voters.length > 0 ? (
-          <AvatarStack people={agg.voters} size={28} />
-        ) : (
-          <span className="small muted">Jeszcze nikt nie dał znać</span>
-        )}
-
-        {variant === 'open' && agg.squad.length > 0 ? (
-          <div className="progress-inline-wrap">
-            <span className="mini-segs" aria-hidden="true">
-              {agg.squad.map((m, i) => (
-                <i key={m.id} className={i < agg.squad.filter((s) => s.state).length ? 'on' : ''} />
-              ))}
-            </span>
-            <span className="progress-label">
-              {agg.squad.filter((s) => s.state).length}/{agg.squad.length}
-            </span>
-          </div>
-        ) : (
-          <>
-            <span className="spacer" />
-            {variant === 'past' && <span className="badge badge-muted">GG</span>}
-            {variant === 'upcoming' && <span className="badge">GRAMY</span>}
-            {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
-          </>
-        )}
-      </div>
-    </Link>
-  );
-}
