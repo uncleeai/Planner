@@ -66,7 +66,6 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── admin.ts              # E-maile adminów (właściciel) + isAdminEmail; trzymaj w synchronie z is_admin() w schema.sql
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
-        ├── slotPresets.ts        # Szybkie presety terminów (chipy)
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h

@@ -208,9 +208,12 @@ function LoginForm() {
 
   return (
     <main className="glass-page auth-screen">
+      <div className="wordmark cursor" style={{ textAlign: 'center', marginBottom: 18 }}>
+        WYPAD<span>.EXE</span>
+      </div>
       {!sent ? (
         <form className="card" onSubmit={sendCode}>
-          <h2>Logowanie</h2>
+          <div className="modal-label">Logowanie</div>
           <div className="field">
             <label htmlFor="email">E-mail</label>
             <input
@@ -225,7 +228,7 @@ function LoginForm() {
             />
           </div>
           {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-          <button type="submit" disabled={!email.trim() || busy}>
+          <button type="submit" className="cta-gradient" disabled={!email.trim() || busy}>
             {busy ? 'Wysyłam…' : 'Wyślij kod'}
           </button>
           <p className="small muted mt">
@@ -235,7 +238,7 @@ function LoginForm() {
         </form>
       ) : (
         <form className="card" onSubmit={verify}>
-          <h2>Wpisz kod</h2>
+          <div className="modal-label">Wpisz kod</div>
           <p className="small muted">Wysłaliśmy 6-cyfrowy kod na <strong>{email}</strong>.</p>
           <div className="field">
             <label htmlFor="code">Kod z maila</label>
@@ -251,7 +254,7 @@ function LoginForm() {
             />
           </div>
           {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-          <button type="submit" disabled={!code.trim() || busy}>
+          <button type="submit" className="cta-gradient" disabled={!code.trim() || busy}>
             {busy ? 'Sprawdzam…' : 'Zaloguj'}
           </button>
           <button
@@ -329,8 +332,11 @@ function SetupForm({
 
   return (
     <main className="glass-page auth-screen">
+      <div className="wordmark cursor" style={{ textAlign: 'center', marginBottom: 18 }}>
+        WYPAD<span>.EXE</span>
+      </div>
       <form className="card" onSubmit={save}>
-        <h2>Twój profil</h2>
+        <div className="modal-label">Twój profil</div>
         <p className="small muted">Tę nazwę i awatar zobaczą inni przy Twoich głosach.</p>
         <div className="field">
           <label htmlFor="name">Imię</label>
@@ -347,7 +353,7 @@ function SetupForm({
           <label>Awatar</label>
           <div className="row" style={{ alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <Avatar name={name || 'Ty'} avatar={avatar} size={56} />
-            <button type="button" className="ghost chip" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            <button type="button" className="ghost" disabled={uploading} onClick={() => fileRef.current?.click()}>
               {uploading ? 'Wgrywam…' : '📷 Wgraj zdjęcie'}
             </button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
@@ -367,7 +373,7 @@ function SetupForm({
           </div>
         </div>
         {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-        <button type="submit" disabled={!name.trim() || busy}>
+        <button type="submit" className="cta-gradient" disabled={!name.trim() || busy}>
           {busy ? 'Zapisuję…' : 'Gotowe'}
         </button>
       </form>
