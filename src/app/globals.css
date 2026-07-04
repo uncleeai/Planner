@@ -1695,8 +1695,16 @@ main.has-dock { padding-bottom: 24px; }
     animation: vote-pop 0.22s ease;
   }
 
-  /* Klepnięcie terminu (LOCK IN / objęcie prowadzenia): zielony błysk karty */
-  .slot.confirmed { animation: lockin-flash 0.7s ease; }
+  /* Klepnięcie terminu (LOCK IN / objęcie prowadzenia): zielony błysk karty.
+     rise-in ZOSTAJE w liście — podmiana całej animacji na sam błysk restartowała
+     wejście przy każdej zmianie stanu (utrata „prowadzi" po zmianie głosu =
+     karta znikała i odgrywała wjazd od zera). Ta sama nazwa w obu stanach nie
+     restartuje niczego; błysk tylko dochodzi i schodzi z listy. */
+  .ev-section .slot.confirmed {
+    animation:
+      rise-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards,
+      lockin-flash 0.7s ease;
+  }
 
   /* Wjeżdżają tylko NOWE wiadomości czatu (realtime/własne) — historia z fetchu
      montuje się już po wejściu strony i odgrywałaby animację z poślizgiem. */
