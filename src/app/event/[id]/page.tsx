@@ -553,14 +553,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             />
           </div>
           {editError && <p className="small" style={{ color: 'var(--no)' }}>{editError}</p>}
-          <div className="row" style={{ gap: 8 }}>
-            <button type="submit" disabled={!editTitle.trim() || editBusy}>
-              {editBusy ? 'Zapisuję…' : 'Zapisz zmiany'}
-            </button>
-            <button type="button" className="ghost" onClick={() => setEditing(false)}>
-              Anuluj
-            </button>
-          </div>
+          <button type="submit" className="cta-gradient" disabled={!editTitle.trim() || editBusy}>
+            {editBusy ? 'Zapisuję…' : 'Zapisz zmiany'}
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            style={{ width: '100%', marginTop: 8 }}
+            onClick={() => setEditing(false)}
+          >
+            Anuluj
+          </button>
         </form>
       )}
 
