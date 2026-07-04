@@ -833,7 +833,13 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
                 <span className="sep">·</span>
               </>
             )}
-            <span className="mono-date">{slot ? formatSlotShort(slot) : 'Zbieramy terminy'}</span>
+            {/* W trybie ready check data i tak jest w etykiecie głosowania niżej —
+                zamiast dublować, meta pokazuje hosta (jak na stronie wypadu). */}
+            {needsYou && slot && ev.created_by ? (
+              <span className="event-meta">host: {ev.created_by}</span>
+            ) : (
+              <span className="mono-date">{slot ? formatSlotShort(slot) : 'Zbieramy terminy'}</span>
+            )}
           </div>
         </div>
         <IconChevron size={20} className="row-chevron" />
