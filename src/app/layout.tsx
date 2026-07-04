@@ -43,6 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <GlassBackground />
         <div className="statusbar-blur" aria-hidden="true" />
+        <div className="rotate-guard" role="status">
+          <span className="phone" aria-hidden="true">📱</span>
+          <b>Obróć telefon</b>
+          <span>Wypad.exe gra tylko w pionie.</span>
+        </div>
         <div className="container">
           <TransitionProvider>
             <AuthProvider>{children}</AuthProvider>
