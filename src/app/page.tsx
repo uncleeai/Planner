@@ -722,7 +722,7 @@ function Row({ ev, variant, slot, agg }: {
   if (ev.location) parts.push(ev.location);
 
   return (
-    <Link href={href} className="trow" {...handlers}>
+    <Link href={href} prefetch={true} className="trow" {...handlers}>
       <span className="trow-main">
         <b>{ev.emoji ? `${ev.emoji} ` : ''}{ev.title}</b>
         <span>{parts.join(' · ')}</span>
@@ -822,7 +822,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const responded = agg.squad.filter((m) => m.state).length;
 
   return (
-    <Link href={href} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
+    <Link href={href} prefetch={true} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
       <div className="hero-head">
         <div className="hero-title-block">
           <span className="hero-title">{ev.emoji ? `${ev.emoji} ` : ''}{ev.title}</span>
