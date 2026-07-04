@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
 import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
-import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
+import { IconPin, IconCalendarPlus, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
@@ -608,12 +608,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     <span>Dodaj do kalendarza</span>
                   </span>
                 </button>
-                {status.settled && (
-                  <span className="confirmed-tag">
-                    <IconCheck size={12} />{' '}
-                    {status.source === 'auto' ? 'GRAMY · komplet' : 'GRAMY'}
-                  </span>
-                )}
               </>
             )}
           </div>
@@ -677,7 +671,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           >
             <div className="slot-head">
               <SlotWhen slot={slot} />
-              {isSettledSlot && <span className="badge">✓ GRAMY</span>}
+              {isSettledSlot && (
+                <span className="badge">✓ GRAMY{status.source === 'auto' ? ' · KOMPLET' : ''}</span>
+              )}
               {showBestBadge && <span className="badge">Prowadzi</span>}
               {showTieBadge && <span className="badge badge-open">Remis</span>}
               {canDelete && !isPast && (
