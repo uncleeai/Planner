@@ -1590,7 +1590,12 @@ main.has-dock { padding-bottom: 72px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Wejście: sekcje wjeżdżają kaskadą spod kurtyny (dashboard i strona wypadu) */
+  /* Wejście: sekcje wjeżdżają kaskadą spod kurtyny (dashboard i strona wypadu).
+     Kierunek niesie ZMIENNA --enter-from (ustawiana przez <html data-nav>), a nie
+     podmiana animation-name: zmiana nazwy animacji RESTARTUJE ją — klik „wstecz"
+     ustawiał data-nav zanim router podmienił stronę i jeszcze widoczna strona
+     odgrywała od zera wejście w przeciwnym kierunku (skok w lewo + fade = jitter).
+     Zmiana zmiennej nie restartuje niczego, a skończone animacje są na nią głuche. */
   .glass-page > section,
   .glass-page > .motd,
   .glass-page > .nav-row,
@@ -1598,34 +1603,15 @@ main.has-dock { padding-bottom: 72px; }
   .glass-page > .event-description,
   .glass-page > .vote-status,
   .glass-page > .readonly-note {
-    animation: rise-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation: enter-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
   .glass-page > section:nth-of-type(2) { animation-delay: 0.07s; }
   .glass-page > section:nth-of-type(3) { animation-delay: 0.14s; }
   .glass-page > .motd { animation-delay: 0.2s; }
 
-  /* Kierunek nawigacji (useTransitionNavigate ustawia <html data-nav>): wejście
-     w wypad wsuwa treść z prawej, powrót — z lewej. Pierwsze malowanie apki
-     (bez data-nav) zostaje przy wejściu z dołu. Tylko animation-name — czasy
-     i opóźnienia kaskady dziedziczą się z reguły wyżej. */
-  html[data-nav='forward'] .glass-page > section,
-  html[data-nav='forward'] .glass-page > .motd,
-  html[data-nav='forward'] .glass-page > .nav-row,
-  html[data-nav='forward'] .glass-page > .app-header,
-  html[data-nav='forward'] .glass-page > .event-description,
-  html[data-nav='forward'] .glass-page > .vote-status,
-  html[data-nav='forward'] .glass-page > .readonly-note {
-    animation-name: slide-in-fwd;
-  }
-  html[data-nav='back'] .glass-page > section,
-  html[data-nav='back'] .glass-page > .motd,
-  html[data-nav='back'] .glass-page > .nav-row,
-  html[data-nav='back'] .glass-page > .app-header,
-  html[data-nav='back'] .glass-page > .event-description,
-  html[data-nav='back'] .glass-page > .vote-status,
-  html[data-nav='back'] .glass-page > .readonly-note {
-    animation-name: slide-in-back;
-  }
+  /* Kierunek: wejście w wypad z prawej, powrót z lewej, pierwsze malowanie z dołu. */
+  html[data-nav='forward'] { --enter-from: translateX(26px); }
+  html[data-nav='back'] { --enter-from: translateX(-26px); }
 
   /* Scoreboard buduje się wiersz po wierszu: karty terminów wchodzą kaskadą.
      nth-of-type liczy divy w sekcji — pierwszy jest rail, sloty od 2. */
@@ -1683,12 +1669,8 @@ main.has-dock { padding-bottom: 72px; }
 @keyframes dock-in {
   from { opacity: 0; transform: translateY(16px); }
 }
-@keyframes slide-in-fwd {
-  from { opacity: 0; transform: translateX(26px); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes slide-in-back {
-  from { opacity: 0; transform: translateX(-26px); }
+@keyframes enter-in {
+  from { opacity: 0; transform: var(--enter-from, translateY(10px)); }
   to { opacity: 1; transform: none; }
 }
 @keyframes ring-pulse {
