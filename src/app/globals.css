@@ -92,7 +92,16 @@ a { color: var(--primary-hover); text-decoration: none; touch-action: manipulati
   box-shadow: var(--shadow);
 }
 
-label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
 
 input[type="text"],
 input[type="email"],
@@ -489,26 +498,27 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .slot-range input::-webkit-date-and-time-value { text-align: center; }
 .slot-range input::-webkit-calendar-picker-indicator { display: none; }
 
-/* Przełącznik „Dłuższy wypad" — toggle w stylu iOS (na górze, przy etykiecie) */
+/* Przełącznik „Dłuższy wypad" — kontrolka Lobby jak .switch (oranż = włączone) */
 .toggle-row {
-  display: inline-flex; align-items: center; gap: 12px;
-  margin-bottom: 14px; cursor: pointer;
-  font-size: 0.95rem; color: var(--text); user-select: none;
+  display: inline-flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; cursor: pointer; user-select: none;
+  font-family: var(--mono); font-size: 0.64rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
 }
 .toggle-input { position: absolute; opacity: 0; width: 0; height: 0; }
 .toggle-track {
   position: relative; flex-shrink: 0;
-  width: 46px; height: 28px; border-radius: 999px;
-  background: var(--card-2); border: 1px solid var(--border);
+  width: 44px; height: 26px; border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22); border: 1px solid var(--border-strong);
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 .toggle-knob {
   position: absolute; top: 3px; left: 3px;
-  width: 20px; height: 20px; border-radius: 50%;
+  width: 18px; height: 18px; border-radius: 5px;
   background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.toggle-input:checked + .toggle-track { background: var(--primary); border-color: var(--primary); }
+.toggle-input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
 .toggle-input:checked + .toggle-track .toggle-knob { transform: translateX(18px); }
 .toggle-input:focus-visible + .toggle-track { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15); }
 
@@ -1052,6 +1062,7 @@ main::before {
 .form-collapse.open form > *:nth-child(5) { transition-delay: 0.40s; }
 .form-collapse.open form > *:nth-child(6) { transition-delay: 0.47s; }
 .form-collapse.open form > *:nth-child(7) { transition-delay: 0.54s; }
+.form-collapse.open form > *:nth-child(8) { transition-delay: 0.61s; }
 
 .add-slot-wrapper {
   margin-top: 16px;

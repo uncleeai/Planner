@@ -458,6 +458,55 @@ export default function Home() {
     return `START ZA ${days} DNI`;
   }, [heroSlot]);
 
+  // Pola formularza „Nowe lobby" — jedna lista dla obu wariantów (rozwijany nad
+  // rozkładem i wewnątrz pustego stanu), żeby treść nie rozjeżdżała się między nimi.
+  const lobbyFields = [
+    <div key="head" className="modal-label" style={{ marginBottom: 14 }}>Nowe lobby</div>,
+    <div className="field" key="title">
+      <label htmlFor="title">Nazwa</label>
+      <input
+        id="title"
+        type="text"
+        placeholder="np. Piwo w piątek, baskecik…"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        ref={titleInputRef}
+      />
+    </div>,
+    <div className="field" key="loc">
+      <label htmlFor="location">Miejsce (opcjonalnie)</label>
+      <LocationAutocomplete
+        id="location"
+        value={location}
+        onChange={setLocation}
+        onCoords={setLocationCoords}
+        placeholder="np. Zakopane, Łabiszyn…"
+      />
+    </div>,
+    <div className="field" key="desc">
+      <label htmlFor="description">Opis (opcjonalnie)</label>
+      <DescriptionInput
+        id="description"
+        value={description}
+        onChange={setDescription}
+        placeholder="np. co bierzemy, plan, szczegóły…"
+      />
+    </div>,
+    <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
+    <div className="field" key="date">
+      <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
+    </div>,
+    error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
+    <button
+      key="submit"
+      type="submit"
+      className="cta-gradient"
+      disabled={!title.trim() || !slotDraft.od || busy}
+    >
+      {busy ? 'Odpalam…' : 'Odpal lobby'}
+    </button>,
+  ].filter(Boolean);
+
   return (
     <main className={`glass-page${events.length > 0 ? ' has-dock' : ''}`}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, position: 'relative', zIndex: 2 }}>
@@ -472,49 +521,7 @@ export default function Home() {
       {events.length > 0 && (
         <div className={`form-collapse ${showForm ? 'open' : ''}`}>
           <form className="card" onSubmit={createEvent}>
-            <h2>Nowe lobby</h2>
-            <div className="field">
-              <label htmlFor="title">Nazwa</label>
-              <input
-                id="title"
-                type="text"
-                placeholder="np. Piwo w piątek, baskecik…"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                ref={titleInputRef}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="location">Miejsce (opcjonalnie)</label>
-              <LocationAutocomplete
-                id="location"
-                value={location}
-                onChange={setLocation}
-                onCoords={setLocationCoords}
-                placeholder="np. Zakopane, Łabiszyn…"
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="description">Opis (opcjonalnie)</label>
-              <DescriptionInput
-                id="description"
-                value={description}
-                onChange={setDescription}
-                placeholder="np. co bierzemy, plan xd, szczegóły…"
-              />
-            </div>
-
-            <EventEmojiInput value={emoji} onChange={setEmoji} />
-
-            <div className="field">
-              <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
-            </div>
-
-            {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-            <button type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
-              {busy ? 'Odpalam…' : 'Odpal lobby'}
-            </button>
+            {lobbyFields}
           </form>
         </div>
       )}
@@ -585,45 +592,7 @@ export default function Home() {
             <div style={{ minHeight: 0, overflow: 'hidden', padding: '0 4px' }}>
               <form onSubmit={createEvent} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
-                  <h2 key="h" style={{ margin: 0 }}>Nowe lobby</h2>,
-                  <div className="field" key="title">
-                    <label htmlFor="title">Nazwa</label>
-                    <input
-                      id="title"
-                      type="text"
-                      placeholder="np. Piwo w piątek, wyjazd w góry…"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      ref={titleInputRef}
-                    />
-                  </div>,
-                  <div className="field" key="loc">
-                    <label htmlFor="location">Miejsce (opcjonalnie)</label>
-                    <LocationAutocomplete
-                      id="location"
-                      value={location}
-                      onChange={setLocation}
-                      onCoords={setLocationCoords}
-                      placeholder="np. Zakopane, Łabiszyn…"
-                    />
-                  </div>,
-                  <div className="field" key="desc">
-                    <label htmlFor="description">Opis (opcjonalnie)</label>
-                    <DescriptionInput
-                      id="description"
-                      value={description}
-                      onChange={setDescription}
-                      placeholder="np. co bierzemy, plan, szczegóły…"
-                    />
-                  </div>,
-                  <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
-                  <div className="field" key="date">
-                    <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
-                  </div>,
-                  error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
-                  <button key="submit" type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
-                    {busy ? 'Odpalam…' : 'Odpal lobby'}
-                  </button>,
+                  ...lobbyFields,
                   <button
                     key="cancel"
                     type="button"
@@ -633,7 +602,7 @@ export default function Home() {
                   >
                     Anuluj
                   </button>,
-                ].filter(Boolean).map((child, i) => (
+                ].map((child, i) => (
                   <div
                     key={i}
                     style={{

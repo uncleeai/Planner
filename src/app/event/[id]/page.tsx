@@ -498,7 +498,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {editing && (
         <form className="card" onSubmit={saveEdit}>
-          <h2>Edytuj wypad</h2>
+          <div className="modal-label">Edytuj wypad</div>
           <div className="field">
             <label htmlFor="edit-title">Nazwa</label>
             <input
