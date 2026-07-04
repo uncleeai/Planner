@@ -95,6 +95,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // Wiadomości nowsze niż moment wejścia na stronę dostają animację wjazdu
+  // (comment-fresh w CSS); historia z pierwszego fetchu wchodzi bez animacji.
+  const mountTsRef = useRef(Date.now());
+
   // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
   // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
@@ -790,7 +794,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               const name = prof?.display_name ?? c.author_name;
               const canDel = c.user_id === userId || isOrganizer;
               return (
-                <div key={c.id} className="comment">
+                <div
+                  key={c.id}
+                  className={`comment${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}`}
+                >
                   <Avatar name={name} avatar={prof?.avatar ?? null} size={30} />
                   <div className="comment-body">
                     <div className="comment-head">

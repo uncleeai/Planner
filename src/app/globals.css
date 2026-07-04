@@ -1557,7 +1557,6 @@ main.has-dock { padding-bottom: 72px; }
 @media (prefers-reduced-motion: no-preference) {
   /* Wejście: sekcje wjeżdżają kaskadą spod kurtyny (dashboard i strona wypadu) */
   .glass-page > section,
-  .glass-page > .motd,
   .glass-page > .nav-row,
   .glass-page > .app-header,
   .glass-page > .event-description,
@@ -1567,14 +1566,13 @@ main.has-dock { padding-bottom: 72px; }
   }
   .glass-page > section:nth-of-type(2) { animation-delay: 0.07s; }
   .glass-page > section:nth-of-type(3) { animation-delay: 0.14s; }
-  .glass-page > .motd { animation-delay: 0.2s; }
+  .glass-page > .motd { animation: fade-in 0.5s ease backwards; }
 
   /* Kierunek nawigacji (useTransitionNavigate ustawia <html data-nav>): wejście
      w wypad wsuwa treść z prawej, powrót — z lewej. Pierwsze malowanie apki
      (bez data-nav) zostaje przy wejściu z dołu. Tylko animation-name — czasy
      i opóźnienia kaskady dziedziczą się z reguły wyżej. */
   html[data-nav='forward'] .glass-page > section,
-  html[data-nav='forward'] .glass-page > .motd,
   html[data-nav='forward'] .glass-page > .nav-row,
   html[data-nav='forward'] .glass-page > .app-header,
   html[data-nav='forward'] .glass-page > .event-description,
@@ -1583,7 +1581,6 @@ main.has-dock { padding-bottom: 72px; }
     animation-name: slide-in-fwd;
   }
   html[data-nav='back'] .glass-page > section,
-  html[data-nav='back'] .glass-page > .motd,
   html[data-nav='back'] .glass-page > .nav-row,
   html[data-nav='back'] .glass-page > .app-header,
   html[data-nav='back'] .glass-page > .event-description,
@@ -1636,8 +1633,9 @@ main.has-dock { padding-bottom: 72px; }
   /* Klepnięcie terminu (LOCK IN / objęcie prowadzenia): zielony błysk karty */
   .slot.confirmed { animation: lockin-flash 0.7s ease; }
 
-  /* Nowa wiadomość na czacie wjeżdża jak reszta treści */
-  .comment { animation: rise-in 0.3s ease backwards; }
+  /* Wjeżdżają tylko NOWE wiadomości czatu (realtime/własne) — historia z fetchu
+     montuje się już po wejściu strony i odgrywałaby animację z poślizgiem. */
+  .comment.comment-fresh { animation: rise-in 0.3s ease backwards; }
 
   /* AFK oddycha — status obija się o wzrok, nie krzyczy */
   .afk-text span, .slot-p.s-none .who span { animation: afk-pulse 2.8s ease-in-out infinite; }
@@ -1645,6 +1643,9 @@ main.has-dock { padding-bottom: 72px; }
 
 @keyframes dock-in {
   from { opacity: 0; transform: translateY(16px); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
 }
 @keyframes slide-in-fwd {
   from { opacity: 0; transform: translateX(26px); }
