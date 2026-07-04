@@ -1636,3 +1636,14 @@ main.has-dock { padding-bottom: 72px; }
 .event-rich.hero { position: relative; }
 .segs i, .mini-segs i { transition: background-color 0.35s ease, border-color 0.35s ease; }
 .seg3 button { transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.06s ease; }
+
+/* Dialog potwierdzenia/alertu (appConfirm/appAlert) — mały modal w skórce */
+.profile-modal.dialog { max-width: 320px; text-align: left; padding: 22px 20px 20px; }
+.dialog-msg { margin: -6px 0 18px; font-size: 0.92rem; line-height: 1.45; color: var(--text); }
+.dialog-actions { display: flex; gap: 8px; }
+.dialog-actions > button { flex: 1; }
+/* Destrukcyjne potwierdzenie — pełna czerwień, jednoznacznie */
+button.solid-danger { background: var(--no); color: #fff; }
+@media (hover: hover) {
+  button.solid-danger:hover { background: #ff7373; }
+}

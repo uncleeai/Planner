@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
 import { pingUser } from '@/lib/ping';
+import { appAlert } from '@/components/Dialogs';
 import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
@@ -777,7 +778,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
     if (pinged.has(m.id)) return;
     const err = await pingUser(ev.id, m.id, m.name);
     if (err) {
-      window.alert(err);
+      appAlert('Ping nie poszedł', err);
       return;
     }
     setPinged((p) => new Set(p).add(m.id));

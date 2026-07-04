@@ -19,6 +19,7 @@ import { getCache, mergeEventData } from '@/lib/dataCache';
 import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
+import { appAlert, appConfirm } from '@/components/Dialogs';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
@@ -202,7 +203,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (!times) return;
     // Termin nie może być z przeszłości (cały dzień „dziś" jest OK — liczymy koniec dnia).
     if (slotEndMs(times) < Date.now() - 60000) {
-      alert('Nie można dodać terminu z przeszłości.');
+      appAlert('Zły termin', 'Nie można dodać terminu z przeszłości.');
       return;
     }
     await supabase.from('slots').insert({
@@ -217,7 +218,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function deleteSlot(slotId: string) {
-    if (!window.confirm('Usunąć ten termin? Zniknie razem z oddanymi na niego głosami.')) return;
+    const ok = await appConfirm('Usunąć termin?', {
+      message: 'Zniknie razem z oddanymi na niego głosami.',
+      confirmLabel: 'Usuń',
+      danger: true,
+    });
+    if (!ok) return;
     // Optymistycznie usuń lokalnie; przy błędzie stan wróci z bazy.
     setSlots((prev) => prev.filter((s) => s.id !== slotId));
     const { error } = await supabase.from('slots').delete().eq('id', slotId);
@@ -264,7 +270,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .update({ confirmed_slot_id: slot.id, confirmed_at: slot.starts_at })
       .eq('id', eventId);
     if (error) {
-      window.alert('Nie udało się ustalić terminu.');
+      appAlert('Błąd', 'Nie udało się ustalić terminu.');
       return;
     }
     load();
@@ -275,7 +281,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .update({ confirmed_slot_id: null, confirmed_at: null })
       .eq('id', eventId);
     if (error) {
-      window.alert('Nie udało się odznaczyć terminu.');
+      appAlert('Błąd', 'Nie udało się odznaczyć terminu.');
       return;
     }
     load();
@@ -306,7 +312,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function deleteComment(id: string) {
-    if (!window.confirm('Usunąć komentarz?')) return;
+    if (!(await appConfirm('Usunąć komentarz?', { confirmLabel: 'Usuń', danger: true }))) return;
     setComments((prev) => prev.filter((c) => c.id !== id));
     const { error } = await supabase.from('comments').delete().eq('id', id);
     if (error) load();
@@ -353,10 +359,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function deleteEvent() {
-    if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
+    const ok = await appConfirm('Usunąć cały wypad?', {
+      message: 'Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.',
+      confirmLabel: 'Usuń wypad',
+      danger: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from('events').delete().eq('id', eventId);
     if (error) {
-      window.alert('Nie udało się usunąć wypadu.');
+      appAlert('Błąd', 'Nie udało się usunąć wypadu.');
       return;
     }
     navigate('/', 'back');
@@ -442,7 +453,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   async function doPing(m: Profile) {
     const err = await pingUser(eventId, m.id, m.display_name);
     if (err) {
-      window.alert(err);
+      appAlert('Ping nie poszedł', err);
       return;
     }
     setPinged((prev) => new Set(prev).add(m.id));

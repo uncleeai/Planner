@@ -4,6 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { AuthProvider } from '@/lib/auth';
 import { TransitionProvider } from '@/lib/transition';
 import GlassBackground from '@/components/GlassBackground';
+import { DialogHost } from '@/components/Dialogs';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AuthProvider>{children}</AuthProvider>
           </TransitionProvider>
         </div>
+        <DialogHost />
         <Analytics />
         <SpeedInsights />
       </body>
