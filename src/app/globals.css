@@ -1502,6 +1502,12 @@ main.has-dock { padding-bottom: 72px; }
 /* Baseline, nie center: mono-data i tekst systemowy mają różne metryki pionowe —
    środkowanie boxów podnosiło datę względem miejsca. */
 .hero-title-block .hero-meta { margin: 3px 0 0; gap: 8px; align-items: baseline; }
+/* Miejsce (pin + tekst) jako zwykły inline, nie inline-flex: baseline inline-flexa
+   liczy się z PIERWSZEGO dziecka, czyli SVG (baseline = dół ikony), a Blink i WebKit
+   syntetyzują ją odrobinę inaczej — na telefonie „Warszawa" siadała wyżej. W zwykłym
+   inline baseline bierze się z tekstu i wszędzie wypada tak samo. */
+.hero-title-block .hero-meta .event-meta { display: inline; }
+.hero-title-block .hero-meta .event-meta svg { vertical-align: -2px; margin-right: 4px; }
 .hero-meta .sep { opacity: 0.45; color: var(--muted); }
 .mono-date {
   font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--text);
