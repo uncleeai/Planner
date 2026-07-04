@@ -111,7 +111,7 @@ input:focus {
   border-color: rgba(255, 255, 255, 0.35);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
-input::placeholder { color: #6a6f80; }
+input::placeholder { color: var(--muted); }
 
 textarea {
   width: 100%;
@@ -132,7 +132,7 @@ textarea:focus {
   border-color: rgba(255, 255, 255, 0.35);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
-textarea::placeholder { color: #6a6f80; }
+textarea::placeholder { color: var(--muted); }
 
 /* Input daty z własnym placeholderem (iOS nie pokazuje nic w pustym datetime-local) */
 .dt-field { position: relative; display: flex; width: 100%; }
@@ -148,7 +148,7 @@ textarea::placeholder { color: #6a6f80; }
 .dt-field.dt-empty > input:not(:focus) { color: transparent; }
 .dt-placeholder {
   position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
-  text-align: center; color: #aeb4c6; font-size: 1rem;
+  text-align: center; color: var(--muted); font-size: 1rem;
   pointer-events: none; white-space: nowrap;
 }
 /* Przy fokusie chowamy nakładkę, by nie nachodziła na natywne pola */
@@ -253,11 +253,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .badge-muted { background: rgba(255, 255, 255, 0.08); color: var(--muted); }
 
 /* Ustalanie terminu przez organizatora (na stronie wypadu) */
-.slot-confirm-row {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
 .slot-confirm-btn { width: 100%; font-size: 0.9rem; }
 /* „Klepnij ten termin" (LOCK IN) — jedyna akcja finalizująca wypad, więc dostaje
    sygnałowy akcent zamiast wtapiać się jako kolejny .ghost. */
@@ -279,92 +274,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   color: var(--yes);
 }
 
-.tally { display: flex; gap: 8px; margin-bottom: 12px; }
-.tally span { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; font-variant-numeric: tabular-nums; }
-.tally .yes { color: var(--yes); background: rgba(61, 220, 139, 0.14); }
-.tally .maybe { color: var(--maybe); background: rgba(244, 183, 64, 0.14); }
-.tally .no { color: var(--no); background: rgba(255, 93, 93, 0.14); }
-
-/* Głosowanie jako kontrolka segmentowa (iOS-like). */
-.choices {
-  position: relative;
-  display: flex;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px;
-  z-index: 1;
-}
-.choices-slider {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc((100% - 16px) / 3);
-  border-radius: 9px;
-  pointer-events: none;
-  z-index: 0;
-  transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s ease, background-color 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
-  opacity: 1;
-  transform-origin: center;
-}
-.choices.no-active .choices-slider {
-  opacity: 0;
-  transform: scale(0.92);
-}
-/* Przesunięcia slidera */
-.choices.active-index-0 .choices-slider {
-  transform: translateX(0);
-  background: rgba(61, 220, 139, 0.18);
-  border: 1px solid rgba(61, 220, 139, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(61, 220, 139, 0.25);
-}
-.choices.active-index-1 .choices-slider {
-  transform: translateX(calc(100% + 4px));
-  background: rgba(244, 183, 64, 0.15);
-  border: 1px solid rgba(244, 183, 64, 0.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(244, 183, 64, 0.25);
-}
-.choices.active-index-2 .choices-slider {
-  transform: translateX(calc((100% + 4px) * 2));
-  background: rgba(255, 93, 93, 0.18);
-  border: 1px solid rgba(255, 93, 93, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(255, 93, 93, 0.25);
-}
-.choices button {
-  position: relative;
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  border-radius: 6px;
-  padding: 11px 6px;
-  z-index: 2;
-  transition: color 0.25s ease;
-}
-@media (hover: hover) {
-  .choices button:hover {
-    color: var(--text);
-  }
-}
-.choices button.active {
-  color: #ffffff;
-}
-.choices button.active-yes.active {
-  color: #5eff84;
-}
-.choices button.active-maybe.active {
-  color: #ffdf3d;
-}
-.choices button.active-no.active {
-  color: #ff6b63;
-}
-
 .voters {
   font-size: 0.82rem;
   color: var(--muted);
@@ -372,9 +281,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-.voters .name {
-  color: var(--text);
 }
 .voter-chip {
   display: inline-flex;
@@ -442,30 +348,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .section-label.faded { color: #5c656d; }
 .section-label.hot { color: var(--accent); }
 
-/* Zgrupowana lista — jedna „wyspa" z cienkimi separatorami */
-.list-group {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-.list-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 16px;
-  text-decoration: none;
-  color: var(--text);
-  transition: background 0.15s ease, transform 0.06s ease;
-}
-.list-row + .list-row { border-top: 1px solid var(--border); }
-@media (hover: hover) {
-  .list-row:hover { background: var(--card-2); }
-}
-.list-row:active { transform: scale(0.992); }
-.list-row-main { min-width: 0; flex: 1; }
-.list-row-title { font-weight: 600; letter-spacing: -0.01em; }
 .row-chevron { flex-shrink: 0; color: var(--muted); font-size: 1.3rem; line-height: 1; }
 
 /* Drobna linia meta (miejsce, organizator) */
@@ -481,20 +363,8 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
-.empty-state .emoji { font-size: 2.4rem; line-height: 1; }
 .empty-state h2 { margin: 14px 0 4px; }
 .empty-state p { color: var(--muted); margin: 0 auto 18px; max-width: 30ch; }
-
-/* Pille statusu głosowania */
-.pill-wait, .pill-done {
-  display: inline-block;
-  font-size: 0.85rem;
-  font-weight: 500;
-  padding: 8px 14px;
-  border-radius: 999px;
-}
-.pill-wait { color: var(--maybe); background: rgba(244, 183, 64, 0.12); border: 1px solid rgba(244, 183, 64, 0.25); }
-.pill-done { color: var(--yes); background: rgba(61, 220, 139, 0.12); border: 1px solid rgba(61, 220, 139, 0.3); }
 
 /* Back link */
 .back-btn-round {
@@ -584,7 +454,7 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   color: var(--yes);
   background: rgba(61, 220, 139, 0.14);
   border: 1px solid rgba(61, 220, 139, 0.3);
-  padding: 3px 8px 3px 6px; border-radius: 999px;
+  padding: 3px 8px 3px 6px; border-radius: 6px;
 }
 
 /* Input terminu: Od / Do / Godzina */
@@ -652,31 +522,11 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   margin-bottom: 22px;
   display: flex; flex-direction: column; gap: 10px;
 }
-.vote-status-row { display: flex; align-items: center; gap: 10px; }
-.vote-status-count { font-size: 0.92rem; color: var(--muted); }
-.vote-status-count strong { color: var(--text); font-weight: 600; }
-.vote-progress {
-  height: 6px; border-radius: 999px;
-  /* Trochę mocniejszy tor, żeby pasek był widoczny nawet przy 0% (samo wypełnienie
-     wtedy nie istnieje — bez tego widać praktycznie nic). */
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-}
-.vote-progress-bar {
-  height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, var(--yes), #5be584);
-  transition: width 0.45s cubic-bezier(0.25, 1, 0.5, 1);
-}
-/* Kto jeszcze nie dał znać — awatary zamiast gołego tekstu, łatwiej ogarnąć jednym rzutem oka. */
-.vote-missing-row { display: flex; align-items: center; gap: 8px; }
-.vote-missing-label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
 
 .slot.confirmed { border-color: rgba(61, 220, 139, 0.5); box-shadow: 0 0 0 1px rgba(61, 220, 139, 0.5) inset; }
 
 /* ===== Hybryda: nagłówek, awatary, karty wypadów, postęp ===== */
 
-.dash-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.app-icon { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; box-shadow: var(--shadow); }
 
 /* Awatary */
 .avatar {
@@ -684,9 +534,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   border-radius: 50%; color: #fff; font-weight: 600; line-height: 1;
   border: 2px solid var(--card); flex-shrink: 0; overflow: hidden; user-select: none;
 }
-.avatar-stack { display: inline-flex; }
-.avatar-stack > * + * { margin-left: -9px; }
-.avatar-more { background: var(--card-2); color: var(--muted); }
 
 /* Wybór awatara (setup) */
 .avatar-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 8px; }
@@ -701,9 +548,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   justify-content: center;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   padding: 0;
   min-height: 0;
   color: inherit;
@@ -774,21 +618,9 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   .event-rich:hover { background: var(--card-2); border-color: var(--border-strong); text-decoration: none; }
 }
 .event-rich:active { transform: scale(0.992); }
-.event-rich-head { display: flex; align-items: center; gap: 10px; }
-.event-rich-title { font-weight: 600; font-size: 0.98rem; letter-spacing: -0.01em; flex: 1; min-width: 0; }
 
 .event-meta { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.84rem; }
 .event-meta svg { flex-shrink: 0; opacity: 0.85; }
-.event-meta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 5px; }
-.event-rich-foot { display: flex; align-items: center; gap: 12px; margin-top: 9px; min-height: 22px; }
-.event-rich-foot .spacer { flex: 1; }
-
-/* Pasek postępu głosowania */
-.progress-wrap { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
-.progress-inline-wrap { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 8px; }
-.progress { flex: 1; height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
-.progress-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
-.progress-label { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 img.avatar { display: inline-block; }
 
@@ -820,20 +652,16 @@ img.avatar { display: inline-block; }
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.45);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.55);
   animation: overlayFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .profile-modal {
   position: relative;
   width: 100%; max-width: 360px;
-  background: rgba(22, 18, 30, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 24px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  -webkit-backdrop-filter: blur(35px) saturate(220%);
-  backdrop-filter: blur(35px) saturate(220%);
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   padding: 28px 20px 20px;
   text-align: center;
   animation: modalSpringIn 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -881,12 +709,10 @@ img.avatar { display: inline-block; }
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%; font-size: 0.95rem;
   background: rgba(255, 255, 255, 0.12);
-  border: 2px solid rgba(22, 18, 30, 0.85);
+  border: 2px solid var(--card);
   color: #fff;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
 }
 @media (hover: hover) {
   .avatar-camera:hover {
@@ -982,34 +808,6 @@ img.avatar { display: inline-block; }
   }
 }
 
-/* Baner z poradą */
-.tip-banner {
-  display: flex; align-items: center; gap: 12px;
-  margin-top: 24px; padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  color: var(--muted); font-size: 0.88rem;
-}
-.tip-banner .tip-icon { color: var(--primary-hover); flex-shrink: 0; }
-
-.tip-banner {
-  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-@media (hover: hover) {
-  .tip-banner:hover {
-    transform: translateY(-1px);
-  }
-}
-.tip-banner:active {
-  transform: translateY(0) scale(0.99);
-}
-@media (hover: hover) {
-  .glass-page .tip-banner:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-}
 .quote-text {
   transition: opacity 0.15s ease-in-out;
 }
@@ -1205,11 +1003,9 @@ body.login-active .glass-bg { display: none; }
   align-items: center;
   gap: 6px;
   padding: 12px 18px;
-  background: rgba(13, 13, 17, 0.9);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
-  backdrop-filter: blur(14px) saturate(180%);
+  background: var(--card-2);
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: var(--radius);
   color: var(--text);
   text-decoration: none;
   font-size: 0.9rem;
@@ -1295,18 +1091,6 @@ main::before {
 .form-collapse .card,
 .form-collapse .empty-state {
   margin-bottom: 0;
-  /* Wyłączamy backdrop-filter w zamkniętym stanie. Snap w tym samym momencie co
-     grid-template-rows (0.26s) — treść jest już niewidoczna, więc przeskok koloru
-     się nie zobaczy, a nie trzeba już rozciągać tego w osobnym, płynnym transition. */
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  transition: backdrop-filter 0s linear 0.26s, -webkit-backdrop-filter 0s linear 0.26s;
-}
-.form-collapse.open .card,
-.form-collapse.open .empty-state {
-  /* Włączamy backdrop-filter z opóźnieniem — dopiero po zakończeniu rozwijania grida */
-  -webkit-backdrop-filter: blur(30px) saturate(200%);
-  backdrop-filter: blur(30px) saturate(200%);
 }
 
 /* Animacja zawartości (wygładzenie pojawiania się) */
@@ -1333,59 +1117,6 @@ main::before {
 .form-collapse.open form > *:nth-child(5) { transition-delay: 0.40s; }
 .form-collapse.open form > *:nth-child(6) { transition-delay: 0.47s; }
 .form-collapse.open form > *:nth-child(7) { transition-delay: 0.54s; }
-
-/* Logo i branding w nagłówku (bezpieczne klasy przed AdBlockami) */
-.app-title-group {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  user-select: none;
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-
-.app-title-icon {
-  width: 36px !important;
-  height: 36px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 11px !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-
-.app-title-icon svg {
-  display: block !important;
-  color: #ffffff !important;
-}
-
-@media (hover: hover) {
-  .app-title-group:hover .app-title-icon {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(255, 255, 255, 0.18) !important;
-    transform: scale(1.05) !important;
-  }
-}
-
-.app-title-text {
-  font-size: 1.25rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.022em !important;
-  color: #ffffff !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: inline-block !important;
-}
-
-.welcome-section h1 {
-  letter-spacing: -0.025em !important;
-}
 
 .add-slot-wrapper {
   margin-top: 16px;
@@ -1532,36 +1263,14 @@ main::before {
   font-weight: 500;
 }
 @media (hover: hover) {
-  .loc-suggestions button:hover { background: var(--card-2); }
+  .loc-suggestions button:hover { background: #232830; }
 }
 .loc-name { font-size: 0.95rem; }
 .loc-region { font-size: 0.78rem; color: var(--muted); }
 
-/* Chip pogody w karcie hero (dziedziczy układ z .event-meta) */
-.hero-weather { gap: 5px; }
-.hero-weather-emoji { font-size: 1rem; line-height: 1; }
-.hero-weather strong { color: var(--text); font-weight: 700; }
-
 /* ===== Bogata karta hero (układ z mockupu) ===== */
 .hero-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.hero-emoji {
-  width: 46px; height: 46px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
-  color: rgba(255, 255, 255, 0.9); /* stroke ikony (currentColor) */
-  background: var(--card-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.hero-head-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .hero-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
-.hero-badge {
-  font-family: var(--mono);
-  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 6px; border: 1px solid; white-space: nowrap;
-}
-.hero-badge-blue { color: #ffb27a; background: rgba(255, 138, 61, 0.12); border-color: rgba(255, 138, 61, 0.3); }
-.hero-badge-green { color: var(--yes); background: rgba(61, 220, 139, 0.12); border-color: rgba(61, 220, 139, 0.3); }
 
 .hero-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 
@@ -1889,3 +1598,96 @@ main.has-dock { padding-bottom: 72px; }
   background: var(--accent); color: var(--accent-ink);
   border-radius: var(--radius-sm);
 }
+
+/* ===== Animacje skórki „Lobby" =====
+   Zasady (nauczka z iOS): wyłącznie transform/opacity na kompozytorze albo krótkie
+   one-shoty; żadnych blurów, blend-mode'ów ani nieskończonych animacji malowania.
+   Wszystko pod @media (prefers-reduced-motion: no-preference). */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Wejście: sekcje wjeżdżają kaskadą spod kurtyny (dashboard i strona wypadu) */
+  .glass-page > section,
+  .glass-page > .motd,
+  .glass-page > .app-header,
+  .glass-page > .event-description {
+    animation: rise-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .glass-page > section:nth-of-type(2) { animation-delay: 0.07s; }
+  .glass-page > section:nth-of-type(3) { animation-delay: 0.14s; }
+  .glass-page > .motd { animation-delay: 0.2s; }
+
+  /* Dok CTA wsuwa się od dołu po wejściu treści */
+  .cta-dock { animation: dock-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s backwards; }
+
+  /* Hero czekające na TWÓJ głos: pulsująca sygnałowa obwódka (ready check woła) */
+  .event-rich.hero.needs-you::after {
+    content: '';
+    position: absolute; inset: -1px;
+    border: 1px solid var(--accent);
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    animation: ring-pulse 2.4s ease-in-out infinite;
+  }
+
+  /* Kropka „live" przy chipie odliczania */
+  .chip.hot::before {
+    content: '';
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
+    margin-right: 7px; vertical-align: 1px;
+    animation: blink-dot 1.6s ease-in-out infinite;
+  }
+
+  /* Segment gotowości strzela w górę, gdy ktoś da znać */
+  .segs i.on, .mini-segs i.on { animation: seg-pop 0.35s ease; }
+
+  /* Zaznaczony głos lekko „doskakuje" */
+  .seg3 button.on-yes, .seg3 button.on-maybe, .seg3 button.on-no {
+    animation: vote-pop 0.22s ease;
+  }
+
+  /* Klepnięcie terminu (LOCK IN / objęcie prowadzenia): zielony błysk karty */
+  .slot.confirmed { animation: lockin-flash 0.7s ease; }
+
+  /* Nowa wiadomość na czacie wjeżdża jak reszta treści */
+  .comment { animation: rise-in 0.3s ease backwards; }
+
+  /* AFK oddycha — status obija się o wzrok, nie krzyczy */
+  .afk-text span, .slot-p.s-none .who span { animation: afk-pulse 2.8s ease-in-out infinite; }
+}
+
+@keyframes dock-in {
+  from { opacity: 0; transform: translateY(16px); }
+}
+@keyframes ring-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.55; }
+}
+@keyframes blink-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@keyframes seg-pop {
+  50% { transform: scaleY(1.9); }
+}
+@keyframes vote-pop {
+  50% { transform: scale(1.05); }
+}
+@keyframes lockin-flash {
+  0% { background-color: rgba(61, 220, 139, 0.22); }
+}
+@keyframes afk-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Płynne przejścia stanów (poza reduced-motion — to feedback, nie dekoracja) */
+.event-rich.hero { position: relative; }
+.segs i, .mini-segs i { transition: background-color 0.35s ease, border-color 0.35s ease; }
+.seg3 button { transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.06s ease; }

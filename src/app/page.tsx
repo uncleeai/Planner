@@ -554,21 +554,9 @@ export default function Home() {
                 </p>,
                 <button
                   key="cta"
+                  className="cta-gradient"
                   onClick={() => setShowForm(true)}
-                  style={{
-                    background: 'var(--accent)',
-                    border: 'none',
-                    boxShadow: '0 10px 28px rgba(255, 138, 61, 0.18)',
-                    color: 'var(--accent-ink)',
-                    padding: '12px 24px',
-                    borderRadius: '12px',
-                    fontWeight: 700,
-                    fontSize: '0.95rem',
-                    margin: '0 auto',
-                    display: 'block'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = '#ffa05e' }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent)' }}
+                  style={{ width: 'auto', padding: '12px 24px', fontSize: '0.95rem', margin: '0 auto', display: 'block' }}
                 >
                   + Nowe lobby
                 </button>,
