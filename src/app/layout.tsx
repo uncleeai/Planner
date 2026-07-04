@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { JetBrains_Mono } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { AuthProvider } from '@/lib/auth';
@@ -6,6 +7,12 @@ import { TransitionProvider } from '@/lib/transition';
 import GlassBackground from '@/components/GlassBackground';
 import { DialogHost } from '@/components/Dialogs';
 import './globals.css';
+
+// Jeden mono na wszystkich urządzeniach. Ze stackiem systemowym skórka wyglądała
+// inaczej na telefonie (SF Mono) niż na PC (Consolas/Cascadia) — a mono niesie tu
+// całą tożsamość: daty, etykiety, chipy, wordmark. Self-hosted przez next/font
+// (pobierany przy buildzie), latin-ext dla polskich znaków.
+const mono = JetBrains_Mono({ subsets: ['latin', 'latin-ext'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Wypad.exe',
@@ -28,7 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl">
+    <html lang="pl" className={mono.variable}>
       <body>
         <GlassBackground />
         <div className="container">

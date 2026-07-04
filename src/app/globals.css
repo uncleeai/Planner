@@ -20,7 +20,8 @@
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  /* --font-mono wstrzykuje next/font (JetBrains Mono) w layout.tsx; reszta to fallback. */
+  --mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* Ciemny motyw również dla kontrolek natywnych (picker daty, scrollbary) na iOS. */
   color-scheme: dark;
 }
