@@ -99,6 +99,8 @@ export default function ProfileMenu() {
               <IconX size={14} />
             </button>
 
+            <div className="modal-label">Profil</div>
+
             <div className="avatar-xl-wrap">
               <Avatar name={displayName} avatar={localAvatar} size={104} />
               <button

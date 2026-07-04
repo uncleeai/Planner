@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/lib/auth';
-import { useBackground } from '@/lib/background';
 import { IconGear, IconX } from '@/components/icons';
 import {
   isPushSupported,
@@ -13,10 +12,9 @@ import {
   unsubscribeFromPush,
 } from '@/lib/push';
 
-// Osobny przycisk (koło zębate) obok avatara → modal z ustawieniami: tło + powiadomienia.
+// Osobny przycisk (koło zębate) obok avatara → modal z ustawieniami (powiadomienia).
 export default function SettingsMenu() {
   const { userId } = useAuth();
-  const { enabled: bgEnabled, toggle: toggleBg } = useBackground();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
 
@@ -65,24 +63,7 @@ export default function SettingsMenu() {
               <IconX size={14} />
             </button>
 
-            <h2 style={{ margin: '4px 0 18px' }}>Ustawienia</h2>
-
-            <div className="setting-row">
-              <div className="setting-text">
-                <span className="setting-title">Animowane tło</span>
-                <span className="setting-sub">Wyłącz dla lepszej płynności</span>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={bgEnabled}
-                aria-label="Animowane tło"
-                className={`switch${bgEnabled ? ' on' : ''}`}
-                onClick={toggleBg}
-              >
-                <span className="switch-knob" />
-              </button>
-            </div>
+            <div className="modal-label">Ustawienia</div>
 
             {pushSupported ? (
               <div className="setting-row">

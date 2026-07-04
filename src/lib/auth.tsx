@@ -7,7 +7,6 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
-import { useBackground } from '@/lib/background';
 import { resyncPushSubscription } from '@/lib/push';
 import { isAdminEmail } from '@/lib/admin';
 import type { EventRow } from '@/lib/types';
@@ -141,33 +140,6 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-// Tło wideo tylko na ekranie logowania (świadoma decyzja: krótka chwila, jedna
-// karta). Globalną aurorę chowamy klasą na <body>, żeby nie liczyć dwóch teł naraz.
-// Szanuje przełącznik tła (gdy wyłączone — czyste ciemne tło, bez dekodowania wideo).
-function LoginBackground() {
-  const { enabled } = useBackground();
-
-  useEffect(() => {
-    document.body.classList.add('login-active');
-    return () => document.body.classList.remove('login-active');
-  }, []);
-
-  if (!enabled) return null;
-
-  return (
-    <div className="login-bg" aria-hidden="true">
-      <div className="glass-aurora">
-        <i className="aurora-blob b1" />
-        <i className="aurora-blob b2" />
-        <i className="aurora-blob b3" />
-        <i className="aurora-blob b4" />
-        <i className="aurora-blob b5" />
-        <i className="aurora-blob b6" />
-      </div>
-    </div>
-  );
-}
-
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -236,7 +208,6 @@ function LoginForm() {
 
   return (
     <main className="glass-page auth-screen">
-      <LoginBackground />
       {!sent ? (
         <form className="card" onSubmit={sendCode}>
           <h2>Logowanie</h2>

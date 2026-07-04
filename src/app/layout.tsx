@@ -3,7 +3,6 @@ import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { AuthProvider } from '@/lib/auth';
 import { TransitionProvider } from '@/lib/transition';
-import { BackgroundProvider } from '@/lib/background';
 import GlassBackground from '@/components/GlassBackground';
 import './globals.css';
 
@@ -30,14 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pl">
       <body>
-        <BackgroundProvider>
-          <GlassBackground />
-          <div className="container">
-            <TransitionProvider>
-              <AuthProvider>{children}</AuthProvider>
-            </TransitionProvider>
-          </div>
-        </BackgroundProvider>
+        <GlassBackground />
+        <div className="container">
+          <TransitionProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </TransitionProvider>
+        </div>
         <Analytics />
         <SpeedInsights />
       </body>

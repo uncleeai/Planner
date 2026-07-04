@@ -539,41 +539,27 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .avatar-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 8px; }
 .avatar-option {
   aspect-ratio: 1 / 1;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
   font-size: 1.55rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.06s ease;
   padding: 0;
   min-height: 0;
   color: inherit;
   font-weight: 400;
 }
 @media (hover: hover) {
-  .avatar-option:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.18);
-    transform: translateY(-2px) scale(1.06);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  }
+  .avatar-option:hover:not(:disabled) { border-color: var(--border-strong); }
 }
-.avatar-option:active:not(:disabled) {
-  transform: translateY(0) scale(0.95);
-}
+.avatar-option:active:not(:disabled) { transform: scale(0.94); }
 .avatar-option.selected {
   border-color: var(--accent);
   background: var(--accent-dim);
-  transform: translateY(-2px) scale(1.15);
-  z-index: 2;
-}
-@media (hover: hover) {
-  .avatar-option.selected:hover:not(:disabled) {
-    transform: translateY(-3px) scale(1.18);
-  }
 }
 
 /* Główny CTA — pełny sygnałowy oranż z ciemnym tekstem; jedyny mocny punkt strony. */
@@ -660,7 +646,7 @@ img.avatar { display: inline-block; }
   width: 100%; max-width: 360px;
   background: var(--card);
   border: 1px solid var(--border-strong);
-  border-radius: 16px;
+  border-radius: var(--radius);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   padding: 28px 20px 20px;
   text-align: center;
@@ -686,8 +672,8 @@ img.avatar { display: inline-block; }
   position: absolute; top: 12px; right: 12px;
   width: 32px; height: 32px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--muted);
-  border-radius: 50%; font-size: 0.8rem; font-weight: 500;
+  background: var(--card-2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;
   transition: all 0.2s ease;
 }
 @media (hover: hover) {
@@ -708,9 +694,9 @@ img.avatar { display: inline-block; }
   width: 34px; height: 34px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%; font-size: 0.95rem;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--accent);
   border: 2px solid var(--card);
-  color: #fff;
+  color: var(--accent-ink);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
@@ -733,79 +719,38 @@ img.avatar { display: inline-block; }
   text-align: left; margin-bottom: 18px;
 }
 .setting-text { flex: 1; min-width: 0; }
-.setting-title { display: block; font-weight: 500; color: rgba(255, 255, 255, 0.9); }
+.setting-title { display: block; font-weight: 600; color: var(--text); }
 .setting-sub { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
 
-/* Przełącznik w stylu iOS */
+/* Przełącznik: kontrolka w skórce Lobby (8px, oranż = włączone; zieleń tylko dla głosów) */
 .switch {
   flex-shrink: 0;
   width: 50px; height: 30px; padding: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-strong);
   position: relative;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
-.switch.on { background: var(--yes); border-color: transparent; }
+.switch.on { background: var(--accent); border-color: var(--accent); }
 .switch-knob {
-  position: absolute; top: 50%; left: 3px;
-  width: 24px; height: 24px; border-radius: 50%;
+  position: absolute; top: 50%; left: 4px;
+  width: 22px; height: 22px; border-radius: 5px;
   background: #fff;
   transform: translateY(-50%);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   transition: left 0.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
-.switch.on .switch-knob { left: 23px; }
+.switch.on .switch-knob { left: 24px; }
 
-.profile-modal label {
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
-}
-
-/* Custom stylings for inputs and buttons inside .profile-modal for maximum legibility */
-.profile-modal input[type="text"] {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  transition: all 0.2s ease;
-}
-
-.profile-modal input[type="text"]:focus {
-  background: rgba(0, 0, 0, 0.35);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-}
-
-.profile-modal button.ghost {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-@media (hover: hover) {
-  .profile-modal button.ghost:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.22);
-  }
-}
-
-.profile-modal button.ghost:disabled {
-  opacity: 0.35;
-}
-
-.profile-modal button.ghost.danger {
-  background: rgba(255, 93, 93, 0.15);
-  border: 1px solid rgba(255, 93, 93, 0.3);
-  color: #ff5d5d;
-}
-
-@media (hover: hover) {
-  .profile-modal button.ghost.danger:hover {
-    background: rgba(255, 93, 93, 0.25);
-    border-color: #ff5d5d;
-  }
+/* Nagłówek modala — mono-etykieta jak na scoreboardzie */
+.modal-label {
+  font-family: var(--mono);
+  font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+  margin: 0 0 18px;
 }
 
 .quote-text {
@@ -830,16 +775,6 @@ img.avatar { display: inline-block; }
   min-height: 78svh;
 }
 .auth-screen .card { margin-bottom: 16px; position: relative; z-index: 1; }
-
-/* Tło wideo wyłącznie na ekranie logowania (komponent LoginBackground). Ciemna,
-   nieprzezroczysta baza zakrywa to, co pod spodem; wideo rozmyte/wyciszone jak
-   dawne globalne tło. Karta logowania frostuje je przez backdrop-filter. */
-.login-bg {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background: #0c0e10;
-}
-/* Na ekranie logowania chowamy globalną aurorę — zostaje lokalna w .login-bg. */
-body.login-active .glass-bg { display: none; }
 
 .glass-bg {
   /* Globalne tło na z-index:0 (nad nieprzezroczystym tłem body); cała treść siedzi
