@@ -520,9 +520,33 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 .toggle-input:checked + .toggle-track .toggle-knob { transform: translateX(18px); }
 .toggle-input:focus-visible + .toggle-track { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15); }
 
-/* Data w nagłówku jest klikalna — tapnięcie eksportuje termin do kalendarza (.ics) */
-.confirmed-inline.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.confirmed-inline.tappable:active { transform: scale(0.98); }
+/* Termin w nagłówku: jawny przycisk eksportu do kalendarza (.ics) — mono-data
+   z mikro-etykietą „DODAJ DO KALENDARZA", żeby było wiadomo, że to klikalne. */
+.cal-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-align: left;
+  font-weight: 400;
+}
+.cal-chip > svg { color: var(--accent); flex-shrink: 0; }
+.cal-chip-main b {
+  display: block;
+  font-family: var(--mono); font-size: 0.9rem; font-weight: 700;
+  letter-spacing: 0.02em; line-height: 1.3; font-variant-numeric: tabular-nums;
+}
+.cal-chip-main span {
+  display: block;
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); line-height: 1.5;
+}
+@media (hover: hover) {
+  .cal-chip:hover { background: var(--accent-dim); border-color: rgba(255, 138, 61, 0.45); }
+}
 
 /* Spójny blok statusu głosowania: awatary + pasek postępu + kto się obija */
 .vote-status {

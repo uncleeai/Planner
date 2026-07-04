@@ -589,23 +589,25 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         )}
         <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
-          <div
-            className={`confirmed-inline tappable${status.settled ? ' settled' : ''}`}
-            role="button"
-            tabIndex={lastHeaderSlot ? 0 : -1}
-            aria-label="Dodaj termin do kalendarza"
-            onClick={() => lastHeaderSlot && exportToCalendar(lastHeaderSlot)}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ' ') && lastHeaderSlot) {
-                e.preventDefault();
-                exportToCalendar(lastHeaderSlot);
-              }
-            }}
-          >
+          <div className={`confirmed-inline${status.settled ? ' settled' : ''}`}>
             {lastHeaderSlot && (
               <>
-                <IconCalendarPlus size={15} />
-                <span className="confirmed-date">{formatSlotRange(lastHeaderSlot)}</span>
+                <button
+                  type="button"
+                  className="cal-chip"
+                  onClick={() => exportToCalendar(lastHeaderSlot)}
+                >
+                  <IconCalendarPlus size={19} />
+                  <span className="cal-chip-main">
+                    <b>
+                      {formatSlotShort(lastHeaderSlot)}
+                      {!lastHeaderSlot.all_day && !lastHeaderSlot.ends_at
+                        ? ` · ${new Date(lastHeaderSlot.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
+                        : ''}
+                    </b>
+                    <span>Dodaj do kalendarza</span>
+                  </span>
+                </button>
                 <span className="confirmed-tag">
                   <IconCheck size={12} />{' '}
                   {status.settled
