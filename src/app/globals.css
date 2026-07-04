@@ -1007,7 +1007,7 @@ main::before {
   z-index: 50;
   pointer-events: none;
   background: var(--bg);
-  animation: page-curtain 0.32s ease forwards;
+  animation: page-curtain 0.18s ease-out forwards;
 }
 @keyframes page-curtain {
   from { opacity: 1; }
@@ -1603,11 +1603,11 @@ main.has-dock { padding-bottom: 72px; }
   .glass-page > .event-description,
   .glass-page > .vote-status,
   .glass-page > .readonly-note {
-    animation: enter-in 0.52s cubic-bezier(0.22, 0.9, 0.3, 1) backwards;
+    animation: enter-in 0.52s cubic-bezier(0.22, 0.9, 0.3, 1) 0.06s backwards;
   }
-  .glass-page > section:nth-of-type(2) { animation-delay: 0.09s; }
-  .glass-page > section:nth-of-type(3) { animation-delay: 0.18s; }
-  .glass-page > .motd { animation-delay: 0.24s; }
+  .glass-page > section:nth-of-type(2) { animation-delay: 0.15s; }
+  .glass-page > section:nth-of-type(3) { animation-delay: 0.24s; }
+  .glass-page > .motd { animation-delay: 0.3s; }
 
   /* Kierunek: wejście w wypad z prawej, powrót z lewej, pierwsze malowanie z dołu. */
   html[data-nav='forward'] { --enter-from: translateX(44px); }
