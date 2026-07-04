@@ -170,7 +170,11 @@ export default function Home() {
   }, [load]);
 
   useEffect(() => {
-    load();
+    // Powrót z wypadu: seed z cache już stoi na ekranie, a natychmiastowy load()
+    // (5 zapytań + przeliczenie agregacji + re-render całej listy) lądował w środku
+    // animacji wejścia — na telefonie widoczny jank, zwłaszcza po wybudzeniu (zimny
+    // JIT). Z seedem odsuwamy odświeżenie tuż za koniec kaskady; bez seedu — od razu.
+    const initialLoad = window.setTimeout(load, cached ? 700 : 0);
     const channel = supabase
       .channel('dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, scheduleReload)
@@ -193,6 +197,7 @@ export default function Home() {
     };
     document.addEventListener('visibilitychange', onWake);
     return () => {
+      window.clearTimeout(initialLoad);
       if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
       supabase.removeChannel(channel);
       window.removeEventListener('planner:events-changed', scheduleReload);
