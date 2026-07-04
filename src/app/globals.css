@@ -801,6 +801,27 @@ img.avatar { display: inline-block; }
   background: var(--bg);
 }
 
+/* Progresywny blur pod status barem — jak w natywnych apkach (Wiadomości).
+   Systemowe szkło iOS 26 w standalone kończy się twardą krawędzią dokładnie na
+   granicy safe area; ta nakładka przedłuża rozmycie w dół i wygasza je maską,
+   więc krawędź znika w miękkim przejściu. Tylko zainstalowana PWA (standalone)
+   — w przeglądarce górę obsługuje chrome Safari. Jedyny backdrop-filter w apce:
+   mały, statyczny pasek bez blend-mode'ów (freeze'y iOS brały się z wielkich
+   blurowanych plam + mix-blend-mode, nie z takiego paska). */
+@media (display-mode: standalone) {
+  .statusbar-blur {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: calc(env(safe-area-inset-top, 0px) + 32px);
+    z-index: 60;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
+  }
+}
+
 /* Solidne panele zamiast szkła: czytelnie, tanio dla GPU, zero „doskoków" koloru. */
 .glass-page .card,
 .glass-page .empty-state {

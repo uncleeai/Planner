@@ -42,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pl" className={mono.variable}>
       <body>
         <GlassBackground />
+        <div className="statusbar-blur" aria-hidden="true" />
         <div className="container">
           <TransitionProvider>
             <AuthProvider>{children}</AuthProvider>
