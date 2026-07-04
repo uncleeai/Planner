@@ -275,12 +275,6 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 @media (hover: hover) {
   .slot-confirm-btn.primary:hover { background: var(--accent-dim); }
 }
-/* Ustalony termin w nagłówku — mocniej (zielono) niż „Na czele" */
-.confirmed-inline.settled .confirmed-tag {
-  background: rgba(61, 220, 139, 0.18);
-  color: var(--yes);
-}
-
 .voters {
   font-size: 0.82rem;
   color: var(--muted);
@@ -330,7 +324,7 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; padding: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--card-2);
   border: 1px solid var(--border);
   color: var(--muted);
@@ -457,9 +451,11 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 .confirmed-inline > svg { color: var(--yes); flex-shrink: 0; }
 .confirmed-tag {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+  font-family: var(--mono);
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; white-space: nowrap;
   color: var(--yes);
-  background: rgba(61, 220, 139, 0.14);
+  background: rgba(61, 220, 139, 0.18);
   border: 1px solid rgba(61, 220, 139, 0.3);
   padding: 3px 8px 3px 6px; border-radius: 6px;
 }

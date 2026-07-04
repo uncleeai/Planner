@@ -589,7 +589,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         )}
         <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
-          <div className={`confirmed-inline${status.settled ? ' settled' : ''}`}>
+          <div className="confirmed-inline">
             {lastHeaderSlot && (
               <>
                 <button
@@ -608,14 +608,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     <span>Dodaj do kalendarza</span>
                   </span>
                 </button>
-                <span className="confirmed-tag">
-                  <IconCheck size={12} />{' '}
-                  {status.settled
-                    ? status.source === 'auto'
-                      ? 'GRAMY · komplet'
-                      : 'GRAMY'
-                    : 'Prowadzi'}
-                </span>
+                {status.settled && (
+                  <span className="confirmed-tag">
+                    <IconCheck size={12} />{' '}
+                    {status.source === 'auto' ? 'GRAMY · komplet' : 'GRAMY'}
+                  </span>
+                )}
               </>
             )}
           </div>
