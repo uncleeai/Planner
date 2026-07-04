@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   description: 'Zaproponuj terminy wypadu, zobacz kto wchodzi i który termin prowadzi — na żywo.',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Wypad.exe' },
+  // Next emituje już tylko ustandaryzowany `mobile-web-app-capable`, ale iOS honoruje
+  // status-bar-style WYŁĄCZNIE w parze z legacy `apple-mobile-web-app-capable` — bez
+  // niego pasek statusu jest nieprzezroczysty i apka kończy się pod Dynamic Island.
+  other: { 'apple-mobile-web-app-capable': 'yes' },
   icons: { icon: '/icon.svg', apple: '/icon-180.png' },
 };
 
