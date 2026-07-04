@@ -17,6 +17,7 @@ import EventEmojiInput from '@/components/EventEmojiInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
+import { useRouter } from 'next/navigation';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
@@ -77,6 +78,7 @@ const MAJOR_QUOTES = [
 
 export default function Home() {
   const navigate = useTransitionNavigate();
+  const router = useRouter();
   const { userId, displayName } = useAuth();
 
   // Seed z cache (jeśli wracamy z wypadu) — lista pojawia się od razu, bez „Wczytuję…".
@@ -155,6 +157,9 @@ export default function Home() {
   // uśpieniu). Bez tego każdy wiersz wołał osobny load() = 5 zapytań + pełny re-render
   // pod rząd, co na telefonie (zwł. w trybie oszczędzania) zapychało główny wątek i
   // taps przez chwilę nie łapały. Sklejamy serię w jeden load() (trailing debounce).
+  const eventsRef = useRef<EventRow[]>(events);
+  eventsRef.current = events;
+
   const reloadTimer = useRef<number | null>(null);
   const scheduleReload = useCallback(() => {
     if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
@@ -177,12 +182,23 @@ export default function Home() {
     // tym zdarzeniem. Dwa kanały Realtime na tej samej tabeli gubiły dostawy (toast
     // łapał tylko pierwszy wypad), więc dashboard nie subskrybuje `events` osobno.
     window.addEventListener('planner:events-changed', scheduleReload);
+    // Wybudzenie telefonu: zrób od razu to, co i tak zaraz by się wydarzyło —
+    // odśwież dane (reconnect realtime i tak odpali serię) i ponów prefetch tras
+    // wypadów (cache prefetchu wygasa w uśpieniu). Dzięki temu ta robota schodzi
+    // w momencie wake, a nie w trakcie pierwszego tapnięcia/animacji wejścia.
+    const onWake = () => {
+      if (document.visibilityState !== 'visible') return;
+      scheduleReload();
+      for (const ev of eventsRef.current.slice(0, 8)) router.prefetch(`/event/${ev.id}`);
+    };
+    document.addEventListener('visibilitychange', onWake);
     return () => {
       if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
       supabase.removeChannel(channel);
       window.removeEventListener('planner:events-changed', scheduleReload);
+      document.removeEventListener('visibilitychange', onWake);
     };
-  }, [load, scheduleReload]);
+  }, [load, scheduleReload, router]);
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();

@@ -195,9 +195,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )
       .subscribe();
 
+    // Wybudzenie: odśwież od razu, zamiast czekać aż reconnect realtime odpali
+    // przeładowanie w trakcie pierwszej interakcji po wake (jankowało wyjście).
+    const onWake = () => {
+      if (document.visibilityState === 'visible') scheduleReload();
+    };
+    document.addEventListener('visibilitychange', onWake);
+
     return () => {
       if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
       supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', onWake);
     };
   }, [eventId, load, scheduleReload]);
 
