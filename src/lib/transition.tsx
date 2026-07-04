@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext } from 'react';
+import { createContext, useCallback, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Direction = 'forward' | 'back';
@@ -9,19 +9,28 @@ type NavigateFn = (href: string, dir?: Direction) => void;
 const Ctx = createContext<NavigateFn | null>(null);
 
 // Nawigacja bez snapshotów View Transitions. Animacja wejścia nowej strony jest
-// czystym CSS-em na <main> (keyframes page-in w globals.css) — nie „fotografujemy"
-// strony, więc nie ma wyścigu, w którym router.push odpalony wewnątrz przejścia
-// bywał porzucany na iOS (tap nie przenosił na event). Kierunek (dir) zostaje w
-// sygnaturze dla zgodności wywołań, ale nie jest tu używany.
+// czystym CSS-em — nie „fotografujemy" strony, więc nie ma wyścigu, w którym
+// router.push odpalony wewnątrz przejścia bywał porzucany na iOS (tap nie
+// przenosił na event). Kierunek trafia na <html data-nav>: CSS wsuwa treść
+// z prawej (forward) albo z lewej (back); pierwsze wejście (bez data-nav) — z dołu.
 export function TransitionProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const navigate = useCallback<NavigateFn>(
-    (href) => {
+    (href, dir = 'forward') => {
+      document.documentElement.dataset.nav = dir;
       router.push(href);
     },
     [router],
   );
+
+  // Systemowy „wstecz" (gest/przycisk) omija navigate() — bez tego zostałby stary
+  // kierunek i powrót wsuwałby się z niewłaściwej strony.
+  useEffect(() => {
+    const onPop = () => { document.documentElement.dataset.nav = 'back'; };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   return <Ctx.Provider value={navigate}>{children}</Ctx.Provider>;
 }
