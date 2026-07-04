@@ -702,6 +702,15 @@ export default function Home() {
 
 type RowVariant = 'open' | 'upcoming' | 'expired' | 'past';
 
+// Segmenty gotowości: po jednym na osobę, w kolorze głosu (nie „pierwsze N na
+// zielono" — komplet PASów wyglądał jak komplet chętnych). Zapełnione z lewej.
+const SEG_RANK = { yes: 0, maybe: 1, no: 2 } as const;
+function segStates(squad: SquadMember[]): (SquadMember['state'])[] {
+  return squad
+    .map((m) => m.state)
+    .sort((a, b) => (a ? SEG_RANK[a] : 3) - (b ? SEG_RANK[b] : 3));
+}
+
 // Sekcja rozkładu: mono-etykieta + płaskie wiersze z cienkimi liniami (bez kart).
 function Board({ title, items, agg, muted }: {
   title: string;
@@ -751,7 +760,7 @@ function Row({ ev, variant, slot, agg }: {
       </span>
       {variant === 'open' && agg.squad.length > 0 && (
         <span className="mini-segs" aria-label={`${responded} z ${agg.squad.length} dało znać`}>
-          {agg.squad.map((m, i) => <i key={m.id} className={i < responded ? 'on' : ''} />)}
+          {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
         </span>
       )}
       {variant === 'upcoming' && <span className="badge">GRAMY</span>}
@@ -778,7 +787,7 @@ function useEventNav(eventId: string) {
 }
 
 // Karta najbliższego lobby: tytuł + meta (miejsce · mono-data), skład (sloty graczy
-// z READY/MOŻE/DODGE/AFK), segmenty gotowości. Gdy czeka na twój głos — ready check
+// z READY/MOŻE/PAS/AFK), segmenty gotowości. Gdy czeka na twój głos — ready check
 // prosto w karcie (fakty pogoda/zbiórka wtedy schodzą z drogi). W trybie misji
 // (jedyny wypad) skład rośnie do pionowego rosteru z „Pinguj" przy AFK.
 function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek, mission }: {
@@ -875,7 +884,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
               const label =
                 m.state === 'yes' ? 'READY'
                 : m.state === 'maybe' ? 'MOŻE'
-                : m.state === 'no' ? 'DODGE'
+                : m.state === 'no' ? 'PAS'
                 : isYou ? 'TWÓJ SLOT' : 'AFK';
               const showNudge = mission && isOrg && !m.state && !isYou;
               return (
@@ -897,7 +906,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
           </div>
           <div className="readybar">
             <span className="segs" aria-hidden="true">
-              {agg.squad.map((m, i) => <i key={m.id} className={i < responded ? 'on' : ''} />)}
+              {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
             </span>
             <b>{responded}/{agg.squad.length} <span>DAŁO ZNAĆ</span></b>
           </div>
@@ -917,7 +926,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
           <div className="seg3">
             <button type="button" className={myPick === 'yes' ? 'on-yes' : ''} onClick={(e) => castVote(e, 'yes')}>READY</button>
             <button type="button" className={myPick === 'maybe' ? 'on-maybe' : ''} onClick={(e) => castVote(e, 'maybe')}>MOŻE</button>
-            <button type="button" className={myPick === 'no' ? 'on-no' : ''} onClick={(e) => castVote(e, 'no')}>DODGE</button>
+            <button type="button" className={myPick === 'no' ? 'on-no' : ''} onClick={(e) => castVote(e, 'no')}>PAS</button>
           </div>
         </div>
       )}

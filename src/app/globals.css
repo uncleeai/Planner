@@ -1334,7 +1334,9 @@ main::before {
 .readybar { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .segs { display: flex; gap: 4px; flex: 1; }
 .segs i { height: 5px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
-.segs i.on { background: var(--yes); border-color: var(--yes); }
+.segs i.on-yes { background: var(--yes); border-color: var(--yes); }
+.segs i.on-maybe { background: var(--maybe); border-color: var(--maybe); }
+.segs i.on-no { background: var(--no); border-color: var(--no); }
 .readybar b {
   font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
   letter-spacing: 0.1em; color: var(--text); font-variant-numeric: tabular-nums;
@@ -1345,7 +1347,9 @@ main::before {
 /* Miniatura segmentów w kartach listy */
 .mini-segs { display: flex; gap: 3px; flex: 1; max-width: 96px; }
 .mini-segs i { height: 4px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
-.mini-segs i.on { background: var(--yes); border-color: var(--yes); }
+.mini-segs i.on-yes { background: var(--yes); border-color: var(--yes); }
+.mini-segs i.on-maybe { background: var(--maybe); border-color: var(--maybe); }
+.mini-segs i.on-no { background: var(--no); border-color: var(--no); }
 
 /* MOTD — cytat dnia jak message of the day serwera (klik losuje kolejny) */
 .motd {
@@ -1626,7 +1630,8 @@ main.has-dock { padding-bottom: 72px; }
   }
 
   /* Segment gotowości strzela w górę, gdy ktoś da znać */
-  .segs i.on, .mini-segs i.on { animation: seg-pop 0.35s ease; }
+  .segs i.on-yes, .segs i.on-maybe, .segs i.on-no,
+  .mini-segs i.on-yes, .mini-segs i.on-maybe, .mini-segs i.on-no { animation: seg-pop 0.35s ease; }
 
   /* Zaznaczony głos lekko „doskakuje" */
   .seg3 button.on-yes, .seg3 button.on-maybe, .seg3 button.on-no {

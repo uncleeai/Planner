@@ -25,7 +25,7 @@ import { appAlert, appConfirm } from '@/components/Dialogs';
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'yes', label: 'READY', cls: 'on-yes' },
   { value: 'maybe', label: 'MOŻE', cls: 'on-maybe' },
-  { value: 'no', label: 'DODGE', cls: 'on-no' },
+  { value: 'no', label: 'PAS', cls: 'on-no' },
 ];
 
 function formatCommentTime(iso: string): string {
@@ -703,7 +703,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   return (
                     <span key={v.id} className={`voter-chip ${v.availability}`} title={name}>
                       <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
-                      {v.availability === 'yes' ? 'READY' : v.availability === 'maybe' ? 'MOŻE' : 'DODGE'}
+                      {v.availability === 'yes' ? 'READY' : v.availability === 'maybe' ? 'MOŻE' : 'PAS'}
                     </span>
                   );
                 })}
