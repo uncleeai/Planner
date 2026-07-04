@@ -812,7 +812,10 @@ img.avatar { display: inline-block; }
   .statusbar-blur {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: calc(env(safe-area-inset-top, 0px) + 32px);
+    /* Gdy system nie raportuje safe area (np. zepsuta beta iOS-a renderująca
+       nieprzezroczysty pasek), wysokość spada do 0 i nakładki nie ma wcale:
+       env=0 → 0; env=20 → 52px; env=59 → 91px. */
+    height: min(calc(env(safe-area-inset-top, 0px) * 3), calc(env(safe-area-inset-top, 0px) + 32px));
     z-index: 60;
     pointer-events: none;
     -webkit-backdrop-filter: blur(14px);
