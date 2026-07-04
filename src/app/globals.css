@@ -1497,7 +1497,9 @@ main.has-dock { padding-bottom: 72px; }
 /* Nagłówek hero: tytuł + meta (miejsce · mono-data), bez boxa emoji i plakietki */
 .hero-title-block { flex: 1; min-width: 0; }
 .hero-title-block .hero-title { display: block; }
-.hero-title-block .hero-meta { margin: 3px 0 0; gap: 8px; align-items: center; }
+/* Baseline, nie center: mono-data i tekst systemowy mają różne metryki pionowe —
+   środkowanie boxów podnosiło datę względem miejsca. */
+.hero-title-block .hero-meta { margin: 3px 0 0; gap: 8px; align-items: baseline; }
 .hero-meta .sep { opacity: 0.45; color: var(--muted); }
 .mono-date {
   font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--text);
