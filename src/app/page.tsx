@@ -74,135 +74,6 @@ const MAJOR_QUOTES = [
   "„Muszę mieć lepszą wiadomość!”"
 ];
 
-type ActivityItem = {
-  id: string;
-  eventId: string;
-  eventTitle: string;
-  name: string;
-  avatar: string | null;
-  body: string;
-  createdAt: string;
-};
-
-// Wysokość jednego „slajdu" — musi być spójna z .activity-slide w globals.css.
-const SLIDE_H = 64;
-
-// Pastylka „liquid glass": jeden komentarz na raz na pionowym torze (transform —
-// płynnie, bez remountu). Przewijana palcem; gdy nikt nie dotyka, sama rotuje.
-function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (eventId: string) => void }) {
-  const [idx, setIdx] = useState(0);
-  const [drag, setDrag] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const dragRef = useRef(0);
-  const startY = useRef<number | null>(null);
-  const swallowClick = useRef(false);
-  const rafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (idx > items.length - 1) setIdx(0);
-  }, [items.length, idx]);
-
-  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
-
-  // Auto-rotacja: pojedynczy timeout przeplanowywany po KAŻDEJ zmianie idx i wstrzymywany
-  // na czas przeciągania. Dzięki temu Twój swipe resetuje zegar (auto nie wystrzeli zaraz
-  // po geście ani w trakcie dojazdu).
-  useEffect(() => {
-    if (items.length <= 1 || dragging) return;
-    const t = window.setTimeout(() => setIdx((i) => (i + 1) % items.length), 5000);
-    return () => window.clearTimeout(t);
-  }, [idx, items.length, dragging]);
-
-  const n = items.length;
-  const safeIdx = Math.min(idx, n - 1);
-  if (n === 0) return null;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    startY.current = e.touches[0].clientY;
-    swallowClick.current = false;
-    setDragging(true);
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (startY.current == null) return;
-    const raw = e.touches[0].clientY - startY.current;
-    const dir = raw < 0 ? -1 : 1;
-    // Rubber-band: tor zawsze reaguje na palec (małe ruchy ~1:1), ale opór rośnie i
-    // asymptotycznie nie przekracza ~jednego slajdu — bez twardego „zacięcia".
-    // W stronę pustki za krańcem toru opór jest dużo większy (ledwo drgnie, wróci).
-    const allowed = raw < 0 ? safeIdx < n - 1 : safeIdx > 0;
-    const c = SLIDE_H * (allowed ? 0.85 : 0.12);
-    const dy = dir * (1 - 1 / (Math.abs(raw) / c + 1)) * c;
-    dragRef.current = dy;
-    setDrag(dy);
-  };
-  const onTouchEnd = () => {
-    startY.current = null;
-    const dy = dragRef.current;
-    dragRef.current = 0;
-
-    const TH = SLIDE_H * 0.22;
-    let target = safeIdx;
-    if (dy <= -TH && safeIdx < n - 1) target = safeIdx + 1;
-    else if (dy >= TH && safeIdx > 0) target = safeIdx - 1;
-    // Połknij klik tylko gdy gest realnie zmienił komentarz — tap z drobnym
-    // drgnięciem palca dalej otwiera wypad (bez podwójnego klikania).
-    if (target !== safeIdx) swallowClick.current = true;
-
-    // Najpierw włącz transicję (tor zostaje w pozycji z palca), a docelową pozycję
-    // ustaw dopiero w następnej klatce — inaczej zmiana transformu w tej samej klatce
-    // co transition:none→0.38s skacze bez animacji („teleport").
-    setDragging(false);
-    rafRef.current = requestAnimationFrame(() => {
-      setDrag(0);
-      setIdx(target);
-    });
-  };
-  const onClick = () => {
-    if (swallowClick.current) {
-      swallowClick.current = false;
-      return;
-    }
-    onOpen(items[safeIdx].eventId);
-  };
-
-  const translate = -safeIdx * SLIDE_H + drag;
-
-  return (
-    <div className="activity-pill">
-      <div
-        className="activity-pill-touch"
-        style={{ height: SLIDE_H }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onClick={onClick}
-        role="button"
-        tabIndex={0}
-      >
-        <div
-          className="activity-track"
-          style={{ transform: `translateY(${translate}px)`, transition: dragging ? 'none' : undefined }}
-        >
-          {items.map((it) => (
-            <div key={it.id} className="activity-slide" style={{ height: SLIDE_H }}>
-              <Avatar name={it.name} avatar={it.avatar} size={34} />
-              <div className="activity-body">
-                <div className="activity-head">
-                  <span className="activity-author">{it.name}</span>
-                  <span className="activity-event">· {it.eventTitle}</span>
-                  <span className="activity-time">{timeAgo(it.createdAt)}</span>
-                </div>
-                <p className="activity-text">{it.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const navigate = useTransitionNavigate();
   const { userId, displayName } = useAuth();
@@ -528,24 +399,6 @@ export default function Home() {
 
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
 
-  const activityItems = useMemo<ActivityItem[]>(
-    () =>
-      recentComments.map((c) => {
-        const ev = events.find((e) => e.id === c.event_id);
-        const prof = c.user_id ? profileById.get(c.user_id) : undefined;
-        return {
-          id: c.id,
-          eventId: c.event_id,
-          eventTitle: ev?.title ?? 'wypad',
-          name: prof?.display_name ?? c.author_name,
-          avatar: prof?.avatar ?? null,
-          body: c.body,
-          createdAt: c.created_at,
-        };
-      }),
-    [recentComments, events, profileById],
-  );
-
   const heroEvent = heroId ? events.find((e) => e.id === heroId) ?? null : null;
 
   // Ile innych (przyszłych) terminów czeka w lobby poza tym pokazanym w hero.
@@ -607,7 +460,7 @@ export default function Home() {
 
   return (
     <main className={`glass-page${events.length > 0 ? ' has-dock' : ''}`}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, position: 'relative', zIndex: 2 }}>
         <span className="wordmark cursor">WYPAD<span>.EXE</span></span>
         <div className="spacer" />
         <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
@@ -664,13 +517,6 @@ export default function Home() {
             </button>
           </form>
         </div>
-      )}
-
-      {activityItems.length > 0 && (
-        <section className="activity">
-          <div className="section-label">Ostatnia aktywność</div>
-          <ActivityPill items={activityItems} onOpen={(id) => navigate(`/event/${id}`, 'forward')} />
-        </section>
       )}
 
       {loading && <p className="muted mt">Wczytuję…</p>}

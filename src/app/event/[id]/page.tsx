@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotRange, formatSlotShort, slotEndMs } from '@/lib/types';
+import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
 import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
@@ -36,14 +36,13 @@ function formatCommentTime(iso: string): string {
   });
 }
 
-// Termin w nagłówku slotu: jednodniowy dostaje „liść daty" (SOB / 12 / LIP)
-// + dzień tygodnia i godzinę; zakres („dłuższy wypad") — mono-linię, bo liść
-// by go nie pomieścił.
+// Termin w nagłówku slotu: jednodniowy dostaje „liść daty" (liść niesie dzień
+// tygodnia + datę), a obok odliczanie („Za 6 dni") i godzinę — bez powtarzania
+// dnia tygodnia. Zakres („dłuższy wypad") — mono-linię, bo liść by go nie pomieścił.
 function SlotWhen({ slot }: { slot: Slot }) {
   if (slot.ends_at) return <span className="slot-date">{formatSlotRange(slot)}</span>;
   const d = new Date(slot.starts_at);
   const up = (s: string) => s.replace('.', '').toUpperCase();
-  const weekday = d.toLocaleDateString('pl-PL', { weekday: 'long' });
   return (
     <span className="slot-when-wrap" aria-label={formatSlotRange(slot)}>
       <span className="leaf" aria-hidden="true">
@@ -52,7 +51,7 @@ function SlotWhen({ slot }: { slot: Slot }) {
         <span className="mon">{up(d.toLocaleDateString('pl-PL', { month: 'short' }))}</span>
       </span>
       <span className="slot-when" aria-hidden="true">
-        <b>{weekday.charAt(0).toUpperCase() + weekday.slice(1)}</b>
+        <b>{relativeDay(slot.starts_at)}</b>
         <span>
           {slot.all_day
             ? 'cały dzień'

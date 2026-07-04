@@ -70,6 +70,22 @@ export function formatSlotShort(slot: Pick<Slot, 'starts_at' | 'ends_at'>): stri
   return `${DOW_SHORT[s.getDay()]} ${s.getDate()}.${mm(s)}`;
 }
 
+// Relatywny dzień STARTU: „Dziś" / „Jutro" / „Za N dni" / „Minął" (N dni temu).
+// Liczone po granicy dnia, więc „jutro rano" to zawsze „Jutro", nie „za 14h".
+export function relativeDay(iso: string): string {
+  const mid = (t: number) => {
+    const d = new Date(t);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  };
+  const days = Math.round((mid(new Date(iso).getTime()) - mid(Date.now())) / (24 * 3600 * 1000));
+  if (days === 0) return 'Dziś';
+  if (days === 1) return 'Jutro';
+  if (days === -1) return 'Wczoraj';
+  if (days > 1) return `Za ${days} dni`;
+  return `${-days} dni temu`;
+}
+
 // Ludzki opis terminu wg modelu (moment / cały dzień / zakres / zakres z godziną).
 export function formatSlotRange(slot: Pick<Slot, 'starts_at' | 'ends_at' | 'all_day'>): string {
   if (slot.ends_at) {
