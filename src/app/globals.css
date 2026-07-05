@@ -1042,73 +1042,35 @@ main::before {
   main::before { animation: none; opacity: 0; }
 }
 
-/* Animacja rozwijania formularza nowego wypadu */
-.form-collapse {
-  display: grid;
-  grid-template-rows: 0fr;
-  /* Symetria: grid-template-rows/marginesy (właściwości LAYOUTU — zmiana reflowuje
-     formularz) nigdy nie są animowane rozciągnięte w czasie, tylko zatrzaskiwane
-     natychmiast (duration 0s). OTWIERANIE: snap na początku, treść wjeżdża przez
-     transform+opacity (kompozytor, 60fps, patrz niżej). ZAMYKANIE: treść najpierw
-     gaśnie (transform+opacity, 0.2-0.26s), a grid snapuje dopiero PO tym (delay) —
-     jeden reflow w jednej klatce zamiast rozmazany na ~8 klatek, i niewidoczny,
-     bo w tym momencie opacity jest już 0. */
-  transition: grid-template-rows 0s linear 0.26s,
-              margin-top 0s linear 0.26s,
-              margin-bottom 0s linear 0.26s,
-              opacity 0.2s ease 0.06s;
-  opacity: 0;
-  overflow: hidden;
-  /* Zaokrąglone przycięcie rodzica — inaczej prostokątny clip + szklany blur karty
-     daje kwadratowy róg wystający spod zaokrąglenia */
-  border-radius: var(--radius);
-  /* Ogranicz przeliczanie layoutu/malowania do tego poddrzewa. */
-  contain: layout paint;
-  margin-top: 0;
-  margin-bottom: 0;
+/* ===== Bottom sheet: formularz „Nowe lobby" wysuwa się znad doku ===== */
+.sheet-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: overlayFadeIn 0.2s ease both;
 }
-.form-collapse.open {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  margin-top: 16px;
-  margin-bottom: 16px;
-  /* Otwieranie bez animacji wysokości — instant, płynność niesie wsuwanie pól. */
-  transition: opacity 0.2s ease;
+.sheet {
+  width: 100%; max-width: 680px;
+  max-height: 88svh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 10px 20px calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -24px 48px rgba(0, 0, 0, 0.45);
 }
-.form-collapse > form,
-.form-collapse > div {
-  min-height: 0;
+.sheet-grip {
+  width: 40px; height: 4px; border-radius: 2px;
+  background: var(--border-strong);
+  margin: 2px auto 14px;
 }
-.form-collapse .card,
-.form-collapse .empty-state {
-  margin-bottom: 0;
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: sheet-in 0.34s cubic-bezier(0.32, 0.72, 0, 1); }
 }
-
-/* Animacja zawartości (wygładzenie pojawiania się) */
-.form-collapse form > *,
-.form-collapse .empty-state > * {
-  opacity: 0;
-  transform: translateY(-8px);
-  /* Szybkie wygaszanie bez opóźnienia przy zamykaniu */
-  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
 }
-.form-collapse.open form > *,
-.form-collapse.open .empty-state > * {
-  opacity: 1;
-  transform: translateY(0);
-  /* Płynne wejście z lekkim opóźnieniem przy otwieraniu */
-  transition: opacity 0.3s ease-out 0.08s, transform 0.35s cubic-bezier(0.25, 1, 0.5, 1) 0.08s;
-}
-
-/* Kaskada pól po kolei — jak w stanie pustym przy pierwszym wypadzie */
-.form-collapse.open form > *:nth-child(1) { transition-delay: 0.12s; }
-.form-collapse.open form > *:nth-child(2) { transition-delay: 0.19s; }
-.form-collapse.open form > *:nth-child(3) { transition-delay: 0.26s; }
-.form-collapse.open form > *:nth-child(4) { transition-delay: 0.33s; }
-.form-collapse.open form > *:nth-child(5) { transition-delay: 0.40s; }
-.form-collapse.open form > *:nth-child(6) { transition-delay: 0.47s; }
-.form-collapse.open form > *:nth-child(7) { transition-delay: 0.54s; }
-.form-collapse.open form > *:nth-child(8) { transition-delay: 0.61s; }
 
 .add-slot-wrapper {
   margin-top: 16px;
