@@ -56,6 +56,11 @@ alter table public.events
 alter table public.events
   add column if not exists reminded_at timestamptz;
 
+-- Znacznik wysłania pusha „✓ GRAMY" (Edge Function notify-confirmed). Atomowy
+-- stempel = jedno powiadomienie na wypad, niezależnie ilu klientów zawoła.
+alter table public.events
+  add column if not exists confirmed_notified_at timestamptz;
+
 -- Zdjęcie w tle karty wypadu (opcjonalne) — publiczny URL z bucketu event-images.
 alter table public.events
   add column if not exists image_url text;

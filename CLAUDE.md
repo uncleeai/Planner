@@ -42,7 +42,8 @@ Guidance for AI assistants (and humans) working in this repository.
 │   └── functions/
 │       ├── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
 │       ├── notify-reminders/     # Edge Function: cykliczny push „nie dałeś znać" (pg_cron)
-│       └── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
+│       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
+│       └── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
 ├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
@@ -92,6 +93,8 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (nazwa, migawka) + `created_by_user_id` (konto). Ustalony termin: `confirmed_slot_id`
   + `confirmed_at` (data zwycięskiego slotu). `reminded_at` — znacznik wysłanego
   przypomnienia „nie dałeś znać" (Edge Function `notify-reminders` + pg_cron).
+  `confirmed_notified_at` — atomowy stempel pusha „✓ GRAMY" (Edge Function
+  `notify-confirmed`, wołana z klienta po LOCK IN / kompletującym głosie).
 - **slots** — proponowany termin powiązany z wypadem: `starts_at` + opcjonalnie `ends_at`
   (zakres dni) i `all_day` (cały dzień, bez godziny). Warianty: moment, cały dzień,
   zakres dni, zakres z godziną wyjazdu. Budowanie z pól Od/Do/Godzina: `src/lib/slotInput.ts`;

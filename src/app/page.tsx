@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
 import { pingUser } from '@/lib/ping';
 import { appAlert } from '@/components/Dialogs';
+import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
@@ -857,7 +858,16 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
       { event_id: ev.id, slot_id: slot.id, user_id: userId, participant_name: displayName, availability },
       { onConflict: 'slot_id,user_id' },
     );
-    if (error) setMyPick(null);
+    if (error) {
+      setMyPick(null);
+      return;
+    }
+    // Ten głos mógł skompletować ready check: reszta paczki już dała znać, a po
+    // moim głosie istnieje prowadzący (≥1 READY) → „✓ GRAMY" do wszystkich.
+    // Serwer i tak pilnuje, by pushnąć tylko raz na wypad.
+    const othersVoted = agg.squad.length > 0 && agg.squad.every((m) => m.id === userId || m.state !== null);
+    const anyYes = availability === 'yes' || agg.squad.some((m) => m.id !== userId && m.state === 'yes');
+    if (othersVoted && anyYes) notifyConfirmed(ev.id, slot.id);
   }
 
   // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).

@@ -19,6 +19,7 @@ import { getCache, mergeEventData } from '@/lib/dataCache';
 import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
+import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import { appAlert, appConfirm } from '@/components/Dialogs';
 
 
@@ -98,6 +99,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // Wiadomości nowsze niż moment wejścia na stronę dostają animację wjazdu
   // (comment-fresh w CSS); historia z pierwszego fetchu wchodzi bez animacji.
   const mountTsRef = useRef(Date.now());
+
+  // Najświeższe głosy do odczytu w handlerach (domknięcia mają stan sprzed setVotes).
+  const votesLatestRef = useRef<Vote[]>([]);
+  votesLatestRef.current = votes;
 
   // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
   // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
@@ -272,7 +277,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (error) {
       pendingVotesRef.current.delete(slotId);
       load();
+      return;
     }
+    // Jeśli TEN głos skompletował ready check (automat: wszyscy dali znać + jest
+    // prowadzący) — pushnij „✓ GRAMY" do paczki. Serwer wysyła tylko raz na wypad.
+    const st = getEventStatus(
+      event ?? { confirmed_slot_id: null, confirmed_at: null },
+      slots,
+      votesLatestRef.current,
+      memberIds,
+    );
+    if (st.settled && st.source === 'auto') notifyConfirmed(eventId, st.slotId);
   }
 
   // Ręczne ustalenie terminu przez organizatora (ma pierwszeństwo nad automatem).
@@ -285,6 +300,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       appAlert('Błąd', 'Nie udało się ustalić terminu.');
       return;
     }
+    notifyConfirmed(eventId, slot.id);
     load();
   }
   async function unconfirmSlot() {

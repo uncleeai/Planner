@@ -194,6 +194,22 @@ wywołać ją może tylko zalogowany użytkownik apki (klient przekazuje token s
 przez `supabase.functions.invoke`). Używa tych samych sekretów VAPID.
 Limit: klient pozwala pingować tę samą osobę w tym samym wypadzie raz na 12h.
 
+### Push „✓ GRAMY" po klepnięciu terminu
+
+Gdy termin zostaje ustalony (ręczny LOCK IN organizatora **albo** automat przy
+komplecie głosów), cała paczka dostaje Web Push „✓ GRAMY: <wypad> — <data>".
+Obsługuje to funkcja `notify-confirmed`:
+
+```bash
+supabase functions deploy notify-confirmed
+```
+
+Jak `ping-user`: **bez** `--no-verify-jwt` (woła ją klient po klepnięciu /
+kompletującym głosie), te same sekrety VAPID. Idempotencja po stronie serwera —
+atomowy stempel `events.confirmed_notified_at` gwarantuje jedno powiadomienie
+na wypad, niezależnie ilu klientów zawoła. **Wymaga ponownego uruchomienia
+`supabase/schema.sql`** (dochodzi kolumna `confirmed_notified_at`).
+
 ## Utrzymanie i analityka
 
 ### Keepalive bazy (żeby Supabase nie zasypiało)
