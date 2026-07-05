@@ -112,6 +112,7 @@ export default function Home() {
   };
 
   const [showForm, setShowForm] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -257,9 +258,15 @@ export default function Home() {
   // to jedna chronologiczna sekcja „Przed nami" — status niesie plakietka
   // przy wierszu, nie osobny nagłówek sekcji (4 nagłówki na kilka wypadów
   // robiły więcej szumu niż treści).
-  const { heroId, heroMode, heroVariant, ahead, past } = useMemo(() => {
+  const { heroId, heroMode, heroVariant, ahead, past, archived } = useMemo(() => {
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
+    // Retencja na głównej: odbyte wiszą w „Bylim już" miesiąc, nieustalone tydzień
+    // (wiersze są małe, nie zawadzają). Starsze spadają do zwijanego Archiwum —
+    // nic nie znika bez śladu.
+    const PAST_KEEP = 30 * DAY;
+    const EXPIRED_KEEP = 7 * DAY;
+    const archivedItems: { ev: EventRow; variant: 'past' | 'expired'; slot: Slot | null; endMs: number }[] = [];
 
     type AheadItem = { ev: EventRow; variant: 'open' | 'upcoming' | 'expired'; sortMs: number; slot: Slot | null };
     const openItems: AheadItem[] = [];
@@ -293,10 +300,10 @@ export default function Home() {
         const endMs = settledSlot ? slotEndMs(settledSlot) : new Date(status.date).getTime();
         if (endMs >= now) {
           upcomingItems.push({ ev, variant: 'upcoming', sortMs: endMs, slot: settledSlot });
-        } else if (endMs >= now - 7 * DAY) {
-          // „Bylim już" pokazujemy do tygodnia po wypadzie; starsze → archiwum
-          // (pomijamy z listy, zostają w bazie pod przyszły widok archiwum).
+        } else if (endMs >= now - PAST_KEEP) {
           pastItems.push({ ev, endMs });
+        } else {
+          archivedItems.push({ ev, variant: 'past', slot: settledSlot, endMs });
         }
         continue;
       }
@@ -310,9 +317,12 @@ export default function Home() {
       const hasFuture = evSlots.some((s) => slotEndMs(s) > now);
 
       if (evSlots.length > 0 && !hasFuture) {
-        // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono". Pokazujemy do 24h
-        // po ostatnim terminie, potem archiwizujemy (pomijamy → znika z listy, zostaje w bazie).
-        if (latest >= now - DAY) expiredItems.push({ ev, variant: 'expired', sortMs: latest, slot: latestSlot });
+        // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono".
+        if (latest >= now - EXPIRED_KEEP) {
+          expiredItems.push({ ev, variant: 'expired', sortMs: latest, slot: latestSlot });
+        } else {
+          archivedItems.push({ ev, variant: 'expired', slot: latestSlot, endMs: latest });
+        }
       } else {
         // Ma przyszły termin albo brak terminów → wciąż zbiera głosy.
         // Klucz sortowania: najbliższy przyszły termin (brak terminów → na koniec).
@@ -359,6 +369,7 @@ export default function Home() {
     ];
 
     pastItems.sort((a, b) => b.endMs - a.endMs);
+    archivedItems.sort((a, b) => b.endMs - a.endMs);
 
     return {
       heroId: heroItem?.ev.id ?? null,
@@ -366,6 +377,7 @@ export default function Home() {
       heroVariant: (heroItem?.variant === 'upcoming' ? 'upcoming' : 'open') as 'open' | 'upcoming',
       ahead,
       past: pastItems.map((p) => p.ev),
+      archived: archivedItems,
     };
   }, [events, slots, votes, profiles, userId]);
 
@@ -671,6 +683,25 @@ export default function Home() {
         agg={aggByEvent}
         muted
       />
+
+      {archived.length > 0 && (
+        <button
+          type="button"
+          className="archive-toggle"
+          onClick={() => setShowArchive((v) => !v)}
+          aria-expanded={showArchive}
+        >
+          Archiwum · {archived.length} {showArchive ? '▴' : '▾'}
+        </button>
+      )}
+      {showArchive && (
+        <Board
+          title="Archiwum"
+          items={archived.map(({ ev, variant, slot }) => ({ ev, variant, slot }))}
+          agg={aggByEvent}
+          muted
+        />
+      )}
 
       {!loading && events.length > 0 && quote && (
         <figure className="motd" onClick={handleNextQuote} title="Kliknij, aby wylosować kolejny cytat">
