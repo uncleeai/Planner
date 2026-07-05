@@ -824,30 +824,6 @@ img.avatar { display: inline-block; }
   background: var(--bg);
 }
 
-/* Progresywny blur pod status barem — jak w natywnych apkach (Wiadomości).
-   Systemowe szkło iOS 26 w standalone kończy się twardą krawędzią dokładnie na
-   granicy safe area; ta nakładka przedłuża rozmycie w dół i wygasza je maską,
-   więc krawędź znika w miękkim przejściu. Tylko zainstalowana PWA (standalone)
-   — w przeglądarce górę obsługuje chrome Safari. Jedyny backdrop-filter w apce:
-   mały, statyczny pasek bez blend-mode'ów (freeze'y iOS brały się z wielkich
-   blurowanych plam + mix-blend-mode, nie z takiego paska). */
-@media (display-mode: standalone) {
-  .statusbar-blur {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    /* Gdy system nie raportuje safe area (np. zepsuta beta iOS-a renderująca
-       nieprzezroczysty pasek), wysokość spada do 0 i nakładki nie ma wcale:
-       env=0 → 0; env=20 → 52px; env=59 → 91px. */
-    height: min(calc(env(safe-area-inset-top, 0px) * 3), calc(env(safe-area-inset-top, 0px) + 32px));
-    z-index: 60;
-    pointer-events: none;
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
-  }
-}
-
 /* Solidne panele zamiast szkła: czytelnie, tanio dla GPU, zero „doskoków" koloru. */
 .glass-page .card,
 .glass-page .empty-state {
@@ -918,19 +894,44 @@ img.avatar { display: inline-block; }
 /* Opis wypadu na stronie wydarzenia — płaski tekst, bez ramki (jak w mockupie) */
 .event-description {
   margin: 0 4px 18px;
-  color: var(--muted);
+  color: #9aa6ae; /* jaśniej niż --muted: opis to treść do czytania, nie metadane */
   font-size: 0.92rem;
-  line-height: 1.5;
+  line-height: 1.55;
   max-width: 52ch;
 }
 /* Render markdownu w opisie */
-.event-description p { margin: 0 0 8px; }
-.event-description p:last-child { margin-bottom: 0; }
+.event-description p { margin: 0 0 10px; }
+.event-description p:last-child,
+.event-description ul:last-child,
+.event-description ol:last-child { margin-bottom: 0; }
 .event-description ul,
-.event-description ol { margin: 6px 0; padding-left: 22px; }
-.event-description li { margin: 3px 0; }
+.event-description ol { margin: 8px 0 10px; padding-left: 20px; }
+.event-description li { margin: 4px 0; }
+.event-description li::marker { color: var(--accent); }
+.event-description ol li::marker { font-family: var(--mono); font-size: 0.8em; font-weight: 700; }
 .event-description strong { color: var(--text); font-weight: 700; }
-.event-description a { color: var(--primary-hover); text-decoration: underline; overflow-wrap: anywhere; }
+.event-description em { color: var(--text); }
+.event-description a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+/* „# Nagłówek" → mono-etykieta sekcji jak na scoreboardzie */
+.event-description h4 {
+  margin: 14px 0 6px;
+  font-family: var(--mono);
+  font-size: 0.64rem; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text);
+}
+.event-description h4:first-child { margin-top: 0; }
+/* „---" → cienka linia rozdzielająca */
+.event-description hr {
+  border: 0; border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
 
 /* Pole opisu z paskiem formatowania */
 .desc-input { display: flex; flex-direction: column; gap: 7px; }
