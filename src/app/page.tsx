@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
+import { getChatSeen } from '@/lib/chatSeen';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
 // Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
@@ -143,7 +144,7 @@ export default function Home() {
       supabase.from('slots').select('*'),
       supabase.from('votes').select('*'),
       supabase.from('profiles').select('*'),
-      supabase.from('comments').select('*').order('created_at', { ascending: false }).limit(3),
+      supabase.from('comments').select('*').order('created_at', { ascending: false }).limit(30),
     ]);
     const events = (ev ?? []) as EventRow[];
     const slots = (sl ?? []) as Slot[];
@@ -438,6 +439,23 @@ export default function Home() {
 
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
 
+  // Nieprzeczytany czat: ostatnia cudza wiadomość per wypad vs lokalny znacznik
+  // „kiedy ostatnio otwierałem" (chatSeen). Realtime na comments odświeża listę,
+  // więc kropki aktualizują się na żywo.
+  const unreadByEvent = useMemo(() => {
+    const latest = new Map<string, number>();
+    for (const c of recentComments) {
+      if (c.user_id === userId) continue;
+      const t = new Date(c.created_at).getTime();
+      if (t > (latest.get(c.event_id) ?? 0)) latest.set(c.event_id, t);
+    }
+    const unread = new Set<string>();
+    for (const [evId, t] of latest) {
+      if (t > getChatSeen(evId)) unread.add(evId);
+    }
+    return unread;
+  }, [recentComments, userId]);
+
   const heroEvent = heroId ? events.find((e) => e.id === heroId) ?? null : null;
 
   // Ile innych (przyszłych) terminów czeka w lobby poza tym pokazanym w hero.
@@ -701,10 +719,11 @@ export default function Home() {
             otherSlots={heroOtherSlots}
             peek={heroPeek}
             mission={ahead.length === 0}
+            unread={unreadByEvent.has(heroEvent.id)}
           />
         </section>
       )}
-      <Board title="Przed nami" items={ahead} agg={aggByEvent} />
+      <Board title="Przed nami" items={ahead} agg={aggByEvent} unread={unreadByEvent} />
       <Board
         title="Bylim już"
         items={past.map((ev) => ({ ev, variant: 'past' as const, slot: aggByEvent.get(ev.id)?.slot ?? null }))}
@@ -761,11 +780,12 @@ function segStates(squad: SquadMember[]): (SquadMember['state'])[] {
 }
 
 // Sekcja rozkładu: mono-etykieta + płaskie wiersze z cienkimi liniami (bez kart).
-function Board({ title, items, agg, muted }: {
+function Board({ title, items, agg, muted, unread }: {
   title: string;
   items: { ev: EventRow; variant: RowVariant; slot: Slot | null }[];
   agg: Map<string, Agg>;
   muted?: boolean;
+  unread?: Set<string>;
 }) {
   if (items.length === 0) return null;
   return (
@@ -773,7 +793,14 @@ function Board({ title, items, agg, muted }: {
       <div className={`section-label${muted ? ' faded' : ''}`}>{title}</div>
       <div className="board">
         {items.map(({ ev, variant, slot }) => (
-          <Row key={ev.id} ev={ev} variant={variant} slot={slot} agg={agg.get(ev.id) ?? EMPTY_AGG} />
+          <Row
+            key={ev.id}
+            ev={ev}
+            variant={variant}
+            slot={slot}
+            agg={agg.get(ev.id) ?? EMPTY_AGG}
+            unread={unread?.has(ev.id)}
+          />
         ))}
       </div>
     </section>
@@ -782,8 +809,8 @@ function Board({ title, items, agg, muted }: {
 
 // Płaski wiersz: tytuł + mono-podpis (data · godzina · miejsce);
 // po prawej segmenty gotowości albo plakietka statusu.
-function Row({ ev, variant, slot, agg }: {
-  ev: EventRow; variant: RowVariant; slot: Slot | null; agg: Agg;
+function Row({ ev, variant, slot, agg, unread }: {
+  ev: EventRow; variant: RowVariant; slot: Slot | null; agg: Agg; unread?: boolean;
 }) {
   const { href, handlers } = useEventNav(ev.id);
   const responded = agg.squad.filter((m) => m.state).length;
@@ -804,7 +831,10 @@ function Row({ ev, variant, slot, agg }: {
   return (
     <Link href={href} prefetch={true} className="trow" {...handlers}>
       <span className="trow-main">
-        <b>{ev.emoji ? `${ev.emoji} ` : ''}{ev.title}</b>
+        <b>
+          {ev.emoji ? `${ev.emoji} ` : ''}{ev.title}
+          {unread && <i className="unread-dot" aria-label="Nowe wiadomości na czacie" />}
+        </b>
         <span>{parts.join(' · ')}</span>
       </span>
       {variant === 'open' && agg.squad.length > 0 && (
@@ -839,11 +869,12 @@ function useEventNav(eventId: string) {
 // z READY/MOŻE/PAS/AFK), segmenty gotowości. Gdy czeka na twój głos — ready check
 // prosto w karcie (fakty pogoda/zbiórka wtedy schodzą z drogi). W trybie misji
 // (jedyny wypad) skład rośnie do pionowego rosteru z „Pinguj" przy AFK.
-function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek, mission }: {
+function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek, mission, unread }: {
   ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming'; needsYou?: boolean;
   otherSlots?: number;
   peek?: { name: string; avatar: string | null; body: string; createdAt: string } | null;
   mission?: boolean;
+  unread?: boolean;
 }) {
   const { href, handlers } = useEventNav(ev.id);
   const { userId, displayName, isAdmin } = useAuth();
@@ -914,7 +945,10 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
     <Link href={href} prefetch={true} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
       <div className="hero-head">
         <div className="hero-title-block">
-          <span className="hero-title">{ev.emoji ? `${ev.emoji} ` : ''}{ev.title}</span>
+          <span className="hero-title">
+            {ev.emoji ? `${ev.emoji} ` : ''}{ev.title}
+            {unread && <i className="unread-dot" aria-label="Nowe wiadomości na czacie" />}
+          </span>
           <div className="hero-meta">
             {ev.location && (
               <>

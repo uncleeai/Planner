@@ -20,6 +20,7 @@ import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
+import { markChatSeen } from '@/lib/chatSeen';
 import { appAlert, appConfirm } from '@/components/Dialogs';
 
 
@@ -160,6 +161,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     }
     setLoading(false);
   }, [eventId, userId, displayName]);
+
+  // Widzisz czat = przeczytane: znacznik przy każdej zmianie listy komentarzy
+  // (mount + dosypka z realtime przy otwartej stronie).
+  useEffect(() => {
+    markChatSeen(eventId);
+  }, [eventId, comments]);
 
   // Seria zmian z realtime (własny głos + cudze + reconnect) sklejana w jeden load()
   // zamiast osobnego 5-zapytaniowego pobrania na każdy wiersz — inaczej burst zapychał
