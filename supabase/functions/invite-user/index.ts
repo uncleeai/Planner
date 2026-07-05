@@ -53,24 +53,29 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const caller = callerEmail(req);
+  console.log('[invite-user] wywołanie, caller=', caller);
   if (!caller || !ADMIN_EMAILS.includes(caller)) {
+    console.warn('[invite-user] odrzucono — nie-admin:', caller);
     return json({ error: 'Tylko admin może dodawać do paczki.' }, 403);
   }
 
   const body = await req.json().catch(() => null);
   const email = (body?.email ?? '').trim().toLowerCase();
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    console.warn('[invite-user] zły e-mail:', email);
     return json({ error: 'Podaj poprawny e-mail.' }, 400);
   }
 
   // email_confirm: true → konto od razu aktywne, nowa osoba loguje się kodem OTP.
   const { error } = await supabase.auth.admin.createUser({ email, email_confirm: true });
   if (error) {
+    console.error('[invite-user] createUser błąd:', error.status, error.message);
     const dup = /already|registered|exist/i.test(error.message);
     return json(
       { error: dup ? 'Ten adres już jest w paczce.' : error.message },
       dup ? 409 : 500,
     );
   }
+  console.log('[invite-user] utworzono konto:', email);
   return json({ ok: true });
 });
