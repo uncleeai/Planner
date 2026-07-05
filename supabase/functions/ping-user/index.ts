@@ -42,14 +42,24 @@ const MAJOR_QUOTES = [
 
 type Sub = { endpoint: string; p256dh: string; auth: string };
 
+// CORS — funkcję woła przeglądarka (supabase.functions.invoke); preflight OPTIONS
+// i odpowiedzi muszą nieść nagłówki CORS, inaczej invoke rzuca błąd.
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...CORS },
   });
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+
   const body = await req.json().catch(() => null);
   const targetUserId: string | undefined = body?.target_user_id;
   const eventId: string | undefined = body?.event_id;

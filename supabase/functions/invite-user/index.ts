@@ -23,10 +23,18 @@ const supabase = createClient(
 // Właściciel(e) — jedyni, którzy mogą dodawać do paczki. Sync z is_admin()/admin.ts.
 const ADMIN_EMAILS = ['tomaszproblemx@gmail.com'];
 
+// CORS — funkcję woła przeglądarka (supabase.functions.invoke), więc preflight
+// OPTIONS i odpowiedzi muszą nieść nagłówki CORS, inaczej invoke rzuca błąd.
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...CORS },
   });
 }
 
@@ -42,6 +50,8 @@ function callerEmail(req: Request): string | null {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+
   const caller = callerEmail(req);
   if (!caller || !ADMIN_EMAILS.includes(caller)) {
     return json({ error: 'Tylko admin może dodawać do paczki.' }, 403);
