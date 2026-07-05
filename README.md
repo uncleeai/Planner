@@ -194,6 +194,20 @@ wywołać ją może tylko zalogowany użytkownik apki (klient przekazuje token s
 przez `supabase.functions.invoke`). Używa tych samych sekretów VAPID.
 Limit: klient pozwala pingować tę samą osobę w tym samym wypadzie raz na 12h.
 
+### Zamknięta paczka (allowlista e-maili)
+
+Apka jest prywatna: dane widzą wyłącznie e-maile z allowlisty. Egzekwują to
+polityki RESTRICTIVE + funkcja `public.is_member()` w `supabase/schema.sql`,
+a UI pokazuje kontom spoza listy ekran „Prywatne lobby" (`src/lib/members.ts`).
+
+**Wdrożenie — UWAGA na kolejność:**
+1. Dopisz e-maile CAŁEJ paczki do tablicy w `is_member()` (schema.sql) **i** do
+   `MEMBER_EMAILS` w `src/lib/members.ts` (albo ustaw `NEXT_PUBLIC_MEMBER_EMAILS`
+   w Vercelu).
+2. Dopiero wtedy uruchom `supabase/schema.sql` — po uruchomieniu każdy spoza
+   listy natychmiast traci dostęp do danych (łącznie z paczką, jeśli o kimś
+   zapomnisz; naprawa = dopisać e-mail i uruchomić plik ponownie).
+
 ### Push „✓ GRAMY" po klepnięciu terminu
 
 Gdy termin zostaje ustalony (ręczny LOCK IN organizatora **albo** automat przy

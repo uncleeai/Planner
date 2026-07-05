@@ -66,6 +66,7 @@ Guidance for AI assistants (and humans) working in this repository.
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── admin.ts              # E-maile adminów (właściciel) + isAdminEmail; trzymaj w synchronie z is_admin() w schema.sql
+        ├── members.ts            # Skład paczki (allowlista e-maili) + isMemberEmail; synchron z is_member() w schema.sql
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
@@ -119,9 +120,13 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   przy głosach/wypadach/komentarzach zapisujemy dodatkowo migawkę nazwy.
 
 Realtime włączony dla `events`, `slots`, `votes`, `profiles`, `comments` (publikacja `supabase_realtime`).
-**RLS:** dostęp tylko dla zalogowanych (`authenticated`); każdy edytuje wyłącznie swoje
-rekordy (głos po `user_id`, ustalanie terminu tylko twórca wypadu). To realna ochrona
-przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodności.
+**RLS:** dostęp wyłącznie dla **członków paczki** — funkcja `public.is_member()`
+(allowlista e-maili z JWT + admini) egzekwowana politykami RESTRICTIVE na wszystkich
+tabelach; obce rejestracje i konta anonimowe odbijają się od bazy. Do tego każdy
+edytuje wyłącznie swoje rekordy (głos po `user_id`, ustalanie terminu tylko twórca
+wypadu). Listę członków trzymaj zsynchronizowaną w `is_member()` (schema.sql) **oraz**
+`src/lib/members.ts` (ekran „Prywatne lobby" w UI). Stare rekordy bez właściciela
+(`null`) zostają dla zgodności.
 **Admin (właściciel):** funkcja `public.is_admin()` (rozpoznaje po e-mailu z JWT) daje
 uprawnienia organizatora na KAŻDYM wypadzie — edycja, ustalanie terminu, usuwanie wypadu
 i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql) **oraz**
