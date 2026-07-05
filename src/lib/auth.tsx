@@ -160,9 +160,25 @@ function LoginForm() {
     if (!email.trim() || busy) return;
     setBusy(true);
     setError('');
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
+    // Zamknięta paczka: nie tworzymy nowych kont z apki. Dostęp mają tylko adresy
+    // zaproszone w panelu Supabase (Authentication → Users → Invite) — reszta
+    // odbija się tutaj. To „allowlista" trzymana przez samo Supabase, bez listy
+    // maili w kodzie. Zob. README → „Logowanie".
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: false },
+    });
     if (error) {
-      setError(error.message);
+      // Adres spoza składu (konto nie istnieje) → przyjazny komunikat zamiast
+      // technicznego „Signups not allowed for otp".
+      const notInvited =
+        (error as { code?: string }).code === 'otp_disabled' ||
+        /signups? not allowed|otp_disabled/i.test(error.message);
+      setError(
+        notInvited
+          ? 'Ten adres nie jest na liście paczki. Odezwij się do organizatora, żeby Cię dodał.'
+          : error.message,
+      );
       setBusy(false);
       return;
     }

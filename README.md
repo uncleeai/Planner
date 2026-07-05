@@ -97,18 +97,27 @@ rozdzielić — bez zmian w kodzie:
 
 ## Logowanie
 
-Logowanie to **e-mail + jednorazowy kod** (Supabase Auth). Konfiguracja w panelu:
+Logowanie to **e-mail + jednorazowy kod** (Supabase Auth). Apka jest **prywatna dla
+jednej paczki**: nowe konta zakłada się **tylko przez zaproszenie** w panelu Supabase,
+a apka nie tworzy kont sama (`shouldCreateUser: false`). Adres spoza listy dostaje w apce
+komunikat „Ten adres nie jest na liście paczki". Konfiguracja w panelu:
 
 1. *Authentication → Providers → Email* — włączone (domyślnie jest).
-2. *Authentication → Email Templates* — dodaj **kod** `{{ .Token }}` do treści w **obu**
-   szablonach (domyślne pokazują tylko link, a my logujemy się kodem wpisywanym w apce):
-   - **Magic Link** — używany dla **istniejących** kont. Np. `Twój kod logowania: {{ .Token }}`.
-   - **Confirm signup** — używany przy **pierwszym** logowaniu nowego adresu. Też dodaj
-     `{{ .Token }}`, inaczej nowi użytkownicy dostaną link zamiast kodu.
-   (Alternatywa: wyłączyć *Confirm email* w ustawieniach providera Email — wtedy nowe
-   adresy też idą szablonem Magic Link.)
-3. Uruchom (lub uruchom ponownie) `supabase/schema.sql` — włącza reguły RLS „tylko
+2. *Authentication → Sign In / Providers → User Signups* — **wyłącz „Allow new users to
+   sign up"**. Dzięki temu tylko zaproszone adresy mogą się kiedykolwiek zalogować (to
+   nasza „allowlista", bez listy maili w kodzie).
+3. **Zapraszanie paczki:** *Authentication → Users → Invite user* (albo „Add user")
+   dla każdego znajomego. Dopisanie kolejnej osoby = jedno zaproszenie tutaj, bez zmian
+   w kodzie i bez re-runu schematu.
+4. *Authentication → Email Templates* — dodaj **kod** `{{ .Token }}` do treści szablonu
+   **Magic Link** (używany przy logowaniu kodem), np. `Twój kod logowania: {{ .Token }}`.
+   Domyślny szablon pokazuje tylko link, a my logujemy się kodem wpisywanym w apce.
+5. Uruchom (lub uruchom ponownie) `supabase/schema.sql` — włącza reguły RLS „tylko
    zalogowani; każdy edytuje swoje".
+
+> Uwaga: guzik „gość" (anonimowe logowanie) pokazuje się **tylko** na preview
+> (`*.vercel.app`, localhost), nie na produkcji. Jeśli chcesz go domknąć całkiem,
+> wyłącz też *Allow anonymous sign-ins* w ustawieniach Auth.
 
 Wbudowana wysyłka maili Supabase jest limitowana (kilka/godz.) — dla paczki znajomych
 wystarcza; docelowo można podpiąć własny SMTP. Sesja trzymana jest w przeglądarce
@@ -247,9 +256,10 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 - **Wspólna baza / cutover.** Włączenie nowego `schema.sql` (logowanie + RLS) sprawia,
   że stara wersja bez logowania przestaje działać na tej samej bazie. Uruchamiaj nowy
   schemat **razem** z wdrożeniem nowego kodu na produkcję.
-- **Każdy zweryfikowany ma dostęp.** Nie ma listy zaproszonych — kto się zaloguje, ten
-  korzysta (ale tylko jako on sam). Jeśli zajdzie potrzeba trzymania obcych z daleka,
-  dochodzi allowlista e-maili.
+- **Dostęp tylko dla zaproszonych.** Rejestracja z apki jest wyłączona
+  (`shouldCreateUser: false` + „Allow new users to sign up" off), więc konto ma tylko
+  ten, kogo zaprosisz w panelu Supabase. „Allowlistę" trzyma samo Supabase — nie ma listy
+  maili w kodzie do utrzymania. RLS i tak wpuszcza każdego tylko jako on sam.
 - **Migawki nazw.** Nazwę wyświetlaną zapisujemy przy głosie/wypadzie w chwili akcji;
   zmiana nazwy nie aktualizuje wstecz starych wpisów.
 - **`npm audit`** zgłasza jedną podatność *moderate* w pakiecie `postcss`

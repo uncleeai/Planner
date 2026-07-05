@@ -18,6 +18,11 @@ Guidance for AI assistants (and humans) working in this repository.
   przeglądarkę z kluczem `anon`.
 - **Logowanie** e-mailem (kod OTP) przez Supabase Auth; trwała sesja (zaloguj raz na
   urządzeniu). Cała apka jest za bramką logowania — zob. `src/lib/auth.tsx`.
+- **Zamknięta paczka (invite-only).** Apka nie zakłada kont sama
+  (`signInWithOtp` z `shouldCreateUser: false`); dostęp mają tylko adresy zaproszone
+  w panelu Supabase (Authentication → Users → Invite) przy wyłączonym „Allow new users
+  to sign up". Allowlista żyje w Supabase, nie w kodzie — nowego znajomego dodaje się
+  jednym zaproszeniem. Zob. README → „Logowanie".
 - **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
 - Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka).
 - Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
