@@ -23,6 +23,11 @@ Guidance for AI assistants (and humans) working in this repository.
   w panelu Supabase (Authentication → Users → Invite) przy wyłączonym „Allow new users
   to sign up". Allowlista żyje w Supabase, nie w kodzie — nowego znajomego dodaje się
   jednym zaproszeniem. Zob. README → „Logowanie".
+- **Admin dodaje z apki.** Admin (właściciel) może dodać nowy adres bez wchodzenia do
+  panelu — pole „Dodaj osobę" w menu profilu (`ProfileMenu.tsx`) woła Edge Function
+  `invite-user`, która przez Admin API (`service_role`, tylko serwer) tworzy konto
+  z potwierdzonym mailem. Listę adminów w `invite-user/index.ts` trzymaj w synchronie
+  z `is_admin()` i `src/lib/admin.ts`.
 - **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
 - Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka).
 - Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
@@ -48,7 +53,8 @@ Guidance for AI assistants (and humans) working in this repository.
 │       ├── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
 │       ├── notify-reminders/     # Edge Function: cykl. push „nie dałeś znać" + „Jutro gramy!" (pg_cron)
 │       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
-│       └── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
+│       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
+│       └── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
 ├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
@@ -75,6 +81,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
+        ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
         ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
         ├── markdown.tsx          # Mini-renderer markdownu opisu → elementy React (bez surowego HTML)

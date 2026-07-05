@@ -106,9 +106,11 @@ komunikat „Ten adres nie jest na liście paczki". Konfiguracja w panelu:
 2. *Authentication → Sign In / Providers → User Signups* — **wyłącz „Allow new users to
    sign up"**. Dzięki temu tylko zaproszone adresy mogą się kiedykolwiek zalogować (to
    nasza „allowlista", bez listy maili w kodzie).
-3. **Zapraszanie paczki:** *Authentication → Users → Invite user* (albo „Add user")
-   dla każdego znajomego. Dopisanie kolejnej osoby = jedno zaproszenie tutaj, bez zmian
-   w kodzie i bez re-runu schematu.
+3. **Dodawanie paczki:** dwie drogi, obie bez zmian w kodzie i bez re-runu schematu:
+   - **Z apki (dla admina):** menu profilu → „Dodaj osobę do paczki" → wpisz e-mail.
+     Woła to Edge Function `invite-user` (Admin API), więc wdróż ją raz:
+     `supabase functions deploy invite-user`. Nowa osoba od razu loguje się kodem w apce.
+   - **Z panelu:** *Authentication → Users → Add user* dla każdego znajomego.
 4. *Authentication → Email Templates* — dodaj **kod** `{{ .Token }}` do treści szablonu
    **Magic Link** (używany przy logowaniu kodem), np. `Twój kod logowania: {{ .Token }}`.
    Domyślny szablon pokazuje tylko link, a my logujemy się kodem wpisywanym w apce.
