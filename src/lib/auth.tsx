@@ -9,7 +9,6 @@ import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 import { resyncPushSubscription } from '@/lib/push';
 import { isAdminEmail } from '@/lib/admin';
-import { isMemberEmail } from '@/lib/members';
 import type { EventRow } from '@/lib/types';
 
 type AuthCtx = { userId: string; displayName: string; avatar: string; isAdmin: boolean };
@@ -82,13 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (!session) return <LoginForm />;
 
-  // Zamknięta paczka: konto spoza allowlisty (src/lib/members.ts + is_member()
-  // w schema.sql) nie wchodzi dalej — RLS i tak nie oddałoby mu żadnych danych.
-  if (!isMemberEmail(session.user.email)) {
-    return <PrivateGate email={session.user.email ?? null} />;
-  }
-
-
   const meta = session.user.user_metadata ?? {};
   const displayName = (meta.display_name as string | undefined)?.trim() ?? '';
   const avatar = (meta.avatar as string | undefined) ?? '';
@@ -146,30 +138,6 @@ function NewEventToast({ userId }: { userId: string }) {
 
 export async function signOut() {
   await supabase.auth.signOut();
-}
-
-// Ekran dla zalogowanych spoza składu — apka jest prywatna dla jednej paczki.
-function PrivateGate({ email }: { email: string | null }) {
-  return (
-    <main className="glass-page auth-screen">
-      <div className="wordmark cursor" style={{ textAlign: 'center', marginBottom: 18 }}>
-        WYPAD<span>.EXE</span>
-      </div>
-      <div className="card" style={{ textAlign: 'center' }}>
-        <div className="modal-label" style={{ textAlign: 'center' }}>Prywatne lobby</div>
-        <p className="small muted" style={{ margin: '0 0 6px' }}>
-          Ta apka należy do jednej paczki
-          {email ? <>, a <strong>{email}</strong> nie ma w składzie.</> : '.'}
-        </p>
-        <p className="small muted" style={{ margin: '0 0 16px' }}>
-          Znasz ekipę? Niech host dopisze Twój e-mail do listy.
-        </p>
-        <button className="ghost" style={{ width: '100%' }} onClick={() => signOut()}>
-          Wyloguj
-        </button>
-      </div>
-    </main>
-  );
 }
 
 function LoginForm() {
