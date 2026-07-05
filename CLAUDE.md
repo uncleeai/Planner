@@ -155,9 +155,13 @@ i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql
 - **Konfiguracja:** skopiuj `.env.example` do `.env.local` i uzupełnij
   `NEXT_PUBLIC_SUPABASE_URL` oraz `NEXT_PUBLIC_SUPABASE_ANON_KEY`; uruchom
   `supabase/schema.sql` w panelu Supabase. Pełna instrukcja w `README.md`.
-- **Testy/lint:** brak zautomatyzowanych testów i konfiguracji lintera w tym
-  szkielecie. `next build` weryfikuje typy TypeScript. Po zmianach uruchom
-  `npm run build` jako minimalny sanity check.
+- **Testy:** `npm test` (vitest) — unit-testy czystej logiki w `src/lib`
+  (`types.test.ts`: reguły klepania terminu/prowadzącego, końce zakresów,
+  formaty dat; `slotInput.test.ts`: budowanie slotu z pól Od/Do/Godzina).
+  Odpalane z `TZ=Europe/Warsaw` dla powtarzalności dat. Brak testów UI/E2E —
+  zachowanie sprawdzamy na preview. Lint: brak konfiguracji.
+- **Sanity check:** `next build` weryfikuje typy TypeScript (strict). Po
+  zmianach uruchom `npm run build` + `npm test`.
 
 ## Conventions
 
