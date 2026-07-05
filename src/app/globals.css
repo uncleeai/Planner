@@ -1060,6 +1060,16 @@ main::before {
   padding: 10px 20px calc(16px + env(safe-area-inset-bottom));
   box-shadow: 0 -24px 48px rgba(0, 0, 0, 0.45);
 }
+/* Wewnętrzne scrollery (sheet, podpowiedzi lokalizacji) bez widocznego scrollbara —
+   jak globalny na html; przewijanie działa normalnie. */
+.sheet,
+.loc-suggestions {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sheet::-webkit-scrollbar,
+.loc-suggestions::-webkit-scrollbar { display: none; }
+
 .sheet-grip {
   width: 40px; height: 4px; border-radius: 2px;
   background: var(--border-strong);
