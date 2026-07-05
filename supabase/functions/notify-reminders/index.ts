@@ -57,7 +57,6 @@ Deno.serve(async (req) => {
     .lt('created_at', dayAgo)
     .gt('created_at', twoWeeksAgo);
   if (evErr) return new Response(evErr.message, { status: 500 });
-  if (!events || events.length === 0) return json({ processed: 0, sent: 0 });
 
   // Paczka i wszystkie subskrypcje — raz.
   const { data: profiles } = await supabase.from('profiles').select('id');
@@ -77,7 +76,7 @@ Deno.serve(async (req) => {
   let sent = 0;
   const dead: string[] = [];
 
-  for (const ev of events) {
+  for (const ev of events ?? []) {
     processed++;
 
     const { data: slots } = await supabase.from('slots').select('starts_at, ends_at').eq('event_id', ev.id);
