@@ -61,6 +61,11 @@ alter table public.events
 alter table public.events
   add column if not exists confirmed_notified_at timestamptz;
 
+-- Znacznik przypomnienia „Jutro gramy!" (notify-reminders, przebieg 2) —
+-- wysyłane raz, dzień przed klepniętym terminem, do całej paczki.
+alter table public.events
+  add column if not exists day_before_notified_at timestamptz;
+
 -- Zdjęcie w tle karty wypadu (opcjonalne) — publiczny URL z bucketu event-images.
 alter table public.events
   add column if not exists image_url text;

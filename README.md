@@ -151,11 +151,15 @@ Konfiguracja push:
 Bez kroku 2 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`) przełącznik powiadomień się nie pokazuje —
 działa wtedy sam toast na żywo.
 
-### Przypomnienia „nie dałeś znać" (cykliczny push)
+### Przypomnienia (cykliczny push): „nie dałeś znać" + „Jutro gramy!"
 
-Osobna funkcja `notify-reminders` raz na jakiś czas wysyła push do osób, które ~24h
-po utworzeniu wypadu wciąż nie oddały głosu (a wypad ma termin w przyszłości). Każdy
-wypad jest przypominany **raz** (znacznik `events.reminded_at`).
+Funkcja `notify-reminders` robi dwa przebiegi:
+- **„Nie dałeś znać"** — ~24h po utworzeniu wypadu push do osób bez głosu (raz na
+  wypad, znacznik `events.reminded_at`).
+- **„Jutro gramy!"** — dzień przed klepniętym terminem (ręcznym lub automatem)
+  push do **całej paczki**, wysyłany po 16:00 czasu polskiego (raz na wypad,
+  znacznik `events.day_before_notified_at`; wymaga ponownego uruchomienia
+  `schema.sql`).
 
 1. **Uruchom `supabase/schema.sql`** — dodaje kolumnę `events.reminded_at`.
 2. **Wdróż funkcję:**

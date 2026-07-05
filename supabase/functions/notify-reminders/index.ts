@@ -1,8 +1,11 @@
-// Edge Function: przypomnienia „nie dałeś znać czy wchodzisz".
-// Odpalana cyklicznie przez pg_cron (np. co godzinę). Dla każdego wypadu starszego
-// niż 24h, który ma termin w przyszłości i nie był jeszcze przypomniany, wysyła push
-// do osób z paczki, które nie oddały żadnego głosu (poza twórcą). Oznacza wypad
-// `reminded_at`, żeby nie spamować przy kolejnych przebiegach.
+// Edge Function: cykliczne przypomnienia (pg_cron, np. co godzinę). Dwa przebiegi:
+//  1. „Nie dałeś znać" — wypady starsze niż 24h z terminem w przyszłości; push do
+//     osób bez głosu (poza twórcą). Raz na wypad (stempel `reminded_at`).
+//  2. „Jutro gramy!" — wypady z klepniętym terminem startującym JUTRO (Europe/
+//     Warsaw); push do CAŁEJ paczki, wysyłany po 16:00 dnia poprzedniego. Raz na
+//     wypad (stempel `day_before_notified_at`). Klepnięty = confirmed_slot_id
+//     (ręczny LOCK IN) albo confirmed_notified_at (automat — stempel pusha GRAMY);
+//     dla automatu prowadzący slot liczony jak w getConfirmedSlot (types.ts).
 //
 // Wdrożenie:
 //   supabase functions deploy notify-reminders --no-verify-jwt
@@ -117,6 +120,97 @@ Deno.serve(async (req) => {
     await supabase.from('events').update({ reminded_at: nowIso }).eq('id', ev.id);
   }
 
+  // ===== Przebieg 2: „Jutro gramy!" — dzień przed klepniętym terminem =====
+  const TZ = 'Europe/Warsaw';
+  const warsawHour = Number(
+    new Date(now).toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: TZ }),
+  );
+  const tomorrow = new Date(now + 24 * 3600 * 1000).toLocaleDateString('sv-SE', { timeZone: TZ });
+  let dayBeforeSent = 0;
+
+  // Po 16:00, żeby push nie budził paczki tuż po północy (cron lata co godzinę).
+  if (warsawHour >= 16) {
+    const { data: settled } = await supabase
+      .from('events')
+      .select('id, title, location, confirmed_slot_id')
+      .is('day_before_notified_at', null)
+      .or('confirmed_slot_id.not.is.null,confirmed_notified_at.not.is.null');
+
+    for (const ev of settled ?? []) {
+      const { data: slots } = await supabase
+        .from('slots')
+        .select('id, starts_at, all_day')
+        .eq('event_id', ev.id);
+      if (!slots || slots.length === 0) continue;
+
+      // Klepnięty slot: ręczny wprost; automat = prowadzący (READY > MOŻE > data).
+      let slot = ev.confirmed_slot_id
+        ? slots.find((s) => s.id === ev.confirmed_slot_id)
+        : undefined;
+      if (!slot) {
+        const { data: votes } = await supabase
+          .from('votes')
+          .select('slot_id, availability')
+          .eq('event_id', ev.id);
+        let bestYes = 0;
+        let bestMaybe = 0;
+        for (const s of slots) {
+          const sv = (votes ?? []).filter((v) => v.slot_id === s.id);
+          const yes = sv.filter((v) => v.availability === 'yes').length;
+          const maybe = sv.filter((v) => v.availability === 'maybe').length;
+          if (
+            yes > 0 &&
+            (!slot || yes > bestYes || (yes === bestYes && maybe > bestMaybe) ||
+              (yes === bestYes && maybe === bestMaybe && s.starts_at < slot.starts_at))
+          ) {
+            slot = s;
+            bestYes = yes;
+            bestMaybe = maybe;
+          }
+        }
+      }
+      if (!slot) continue;
+
+      const startDay = new Date(slot.starts_at).toLocaleDateString('sv-SE', { timeZone: TZ });
+      if (startDay !== tomorrow) continue;
+
+      // Atomowy stempel przed wysyłką — jedno przypomnienie na wypad.
+      const { data: stamped } = await supabase
+        .from('events')
+        .update({ day_before_notified_at: nowIso })
+        .eq('id', ev.id)
+        .is('day_before_notified_at', null)
+        .select('id')
+        .maybeSingle();
+      if (!stamped) continue;
+
+      const time = slot.all_day
+        ? null
+        : new Date(slot.starts_at).toLocaleTimeString('pl-PL', {
+            hour: '2-digit', minute: '2-digit', timeZone: TZ,
+          });
+      const message = JSON.stringify({
+        title: `🔥 Jutro gramy: ${ev.title}`,
+        body: [time ? `Start ${time}` : 'Cały dzień', ev.location].filter(Boolean).join(' · '),
+        url: `/event/${ev.id}`,
+        tag: `day-before-${ev.id}`,
+      });
+
+      for (const s of (subsAll ?? []) as Sub[]) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+            message,
+          );
+          dayBeforeSent++;
+        } catch (e) {
+          const code = (e as { statusCode?: number })?.statusCode;
+          if (code === 404 || code === 410) dead.push(s.endpoint);
+        }
+      }
+    }
+  }
+
   if (dead.length) await supabase.from('push_subscriptions').delete().in('endpoint', dead);
-  return json({ processed, sent, removed: dead.length });
+  return json({ processed, sent, dayBeforeSent, removed: dead.length });
 });
