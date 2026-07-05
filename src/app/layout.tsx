@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/auth';
 import { TransitionProvider } from '@/lib/transition';
 import GlassBackground from '@/components/GlassBackground';
 import { DialogHost } from '@/components/Dialogs';
+import { ACCENT_BOOT_SCRIPT } from '@/lib/accent';
 import './globals.css';
 
 // Jeden mono na wszystkich urządzeniach. Ze stackiem systemowym skórka wyglądała
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pl" className={mono.variable}>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: ACCENT_BOOT_SCRIPT }} />
         <GlassBackground />
         <div className="statusbar-blur" aria-hidden="true" />
         <div className="rotate-guard" role="status">

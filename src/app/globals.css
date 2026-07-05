@@ -12,8 +12,8 @@
   --primary: rgba(232, 237, 240, 0.12);
   --primary-hover: rgba(232, 237, 240, 0.2);
   --accent: #ff8a3d;
-  --accent-ink: #241103;
-  --accent-dim: rgba(255, 138, 61, 0.12);
+  --accent-ink: #171210;
+  --accent-dim: color-mix(in srgb, var(--accent) 12%, transparent);
   --yes: #3ddc8b;
   --maybe: #f4b740;
   --no: #ff5d5d;
@@ -265,7 +265,7 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
    sygnałowy akcent zamiast wtapiać się jako kolejny .ghost. */
 .slot-confirm-btn.primary {
   background: transparent;
-  border: 1px solid rgba(255, 138, 61, 0.45);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--accent);
   font-family: var(--mono);
   font-size: 0.8rem;
@@ -532,7 +532,7 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   color: var(--muted); line-height: 1.5;
 }
 @media (hover: hover) {
-  .cal-chip:hover { background: var(--accent-dim); border-color: rgba(255, 138, 61, 0.45); }
+  .cal-chip:hover { background: var(--accent-dim); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 }
 
 /* Spójny blok statusu głosowania: awatary + pasek postępu + kto się obija */
@@ -586,7 +586,7 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   width: 100%;
   background: var(--accent);
   border: none;
-  box-shadow: 0 10px 28px rgba(255, 138, 61, 0.18);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 18%, transparent);
   padding: 15px 18px;
   font-size: 1.02rem;
   font-weight: 700;
@@ -594,7 +594,7 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   color: var(--accent-ink);
 }
 @media (hover: hover) {
-  .cta-gradient:hover { background: #ffa05e; }
+  .cta-gradient:hover { background: color-mix(in srgb, var(--accent) 82%, #fff); }
 }
 
 /* Karta wypadu (bogata) */
@@ -741,6 +741,18 @@ img.avatar { display: inline-block; }
 .setting-title { display: block; font-weight: 600; color: var(--text); }
 .setting-sub { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
 
+/* Wybór koloru akcentu (Ustawienia) */
+.accent-row { display: flex; gap: 8px; margin: 8px 0 18px; }
+.accent-swatch {
+  width: 34px; height: 34px; padding: 0; min-height: 0; flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.06s ease;
+}
+.accent-swatch:active { transform: scale(0.92); }
+.accent-swatch.selected { border-color: #fff; }
+
 /* Przełącznik: kontrolka w skórce Lobby (8px, oranż = włączone; zieleń tylko dla głosów) */
 .switch {
   flex-shrink: 0;
@@ -868,18 +880,18 @@ img.avatar { display: inline-block; }
     var(--card);
 }
 /* Hero czekające na TWÓJ głos — sygnałowa ramka. */
-.glass-page .event-rich.hero.needs-you { border-color: rgba(255, 138, 61, 0.35); }
+.glass-page .event-rich.hero.needs-you { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 
 /* Główny CTA: pełny sygnałowy oranż, ciemny tekst — jedyny mocny punkt na stronie. */
 .glass-page .cta-gradient {
   background: var(--accent);
   border: none;
-  box-shadow: 0 10px 28px rgba(255, 138, 61, 0.18);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-ink);
   transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.06s ease;
 }
 @media (hover: hover) {
-  .glass-page .cta-gradient:hover { background: #ffa05e; }
+  .glass-page .cta-gradient:hover { background: color-mix(in srgb, var(--accent) 82%, #fff); }
 }
 
 .glass-page .section-label { color: var(--muted); }
@@ -1362,7 +1374,7 @@ main::before {
 /* AFK = szara morda (jak offline na Discordzie) */
 .slot-p.s-none .avatar { filter: grayscale(1); opacity: 0.75; }
 /* TWÓJ pusty slot — sygnałowa dziura w składzie */
-.slot-p.is-you { border-color: rgba(255, 138, 61, 0.55); background: var(--accent-dim); }
+.slot-p.is-you { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-dim); }
 .slot-p.is-you .avatar { filter: none; opacity: 1; }
 .slot-p.is-you .who b { color: var(--text); }
 
@@ -1481,11 +1493,11 @@ main.has-dock { padding-bottom: 24px; }
   flex-shrink: 0;
   font-size: 0.78rem; font-weight: 600;
   color: var(--accent); background: var(--accent-dim);
-  border: 1px solid rgba(255, 138, 61, 0.32);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
   padding: 9px 12px; border-radius: var(--radius-sm);
 }
 @media (hover: hover) {
-  .nudge:hover:not(:disabled) { background: rgba(255, 138, 61, 0.2); }
+  .nudge:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, transparent); }
 }
 .nudge:disabled { opacity: 0.55; cursor: default; }
 
@@ -1522,7 +1534,7 @@ main.has-dock { padding-bottom: 24px; }
   font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
   letter-spacing: 0.12em; padding: 3px 10px; border-radius: 6px; white-space: nowrap;
 }
-.chip.hot { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255, 138, 61, 0.32); }
+.chip.hot { color: var(--accent); background: var(--accent-dim); border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); }
 
 /* Rozkład: płaskie wiersze list zamiast kart */
 .board { border-top: 1px solid var(--border); }
@@ -1580,7 +1592,7 @@ main.has-dock { padding-bottom: 24px; }
   flex-shrink: 0; cursor: pointer;
   font-size: 0.72rem; font-weight: 600;
   color: var(--accent); background: var(--accent-dim);
-  border: 1px solid rgba(255, 138, 61, 0.32);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
   padding: 7px 10px; border-radius: 6px;
 }
 

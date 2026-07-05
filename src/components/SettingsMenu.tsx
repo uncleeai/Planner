@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/lib/auth';
+import { ACCENTS, getAccent, setAccent } from '@/lib/accent';
 import { IconGear, IconX } from '@/components/icons';
 import {
   isPushSupported,
@@ -17,6 +18,7 @@ export default function SettingsMenu() {
   const { userId } = useAuth();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
+  const [accent, setAccentState] = useState<string>(ACCENTS[0].color);
 
   const [pushSupported, setPushSupported] = useState(false);
   const [pushStandalone, setPushStandalone] = useState(true);
@@ -26,6 +28,7 @@ export default function SettingsMenu() {
   useEffect(() => {
     if (!open) return;
     setError('');
+    setAccentState(getAccent());
     setPushSupported(isPushSupported());
     setPushStandalone(isStandalone());
     getPushSubscribed().then(setPushOn);
@@ -64,6 +67,26 @@ export default function SettingsMenu() {
             </button>
 
             <div className="modal-label">Ustawienia</div>
+
+            <div className="setting-text" style={{ textAlign: 'left' }}>
+              <span className="setting-title">Kolor akcentu</span>
+            </div>
+            <div className="accent-row">
+              {ACCENTS.map((a) => (
+                <button
+                  key={a.color}
+                  type="button"
+                  className={`accent-swatch${accent === a.color ? ' selected' : ''}`}
+                  style={{ background: a.color }}
+                  aria-label={a.label}
+                  aria-pressed={accent === a.color}
+                  onClick={() => {
+                    setAccent(a.color);
+                    setAccentState(a.color);
+                  }}
+                />
+              ))}
+            </div>
 
             {pushSupported ? (
               <div className="setting-row">
