@@ -113,6 +113,10 @@ export default function Home() {
   };
 
   const [showForm, setShowForm] = useState(false);
+  // Zamykanie sheeta: najpierw animacja wyjazdu (klasa .closing), odmontowanie
+  // dopiero po jej końcu (animationend na overlayu).
+  const [sheetClosing, setSheetClosing] = useState(false);
+  const closeSheet = () => setSheetClosing(true);
   const [showArchive, setShowArchive] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
@@ -556,7 +560,17 @@ export default function Home() {
       {/* Formularz jako bottom sheet: wysuwa się znad doku „+ Nowe lobby", który go
           otwiera — zero teleportacji na górę strony i zero reflow listy (sam transform). */}
       {events.length > 0 && showForm && (
-        <div className="sheet-overlay" onClick={() => setShowForm(false)}>
+        <div
+          className={`sheet-overlay${sheetClosing ? ' closing' : ''}`}
+          onClick={closeSheet}
+          onAnimationEnd={(e) => {
+            // Tylko animacja SAMEGO overlaya (fade-out) — eventy z sheeta bąbelkują.
+            if (sheetClosing && e.target === e.currentTarget) {
+              setShowForm(false);
+              setSheetClosing(false);
+            }
+          }}
+        >
           <div className="sheet" role="dialog" aria-label="Nowe lobby" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-grip" aria-hidden="true" />
             <form onSubmit={createEvent}>
@@ -565,7 +579,7 @@ export default function Home() {
                 type="button"
                 className="ghost"
                 style={{ width: '100%', marginTop: 8 }}
-                onClick={() => setShowForm(false)}
+                onClick={closeSheet}
               >
                 Anuluj
               </button>

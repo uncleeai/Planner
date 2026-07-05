@@ -1071,6 +1071,16 @@ main::before {
 @keyframes sheet-in {
   from { transform: translateY(100%); }
 }
+/* Zamykanie: sheet zjeżdża, scrim gaśnie; overlay trwa odrobinę dłużej, żeby
+   odmontowanie (animationend overlaya) nie ucięło końcówki zjazdu sheeta. */
+.sheet-overlay.closing { animation: overlay-fade-out 0.3s ease both; }
+.sheet-overlay.closing .sheet { animation: sheet-out 0.26s cubic-bezier(0.32, 0.72, 0, 1) both; }
+@keyframes overlay-fade-out {
+  to { opacity: 0; }
+}
+@keyframes sheet-out {
+  to { transform: translateY(100%); }
+}
 
 .add-slot-wrapper {
   margin-top: 16px;
