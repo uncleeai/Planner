@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/lib/auth';
 import { ACCENTS, getAccent, setAccent } from '@/lib/accent';
+import { inviteMember } from '@/lib/invite';
 import { IconGear, IconX } from '@/components/icons';
 import {
   isPushSupported,
@@ -15,7 +16,7 @@ import {
 
 // Osobny przycisk (koło zębate) obok avatara → modal z ustawieniami (powiadomienia).
 export default function SettingsMenu() {
-  const { userId } = useAuth();
+  const { userId, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const [accent, setAccentState] = useState<string>(ACCENTS[0].color);
@@ -25,6 +26,12 @@ export default function SettingsMenu() {
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
 
+  // Admin: dodawanie nowej osoby do paczki.
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState('');
+  const [inviteOk, setInviteOk] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     setError('');
@@ -32,7 +39,26 @@ export default function SettingsMenu() {
     setPushSupported(isPushSupported());
     setPushStandalone(isStandalone());
     getPushSubscribed().then(setPushOn);
+    setInviteEmail('');
+    setInviteMsg('');
   }, [open]);
+
+  async function invite() {
+    const target = inviteEmail.trim();
+    if (!target || inviting) return;
+    setInviting(true);
+    setInviteMsg('');
+    const err = await inviteMember(target);
+    if (err) {
+      setInviteOk(false);
+      setInviteMsg(err);
+    } else {
+      setInviteOk(true);
+      setInviteMsg(`Dodano ${target}. Może się już logować w apce.`);
+      setInviteEmail('');
+    }
+    setInviting(false);
+  }
 
   async function togglePush() {
     if (pushBusy) return;
@@ -117,6 +143,42 @@ export default function SettingsMenu() {
                   </div>
                 </div>
               )
+            )}
+
+            {isAdmin && (
+              <div className="field" style={{ marginTop: 16 }}>
+                <label htmlFor="invite">Dodaj osobę do paczki</label>
+                <div className="row" style={{ flexWrap: 'nowrap' }}>
+                  <input
+                    id="invite"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="off"
+                    placeholder="nowy@example.com"
+                    value={inviteEmail}
+                    onChange={(e) => {
+                      setInviteEmail(e.target.value);
+                      setInviteMsg('');
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    className="ghost"
+                    disabled={inviting || !inviteEmail.trim()}
+                    onClick={invite}
+                  >
+                    {inviting ? 'Dodaję…' : 'Dodaj'}
+                  </button>
+                </div>
+                {inviteMsg && (
+                  <p
+                    className="small"
+                    style={{ color: inviteOk ? 'var(--yes)' : 'var(--no)', margin: '6px 0 0' }}
+                  >
+                    {inviteMsg}
+                  </p>
+                )}
+              </div>
             )}
 
             {error && <p className="small" style={{ color: 'var(--no)', margin: '4px 0 0' }}>{error}</p>}

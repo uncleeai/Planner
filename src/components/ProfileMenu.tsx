@@ -6,12 +6,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
-import { inviteMember } from '@/lib/invite';
 import { IconCamera, IconX } from '@/components/icons';
 
 // Avatar bieżącego użytkownika w rogu; klik → wyśrodkowany modal: zdjęcie/emoji, nick, wyloguj.
 export default function ProfileMenu() {
-  const { userId, displayName, avatar, isAdmin } = useAuth();
+  const { userId, displayName, avatar } = useAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(displayName);
   const [busy, setBusy] = useState(false);
@@ -21,12 +20,6 @@ export default function ProfileMenu() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [localAvatar, setLocalAvatar] = useState(avatar);
 
-  // Admin: dodawanie nowej osoby do paczki (tylko dla adminów).
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviting, setInviting] = useState(false);
-  const [inviteMsg, setInviteMsg] = useState('');
-  const [inviteOk, setInviteOk] = useState(false);
-
   // Po otwarciu modala zsynchronizuj pole nicku i awatara z aktualnymi danymi.
   useEffect(() => {
     if (open) {
@@ -34,27 +27,8 @@ export default function ProfileMenu() {
       setLocalAvatar(avatar);
       setSavedName(false);
       setError('');
-      setInviteEmail('');
-      setInviteMsg('');
     }
   }, [open, displayName, avatar]);
-
-  async function invite() {
-    const target = inviteEmail.trim();
-    if (!target || inviting) return;
-    setInviting(true);
-    setInviteMsg('');
-    const err = await inviteMember(target);
-    if (err) {
-      setInviteOk(false);
-      setInviteMsg(err);
-    } else {
-      setInviteOk(true);
-      setInviteMsg(`Dodano ${target}. Może się już logować w apce.`);
-      setInviteEmail('');
-    }
-    setInviting(false);
-  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -177,42 +151,6 @@ export default function ProfileMenu() {
             </div>
 
             {error && <p className="small" style={{ color: 'var(--no)', margin: '0 0 12px' }}>{error}</p>}
-
-            {isAdmin && (
-              <div className="field" style={{ marginBottom: 12 }}>
-                <label htmlFor="invite">Dodaj osobę do paczki</label>
-                <div className="row" style={{ flexWrap: 'nowrap' }}>
-                  <input
-                    id="invite"
-                    type="email"
-                    inputMode="email"
-                    autoComplete="off"
-                    placeholder="nowy@example.com"
-                    value={inviteEmail}
-                    onChange={(e) => {
-                      setInviteEmail(e.target.value);
-                      setInviteMsg('');
-                    }}
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    className="ghost"
-                    disabled={inviting || !inviteEmail.trim()}
-                    onClick={invite}
-                  >
-                    {inviting ? 'Dodaję…' : 'Dodaj'}
-                  </button>
-                </div>
-                {inviteMsg && (
-                  <p
-                    className="small"
-                    style={{ color: inviteOk ? 'var(--yes)' : 'var(--no)', margin: '6px 0 0' }}
-                  >
-                    {inviteMsg}
-                  </p>
-                )}
-              </div>
-            )}
 
             <button className="ghost danger" style={{ width: '100%' }} onClick={() => signOut()}>
               Wyloguj

@@ -24,7 +24,7 @@ Guidance for AI assistants (and humans) working in this repository.
   to sign up". Allowlista żyje w Supabase, nie w kodzie — nowego znajomego dodaje się
   jednym zaproszeniem. Zob. README → „Logowanie".
 - **Admin dodaje z apki.** Admin (właściciel) może dodać nowy adres bez wchodzenia do
-  panelu — pole „Dodaj osobę" w menu profilu (`ProfileMenu.tsx`) woła Edge Function
+  panelu — pole „Dodaj osobę" w menu ustawień (`SettingsMenu.tsx`) woła Edge Function
   `invite-user`, która przez Admin API (`service_role`, tylko serwer) tworzy konto
   z potwierdzonym mailem. Listę adminów w `invite-user/index.ts` trzymaj w synchronie
   z `is_admin()` i `src/lib/admin.ts`.
