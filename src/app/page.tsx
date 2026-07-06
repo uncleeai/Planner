@@ -943,6 +943,19 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
 
   return (
     <Link href={href} prefetch={true} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
+      {/* Fotka-nastrój pod treścią hero (tylko gdy wypad ma zdjęcie; bez zdjęcia karta
+          wygląda jak dotąd). Warstwy i wartości dostrojone na mockupie „plac zabaw". */}
+      {ev.image_url && (
+        <div className="hero-photo" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ev.image_url} alt="" loading="lazy" decoding="async" />
+          <i className="hp-tint" />
+          <i className="hp-half" />
+          <i className="hp-grain" />
+          <i className="hp-vig" />
+          <i className="hp-scrim" />
+        </div>
+      )}
       <div className="hero-head">
         <div className="hero-title-block">
           <span className="hero-title">
