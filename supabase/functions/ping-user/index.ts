@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 
   const quote = MAJOR_QUOTES[Math.floor(Math.random() * MAJOR_QUOTES.length)];
   const message = JSON.stringify({
-    title: `👊 ${event.title}: dawaj cynk!`,
+    title: `👊 Rusz pizdeczkę: ${event.title}`,
     body: quote,
     url: `/event/${event.id}`,
     tag: `ping-${event.id}-${targetUserId}`,
