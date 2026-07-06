@@ -1831,5 +1831,14 @@ button.solid-danger { background: var(--no); color: #fff; }
 /* Emoji wypadu duże nad tytułem (jak na mockupie) */
 .hero-emoji-top { font-size: 40px; line-height: 1; margin-bottom: 8px; }
 
+/* Rząd hosta pod tytułem: awatar + nick + HOST (mockup „Lobby") */
+.hero-host { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.hero-host b { font-size: 0.84rem; font-weight: 650; }
+.hero-host .host-tag {
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--accent);
+}
+.hero-host .host-tag::before { content: "· "; color: var(--muted); }
+
 /* Hero oddycha spacingiem, nie liniami — separator składu zostaje na innych kartach */
 .event-rich.hero .squad { border-top: 0; padding-top: 0; }

@@ -698,7 +698,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             <div className="slot-head">
               <SlotWhen slot={slot} />
               {isSettledSlot && (
-                <span className="badge">✓ GRAMY{status.source === 'auto' ? ' · KOMPLET' : ''}</span>
+                <span className="badge">✓ USTALONY{status.source === 'auto' ? ' · KOMPLET' : ''}</span>
               )}
               {showBestBadge && <span className="badge">Prowadzi</span>}
               {showTieBadge && <span className="badge badge-open">Remis</span>}

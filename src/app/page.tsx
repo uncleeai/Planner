@@ -842,7 +842,7 @@ function Row({ ev, variant, slot, agg, unread }: {
           {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
         </span>
       )}
-      {variant === 'upcoming' && <span className="badge">GRAMY</span>}
+      {variant === 'upcoming' && <span className="badge">USTALONY</span>}
       {variant === 'past' && <span className="badge badge-muted">GG</span>}
       {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
       <IconChevron size={16} className="row-chevron" />
@@ -941,6 +941,14 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const wInfo = weather ? describeWeather(weather.code) : null;
   const responded = agg.squad.filter((m) => m.state).length;
 
+  // Rząd hosta (awatar + nick + HOST, jak na mockupie) — poza trybami, które
+  // hosta już pokazują (ready check: w meta; misja: side-label w rosterze).
+  const host = ev.created_by_user_id
+    ? agg.squad.find((m) => m.id === ev.created_by_user_id) ?? null
+    : null;
+  const hostName = host?.name ?? ev.created_by;
+  const showHostRow = !needsYou && !mission && !!hostName;
+
   return (
     <Link href={href} prefetch={true} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
       {/* Fotka-nastrój pod treścią hero (tylko gdy wypad ma zdjęcie; bez zdjęcia karta
@@ -982,6 +990,14 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
         </div>
         <IconChevron size={20} className="row-chevron" />
       </div>
+
+      {showHostRow && (
+        <div className="hero-host">
+          <Avatar name={hostName as string} avatar={host?.avatar ?? null} size={22} />
+          <b>{hostName}</b>
+          <span className="host-tag">HOST</span>
+        </div>
+      )}
 
       {agg.squad.length > 0 ? (
         <>
