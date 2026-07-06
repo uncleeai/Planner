@@ -956,10 +956,12 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
           <i className="hp-scrim" />
         </div>
       )}
+      {/* Emoji duże nad tytułem — jak na mockupie hero */}
+      {ev.emoji && <div className="hero-emoji-top" aria-hidden="true">{ev.emoji}</div>}
       <div className="hero-head">
         <div className="hero-title-block">
           <span className="hero-title">
-            {ev.emoji ? `${ev.emoji} ` : ''}{ev.title}
+            {ev.title}
             {unread && <i className="unread-dot" aria-label="Nowe wiadomości na czacie" />}
           </span>
           <div className="hero-meta">

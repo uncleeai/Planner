@@ -1259,16 +1259,23 @@ main::before {
 
 /* Grid: Pogoda + Zbiórka (1 kafelek = pełna szerokość, 2 = podział).
    Płaskie wiersze bez własnych ramek — mniej kart w kartach. */
+/* Kafelki pogody/godziny w obramowanym boxie (jak na mockupie hero);
+   półprzezroczyste tło + blur siada i na płaskiej karcie, i na fotce. */
 .hero-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 10px;
-  border-top: 1px solid var(--border);
-  margin-top: 13px; padding-top: 12px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(26, 30, 35, 0.62);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+  margin-top: 14px;
 }
 .hero-tile {
   display: flex; align-items: center; gap: 10px;
-  padding: 2px 0;
+  padding: 12px 14px;
   min-width: 0;
 }
+.hero-tile + .hero-tile { border-left: 1px solid var(--border); }
 .hero-tile-icon { color: var(--muted); flex-shrink: 0; }
 .hero-tile-main { font-family: var(--mono); font-size: 0.95rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .hero-tile-sub { font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1820,3 +1827,9 @@ button.solid-danger { background: var(--no); color: #fff; }
 }
 /* Treść hero nad fotką */
 .event-rich.hero > *:not(.hero-photo) { position: relative; z-index: 1; }
+
+/* Emoji wypadu duże nad tytułem (jak na mockupie) */
+.hero-emoji-top { font-size: 40px; line-height: 1; margin-bottom: 8px; }
+
+/* Hero oddycha spacingiem, nie liniami — separator składu zostaje na innych kartach */
+.event-rich.hero .squad { border-top: 0; padding-top: 0; }
