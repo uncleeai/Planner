@@ -80,6 +80,7 @@ Deno.serve(async (req) => {
   if (subErr) return json({ error: subErr.message }, 500);
 
   const list = (subs ?? []) as Sub[];
+  console.log('[ping-user] target=', targetUserId, 'event=', eventId, 'subs=', list.length);
   if (list.length === 0) return json({ sent: 0, reason: 'no-subscriptions' });
 
   const quote = MAJOR_QUOTES[Math.floor(Math.random() * MAJOR_QUOTES.length)];
@@ -103,7 +104,9 @@ Deno.serve(async (req) => {
   const dead: string[] = [];
   results.forEach((r, i) => {
     if (r.status === 'rejected') {
-      const code = (r.reason as { statusCode?: number })?.statusCode;
+      const reason = r.reason as { statusCode?: number; body?: string };
+      console.error('[ping-user] wysyłka padła:', reason?.statusCode, reason?.body);
+      const code = reason?.statusCode;
       if (code === 404 || code === 410) dead.push(list[i].endpoint);
     }
   });
@@ -112,6 +115,7 @@ Deno.serve(async (req) => {
   }
 
   const sent = results.filter((r) => r.status === 'fulfilled').length;
+  console.log('[ping-user] sent=', sent, 'dead=', dead.length);
   if (sent === 0) return json({ sent: 0, reason: 'all-failed' }, 502);
   return json({ sent, removed: dead.length });
 });
