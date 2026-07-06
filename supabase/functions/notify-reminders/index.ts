@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
             hour: '2-digit', minute: '2-digit', timeZone: TZ,
           });
       const message = JSON.stringify({
-        title: `🔥 Jutro gramy: ${ev.title}`,
+        title: `📅 Jutro: ${ev.title}`,
         body: [time ? `Start ${time}` : 'Cały dzień', ev.location].filter(Boolean).join(' · '),
         url: `/event/${ev.id}`,
         tag: `day-before-${ev.id}`,

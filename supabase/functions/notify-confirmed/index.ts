@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
   if (list.length === 0) return json({ sent: 0, reason: 'no-subscriptions' });
 
   const message = JSON.stringify({
-    title: `✓ GRAMY: ${stamped.title}`,
-    body: [when, stamped.location].filter(Boolean).join(' · ') || 'Termin klepnięty!',
+    title: `✅ Termin ustalony: ${stamped.title}`,
+    body: [when, stamped.location].filter(Boolean).join(' · ') || 'Termin ustalony!',
     url: `/event/${stamped.id}`,
     tag: `confirmed-${stamped.id}`,
   });
