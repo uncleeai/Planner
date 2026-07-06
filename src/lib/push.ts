@@ -61,12 +61,32 @@ export async function subscribeToPush(userId: string): Promise<void> {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Brak zgody na powiadomienia.');
 
-  const sub =
-    (await reg.pushManager.getSubscription()) ??
-    (await reg.pushManager.subscribe({
+  // DIAGNOSTYKA: jaki klucz publiczny faktycznie ma ten build (NEXT_PUBLIC_* jest
+  // wkompilowane przy buildzie — jeśli tu widać stary klucz, preview nie przebudował się).
+  console.log('[push] VAPID_PUBLIC_KEY w buildzie =', VAPID_PUBLIC_KEY);
+  const desiredKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+  // Jeśli w przeglądarce jest już subskrypcja, ale zrobiona INNYM kluczem VAPID,
+  // trzeba ją usunąć — inaczej push jest odrzucany (VapidPkHashMismatch), a samo
+  // getSubscription() by ją tylko re-użyło ze starym kluczem.
+  let sub = await reg.pushManager.getSubscription();
+  if (sub) {
+    const current = new Uint8Array(sub.options.applicationServerKey ?? new ArrayBuffer(0));
+    const same =
+      current.length === desiredKey.length && current.every((b, i) => b === desiredKey[i]);
+    if (!same) {
+      console.warn('[push] istniejąca subskrypcja ma inny klucz — od-subskrybowuję i robię nową');
+      await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      await sub.unsubscribe();
+      sub = null;
+    }
+  }
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    }));
+      applicationServerKey: desiredKey,
+    });
+  }
 
   const json = sub.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
