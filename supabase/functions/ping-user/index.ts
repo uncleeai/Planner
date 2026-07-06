@@ -24,22 +24,6 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 );
 
-// Trzymaj w synchronie z MAJOR_QUOTES w src/app/page.tsx (MOTD).
-const MAJOR_QUOTES = [
-  '„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”',
-  '„Piwko to jest jak rosół…”',
-  '„Nie ma takiego czegoś, żeby było coś…”',
-  '„Ugułem trzeba być sobom”',
-  '„Czego ty krzyczysz? Czego ty krzyczysz kurwa, Knurze!”',
-  '„Niektóre firmy upadają, bo mają upadek. I jest wzlot.”',
-  '„Można to zabrońnić!”',
-  '„Tak halo?”',
-  '„Muszę mieć lepszą wiadomość!”',
-  'W którym lesie ty byłeś? Gdzie schowałeś SUOMĘ?',
-  'Odpierdol się od Mickiewicza.',
-  '„Ptasibrzuch jestem!”',
-] as const;
-
 type Sub = { endpoint: string; p256dh: string; auth: string };
 
 // CORS — funkcję woła przeglądarka (supabase.functions.invoke); preflight OPTIONS
@@ -83,10 +67,9 @@ Deno.serve(async (req) => {
   console.log('[ping-user] target=', targetUserId, 'event=', eventId, 'subs=', list.length);
   if (list.length === 0) return json({ sent: 0, reason: 'no-subscriptions' });
 
-  const quote = MAJOR_QUOTES[Math.floor(Math.random() * MAJOR_QUOTES.length)];
   const message = JSON.stringify({
-    title: `👊 Rusz pizdeczkę: ${event.title}`,
-    body: quote,
+    title: `👊 ${event.title}`,
+    body: 'Rusz pizdeczkę i daj znać ekipie 😎🤙',
     url: `/event/${event.id}`,
     tag: `ping-${event.id}-${targetUserId}`,
   });

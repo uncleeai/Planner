@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
   const host = record.created_by?.trim() || 'Ktoś';
   const where = record.location?.trim();
   const message = JSON.stringify({
-    title: `🎉 Nowy wypad: ${record.title}`,
+    title: record.title,
     body: `${host} hostuje${where ? ` • ${where}` : ''}`,
     url: `/event/${record.id}`,
     tag: `event-${record.id}`,
