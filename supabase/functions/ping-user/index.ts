@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
   const { data: event, error: evErr } = await supabase
     .from('events')
-    .select('id, title')
+    .select('id, title, emoji')
     .eq('id', eventId)
     .maybeSingle();
   if (evErr) return json({ error: evErr.message }, 500);
@@ -67,9 +67,10 @@ Deno.serve(async (req) => {
   console.log('[ping-user] target=', targetUserId, 'event=', eventId, 'subs=', list.length);
   if (list.length === 0) return json({ sent: 0, reason: 'no-subscriptions' });
 
+  const emoji = event.emoji?.trim();
   const message = JSON.stringify({
-    title: `👊 ${event.title}`,
-    body: 'Rusz pizdeczkę i daj znać ekipie 😎🤙',
+    title: emoji ? `${emoji} ${event.title}` : event.title,
+    body: 'Rusz pizdeczkę i daj znać ekipie 🤙😎',
     url: `/event/${event.id}`,
     tag: `ping-${event.id}-${targetUserId}`,
   });
