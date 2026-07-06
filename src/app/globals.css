@@ -1253,7 +1253,7 @@ main::before {
 
 /* ===== Bogata karta hero (układ z mockupu) ===== */
 .hero-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.hero-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+.hero-title { font-size: 1.42rem; font-weight: 700; letter-spacing: -0.02em; }
 
 .hero-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 
@@ -1832,7 +1832,7 @@ button.solid-danger { background: var(--no); color: #fff; }
 .hero-emoji-top { font-size: 40px; line-height: 1; margin-bottom: 8px; }
 
 /* Rząd hosta pod tytułem: awatar + nick + HOST (mockup „Lobby") */
-.hero-host { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.hero-host { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .hero-host b { font-size: 0.84rem; font-weight: 650; }
 .hero-host .host-tag {
   font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
