@@ -15,6 +15,7 @@ import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventEmojiInput from '@/components/EventEmojiInput';
+import EventPhotoInput from '@/components/EventPhotoInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
@@ -123,6 +124,7 @@ export default function Home() {
   const [location, setLocation] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [emoji, setEmoji] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [busy, setBusy] = useState(false);
@@ -233,6 +235,7 @@ export default function Home() {
         latitude: locationCoords?.lat ?? null,
         longitude: locationCoords?.lon ?? null,
         emoji,
+        image_url: imageUrl,
         description: description.trim() || null,
         created_by: displayName,
         created_by_user_id: userId,
@@ -550,6 +553,7 @@ export default function Home() {
       />
     </div>,
     <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
+    <EventPhotoInput key="photo" userId={userId} value={imageUrl} onChange={setImageUrl} />,
     <div className="field" key="date">
       <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
     </div>,
