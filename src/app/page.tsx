@@ -125,6 +125,7 @@ export default function Home() {
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [emoji, setEmoji] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageFocus, setImageFocus] = useState<string>('50% 30%');
   const [description, setDescription] = useState('');
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [busy, setBusy] = useState(false);
@@ -236,6 +237,7 @@ export default function Home() {
         longitude: locationCoords?.lon ?? null,
         emoji,
         image_url: imageUrl,
+        image_focus: imageUrl ? imageFocus : null,
         description: description.trim() || null,
         created_by: displayName,
         created_by_user_id: userId,
@@ -553,7 +555,7 @@ export default function Home() {
       />
     </div>,
     <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
-    <EventPhotoInput key="photo" userId={userId} value={imageUrl} onChange={setImageUrl} />,
+    <EventPhotoInput key="photo" userId={userId} value={imageUrl} onChange={setImageUrl} focus={imageFocus} onFocusChange={setImageFocus} />,
     <div className="field" key="date">
       <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
     </div>,
@@ -960,7 +962,13 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
       {ev.image_url && (
         <div className="hero-photo" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ev.image_url} alt="" loading="lazy" decoding="async" />
+          <img
+            src={ev.image_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            style={{ objectPosition: ev.image_focus ?? '50% 30%' }}
+          />
           <i className="hp-tint" />
           <i className="hp-half" />
           <i className="hp-grain" />

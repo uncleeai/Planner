@@ -67,8 +67,10 @@ alter table public.events
   add column if not exists day_before_notified_at timestamptz;
 
 -- Zdjęcie w tle karty wypadu (opcjonalne) — publiczny URL z bucketu event-images.
+-- image_focus: punkt kadru dla object-position (np. „50% 30%"), ustawiany suwakami.
 alter table public.events
-  add column if not exists image_url text;
+  add column if not exists image_url text,
+  add column if not exists image_focus text;
 
 -- Współrzędne wybranej miejscowości (z geokodowania Open-Meteo) — do prognozy pogody.
 -- Null gdy lokalizacja to wolny tekst bez wyboru z listy.

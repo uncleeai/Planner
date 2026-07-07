@@ -6,6 +6,7 @@ export type EventRow = {
   location: string | null;
   description: string | null;
   image_url: string | null;
+  image_focus: string | null;
   latitude: number | null;
   longitude: number | null;
   emoji: string | null;

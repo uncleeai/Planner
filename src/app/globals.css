@@ -1861,7 +1861,9 @@ button.solid-danger { background: var(--no); color: #fff; }
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--border);
-  aspect-ratio: 16 / 9;
+  /* Proporcja zbliżona do karty hero, żeby podgląd kadru był wierny (suwak poziomy
+     realnie coś zmienia, bo cover docina boki jak na karcie). */
+  aspect-ratio: 4 / 5;
   background: var(--card-2);
 }
 .event-photo-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1880,3 +1882,9 @@ button.solid-danger { background: var(--no); color: #fff; }
   border: 1px solid var(--border-strong); backdrop-filter: blur(4px);
 }
 .event-photo-change:disabled { opacity: 0.6; cursor: default; }
+
+/* Suwaki kadru zdjęcia (EventPhotoInput) */
+.event-photo-focus { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.epf-row { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 10px; }
+.epf-row span { font-size: 0.8rem; color: var(--muted); }
+.epf-row input[type="range"] { width: 100%; accent-color: var(--accent); }
