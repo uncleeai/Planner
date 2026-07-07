@@ -993,7 +993,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
 
       {showHostRow && (
         <div className="hero-host">
-          <Avatar name={hostName as string} avatar={host?.avatar ?? null} size={22} />
+          <Avatar name={hostName as string} avatar={host?.avatar ?? null} size={24} />
           <b>{hostName}</b>
           <span className="host-tag">HOST</span>
         </div>
@@ -1058,7 +1058,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
         <div className="hero-grid">
           {wInfo && weather && (
             <div className="hero-tile">
-              <WeatherIcon code={weather.code} size={22} className="hero-tile-icon" />
+              <WeatherIcon code={weather.code} size={24} className="hero-tile-icon" />
               <div>
                 <div className="hero-tile-main">{weather.tempMax}°</div>
                 <div className="hero-tile-sub">{wInfo.label}</div>
@@ -1067,7 +1067,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
           )}
           {meetTime && (
             <div className="hero-tile">
-              <IconClock size={22} className="hero-tile-icon" />
+              <IconClock size={24} className="hero-tile-icon" />
               <div>
                 <div className="hero-tile-main">{meetTime}</div>
                 <div className="hero-tile-sub">Godzina</div>

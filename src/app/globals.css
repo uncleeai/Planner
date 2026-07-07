@@ -856,7 +856,7 @@ img.avatar { display: inline-block; }
 
 /* Hero: najbliższe lobby — jedyna karta z „radarowym" rastrem kropek w tle. */
 .glass-page .event-rich.hero {
-  padding: 18px 16px;
+  padding: 20px 18px;
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
@@ -1253,7 +1253,7 @@ main::before {
 
 /* ===== Bogata karta hero (układ z mockupu) ===== */
 .hero-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.hero-title { font-size: 1.42rem; font-weight: 700; letter-spacing: -0.02em; }
+.hero-title { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.12; }
 
 .hero-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 
@@ -1271,14 +1271,14 @@ main::before {
   margin-top: 14px;
 }
 .hero-tile {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
+  display: flex; align-items: center; gap: 11px;
+  padding: 15px 16px;
   min-width: 0;
 }
 .hero-tile + .hero-tile { border-left: 1px solid var(--border); }
 .hero-tile-icon { color: var(--muted); flex-shrink: 0; }
-.hero-tile-main { font-family: var(--mono); font-size: 0.95rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-.hero-tile-sub { font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hero-tile-main { font-family: var(--mono); font-size: 1.15rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.hero-tile-sub { font-size: 0.78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
 .emoji-picker { position: relative; }
@@ -1583,7 +1583,10 @@ main.has-dock { padding-bottom: 24px; }
 .hero-title-block .hero-title { display: block; }
 /* Baseline, nie center: mono-data i tekst systemowy mają różne metryki pionowe —
    środkowanie boxów podnosiło datę względem miejsca. */
-.hero-title-block .hero-meta { margin: 3px 0 0; gap: 8px; align-items: baseline; }
+.hero-title-block .hero-meta { margin: 5px 0 0; gap: 8px; align-items: baseline; }
+/* Scale pass: meta hero większa niż na innych kartach (miejsce · data) */
+.hero-title-block .hero-meta .event-meta { font-size: 0.95rem; }
+.hero-title-block .hero-meta .mono-date { font-size: 0.92rem; }
 /* Miejsce (pin + tekst) jako zwykły inline, nie inline-flex: baseline inline-flexa
    liczy się z PIERWSZEGO dziecka, czyli SVG (baseline = dół ikony), a Blink i WebKit
    syntetyzują ją odrobinę inaczej — na telefonie „Warszawa" siadała wyżej. W zwykłym
@@ -1829,11 +1832,11 @@ button.solid-danger { background: var(--no); color: #fff; }
 .event-rich.hero > *:not(.hero-photo) { position: relative; z-index: 1; }
 
 /* Emoji wypadu duże nad tytułem (jak na mockupie) */
-.hero-emoji-top { font-size: 40px; line-height: 1; margin-bottom: 8px; }
+.hero-emoji-top { font-size: 44px; line-height: 1; margin-bottom: 10px; }
 
 /* Rząd hosta pod tytułem: awatar + nick + HOST (mockup „Lobby") */
-.hero-host { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.hero-host b { font-size: 0.84rem; font-weight: 650; }
+.hero-host { display: flex; align-items: center; gap: 9px; margin-top: 8px; }
+.hero-host b { font-size: 0.94rem; font-weight: 650; }
 .hero-host .host-tag {
   font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
   letter-spacing: 0.14em; color: var(--accent);
