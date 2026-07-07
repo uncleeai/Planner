@@ -1844,3 +1844,43 @@ button.solid-danger { background: var(--no); color: #fff; }
 .event-rich.hero .squad { border-top: 0; padding-top: 0; }
 
 
+
+/* ===== Edytor kadru hero (admin: HeroCropEditor) ===== */
+.crop-modal { max-width: 400px; }
+.crop-cats {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+}
+.crop-cat {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--card-2);
+  font-size: 20px; line-height: 1; cursor: pointer;
+  display: grid; place-items: center;
+}
+.crop-cat.on { border-color: var(--accent); background: var(--accent-dim); }
+/* Wierny podgląd karty hero */
+.crop-card {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background:
+    radial-gradient(rgba(232, 237, 240, 0.045) 1px, transparent 1px) 0 0 / 14px 14px,
+    var(--card);
+  padding: 18px 16px; margin-bottom: 16px;
+}
+.crop-card-content { position: relative; z-index: 1; }
+.crop-card .hero-host .host-tag,
+.crop-card .host-tag { font-family: var(--mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.14em; color: var(--accent); }
+.crop-card .host-tag::before { content: "· "; color: var(--muted); }
+.crop-ava {
+  width: 24px; height: 24px; border-radius: 50%; background: #262b31;
+  display: grid; place-items: center; font-size: 13px; flex: none;
+}
+.crop-ctl {
+  display: grid; grid-template-columns: 96px 1fr 46px; align-items: center;
+  gap: 10px; margin-bottom: 8px;
+}
+.crop-ctl label { font-size: 0.82rem; }
+.crop-ctl input[type="range"] { width: 100%; accent-color: var(--accent); }
+.crop-ctl output {
+  font-family: var(--mono); font-size: 0.74rem; color: var(--muted);
+  text-align: right; font-variant-numeric: tabular-nums;
+}

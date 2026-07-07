@@ -72,6 +72,23 @@ alter table public.events
   add column if not exists image_url text,
   add column if not exists image_focus text;
 
+-- Kadr zdjęcia hero per kategoria (emoji). Zdjęcia są stałe (public/hero/<slug>.jpg),
+-- a admin ustawia w apce zoom + pozycję każdego (panel „Kadrowanie zdjęć"). Wszyscy
+-- czytają, zapisuje tylko admin (is_admin()). Brak wiersza → wartości domyślne z UI.
+create table if not exists public.hero_crops (
+  emoji      text primary key,
+  zoom       int not null default 163,
+  pos_x      int not null default 77,
+  pos_y      int not null default 10,
+  updated_at timestamptz not null default now()
+);
+alter table public.hero_crops enable row level security;
+drop policy if exists "hero_crops read" on public.hero_crops;
+create policy "hero_crops read" on public.hero_crops for select to authenticated using (true);
+drop policy if exists "hero_crops write" on public.hero_crops;
+create policy "hero_crops write" on public.hero_crops for all to authenticated
+  using (public.is_admin()) with check (public.is_admin());
+
 -- Współrzędne wybranej miejscowości (z geokodowania Open-Meteo) — do prognozy pogody.
 -- Null gdy lokalizacja to wolny tekst bez wyboru z listy.
 alter table public.events

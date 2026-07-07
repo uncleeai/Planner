@@ -23,7 +23,8 @@ import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
 import { getChatSeen } from '@/lib/chatSeen';
-import { heroImageForEmoji } from '@/lib/heroImage';
+import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
 // Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
@@ -91,6 +92,7 @@ export default function Home() {
   const [votes, setVotes] = useState<Vote[]>(() => cached?.votes ?? []);
   const [profiles, setProfiles] = useState<Profile[]>(() => cached?.profiles ?? []);
   const [recentComments, setRecentComments] = useState<Comment[]>(() => cached?.recentComments ?? []);
+  const [heroCrops, setHeroCrops] = useState<HeroCrop[]>([]);
   const [loading, setLoading] = useState(() => !cached);
 
   const [quote, setQuote] = useState('');
@@ -159,7 +161,16 @@ export default function Home() {
     setRecentComments(recentComments);
     setCache({ events, slots, votes, profiles, recentComments }); // zaliczka dla strony wypadu
     setLoading(false);
+    // Kadry hero (admin je ustawia) — rzadko się zmieniają, dociągamy w tle.
+    loadHeroCrops().then(setHeroCrops);
   }, []);
+
+  // Kadr per emoji (do karty hero); brak wiersza → domyślny.
+  const cropByEmoji = useMemo(() => {
+    const m = new Map<string, HeroCrop>();
+    for (const c of heroCrops) m.set(c.emoji, c);
+    return m;
+  }, [heroCrops]);
 
   // Realtime potrafi przysłać serię zmian naraz (własny głos + cudze + reconnect po
   // uśpieniu). Bez tego każdy wiersz wołał osobny load() = 5 zapytań + pełny re-render
@@ -721,6 +732,7 @@ export default function Home() {
             peek={heroPeek}
             mission={ahead.length === 0}
             unread={unreadByEvent.has(heroEvent.id)}
+            crop={heroEvent.emoji ? cropByEmoji.get(heroEvent.emoji) ?? null : null}
           />
         </section>
       )}
@@ -870,12 +882,13 @@ function useEventNav(eventId: string) {
 // z READY/MOŻE/PAS/AFK), segmenty gotowości. Gdy czeka na twój głos — ready check
 // prosto w karcie (fakty pogoda/zbiórka wtedy schodzą z drogi). W trybie misji
 // (jedyny wypad) skład rośnie do pionowego rosteru z „Pinguj" przy AFK.
-function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek, mission, unread }: {
+function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek, mission, unread, crop }: {
   ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming'; needsYou?: boolean;
   otherSlots?: number;
   peek?: { name: string; avatar: string | null; body: string; createdAt: string } | null;
   mission?: boolean;
   unread?: boolean;
+  crop?: HeroCrop | null;
 }) {
   const { href, handlers } = useEventNav(ev.id);
   const { userId, displayName, isAdmin } = useAuth();
@@ -884,6 +897,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   // Tło hero dobierane po emoji wypadu (public/hero/<kategoria>.jpg). Brak pliku →
   // background-image jest po prostu pusty, więc zostaje sam raster (bez błędu).
   const heroPhoto = heroImageForEmoji(ev.emoji);
+  const c = crop ?? DEFAULT_CROP;
 
   // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
@@ -961,7 +975,14 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
           background-image: kadr/zoom/tekstury z placu zabaw (globals.css). */}
       {heroPhoto && (
         <div className="hero-photo" aria-hidden="true">
-          <div className="hp-img" style={{ backgroundImage: `url(${heroPhoto})` }} />
+          <div
+            className="hp-img"
+            style={{
+              backgroundImage: `url(${heroPhoto})`,
+              backgroundSize: `${c.zoom}%`,
+              backgroundPosition: `${c.pos_x}% ${c.pos_y}%`,
+            }}
+          />
           <i className="hp-tint" />
           <i className="hp-half" />
           <i className="hp-grain" />

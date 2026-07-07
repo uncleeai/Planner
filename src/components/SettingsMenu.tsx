@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '@/lib/auth';
 import { ACCENTS, getAccent, setAccent } from '@/lib/accent';
 import { inviteMember } from '@/lib/invite';
+import HeroCropEditor from '@/components/HeroCropEditor';
 import { IconGear, IconX } from '@/components/icons';
 import {
   isPushSupported,
@@ -31,6 +32,7 @@ export default function SettingsMenu() {
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState('');
   const [inviteOk, setInviteOk] = useState(false);
+  const [showCrop, setShowCrop] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -178,6 +180,14 @@ export default function SettingsMenu() {
                     {inviteMsg}
                   </p>
                 )}
+                <button
+                  type="button"
+                  className="ghost"
+                  style={{ width: '100%', marginTop: 10 }}
+                  onClick={() => setShowCrop(true)}
+                >
+                  Kadrowanie zdjęć
+                </button>
               </div>
             )}
 
@@ -186,6 +196,8 @@ export default function SettingsMenu() {
         </div>,
         document.body,
       )}
+
+      {showCrop && <HeroCropEditor onClose={() => setShowCrop(false)} />}
     </div>
   );
 }
