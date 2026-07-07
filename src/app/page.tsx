@@ -15,7 +15,6 @@ import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventEmojiInput from '@/components/EventEmojiInput';
-import EventPhotoInput from '@/components/EventPhotoInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
@@ -24,6 +23,7 @@ import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
 import { getChatSeen } from '@/lib/chatSeen';
+import { heroImageForEmoji } from '@/lib/heroImage';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
 // Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
@@ -124,8 +124,6 @@ export default function Home() {
   const [location, setLocation] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [emoji, setEmoji] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageFocus, setImageFocus] = useState<string>('50% 30%');
   const [description, setDescription] = useState('');
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [busy, setBusy] = useState(false);
@@ -236,8 +234,6 @@ export default function Home() {
         latitude: locationCoords?.lat ?? null,
         longitude: locationCoords?.lon ?? null,
         emoji,
-        image_url: imageUrl,
-        image_focus: imageUrl ? imageFocus : null,
         description: description.trim() || null,
         created_by: displayName,
         created_by_user_id: userId,
@@ -555,7 +551,6 @@ export default function Home() {
       />
     </div>,
     <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
-    <EventPhotoInput key="photo" userId={userId} value={imageUrl} onChange={setImageUrl} focus={imageFocus} onFocusChange={setImageFocus} />,
     <div className="field" key="date">
       <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
     </div>,
@@ -886,6 +881,11 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const { userId, displayName, isAdmin } = useAuth();
   const isOrg = isAdmin || !ev.created_by_user_id || ev.created_by_user_id === userId;
 
+  // Tło hero dobierane po emoji wypadu (public/hero/<kategoria>.jpg). Brak pliku
+  // (np. jeszcze niewgrany) → chowamy warstwę i zostaje sam raster.
+  const heroPhoto = heroImageForEmoji(ev.emoji);
+  const [photoFailed, setPhotoFailed] = useState(false);
+
   // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
   async function nudge(e: React.MouseEvent, m: SquadMember) {
@@ -957,17 +957,18 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
 
   return (
     <Link href={href} prefetch={true} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
-      {/* Fotka-nastrój pod treścią hero (tylko gdy wypad ma zdjęcie; bez zdjęcia karta
-          wygląda jak dotąd). Warstwy i wartości dostrojone na mockupie „plac zabaw". */}
-      {ev.image_url && (
+      {/* Fotka-nastrój pod treścią hero — zdjęcie kategorii z emoji wypadu. Bez emoji
+          albo bez pliku dla niego (onError) zostaje sam raster. Warstwy i wartości
+          dostrojone na mockupie „plac zabaw". */}
+      {heroPhoto && !photoFailed && (
         <div className="hero-photo" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={ev.image_url}
+            src={heroPhoto}
             alt=""
             loading="lazy"
             decoding="async"
-            style={{ objectPosition: ev.image_focus ?? '50% 30%' }}
+            onError={() => setPhotoFailed(true)}
           />
           <i className="hp-tint" />
           <i className="hp-half" />

@@ -12,7 +12,6 @@ import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import EventEmojiInput from '@/components/EventEmojiInput';
-import EventPhotoInput from '@/components/EventPhotoInput';
 import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -94,8 +93,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [editLocation, setEditLocation] = useState('');
   const [editCoords, setEditCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [editEmoji, setEditEmoji] = useState<string | null>(null);
-  const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
-  const [editImageFocus, setEditImageFocus] = useState<string>('50% 30%');
   const [editDescription, setEditDescription] = useState('');
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState('');
@@ -366,8 +363,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         : null,
     );
     setEditEmoji(event.emoji ?? null);
-    setEditImageUrl(event.image_url ?? null);
-    setEditImageFocus(event.image_focus ?? '50% 30%');
     setEditDescription(event.description ?? '');
     setEditError('');
     setEditing(true);
@@ -386,8 +381,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         latitude: editCoords?.lat ?? null,
         longitude: editCoords?.lon ?? null,
         emoji: editEmoji,
-        image_url: editImageUrl,
-        image_focus: editImageUrl ? editImageFocus : null,
         description: editDescription.trim() || null,
       })
       .eq('id', eventId);
@@ -573,7 +566,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             />
           </div>
           <EventEmojiInput value={editEmoji} onChange={setEditEmoji} />
-          <EventPhotoInput userId={userId} value={editImageUrl} onChange={setEditImageUrl} focus={editImageFocus} onFocusChange={setEditImageFocus} />
           <div className="field">
             <label htmlFor="edit-description">Opis (opcjonalnie)</label>
             <DescriptionInput

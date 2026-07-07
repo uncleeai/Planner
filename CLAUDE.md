@@ -73,7 +73,6 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SlotRangeInput.tsx    # Wspólny input terminu: Od / Do / Godzina
     │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
-    │   ├── EventPhotoInput.tsx   # Pole „Zdjęcie" wypadu: upload do bucketu event-images
     │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin…)
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
@@ -83,7 +82,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
-        ├── eventImage.ts         # Skalowanie + upload zdjęcia wypadu (bucket event-images)
+        ├── heroImage.ts          # Mapa emoji → zdjęcie tła karty hero (public/hero/*.jpg)
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
         ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
         ├── markdown.tsx          # Mini-renderer markdownu opisu → elementy React (bez surowego HTML)
