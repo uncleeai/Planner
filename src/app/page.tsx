@@ -881,10 +881,9 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const { userId, displayName, isAdmin } = useAuth();
   const isOrg = isAdmin || !ev.created_by_user_id || ev.created_by_user_id === userId;
 
-  // Tło hero dobierane po emoji wypadu (public/hero/<kategoria>.jpg). Brak pliku
-  // (np. jeszcze niewgrany) → chowamy warstwę i zostaje sam raster.
+  // Tło hero dobierane po emoji wypadu (public/hero/<kategoria>.jpg). Brak pliku →
+  // background-image jest po prostu pusty, więc zostaje sam raster (bez błędu).
   const heroPhoto = heroImageForEmoji(ev.emoji);
-  const [photoFailed, setPhotoFailed] = useState(false);
 
   // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
@@ -958,18 +957,11 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   return (
     <Link href={href} prefetch={true} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
       {/* Fotka-nastrój pod treścią hero — zdjęcie kategorii z emoji wypadu. Bez emoji
-          albo bez pliku dla niego (onError) zostaje sam raster. Warstwy i wartości
-          dostrojone na mockupie „plac zabaw". */}
-      {heroPhoto && !photoFailed && (
+          (albo emoji bez pliku → tło transparentne) zostaje sam raster. Zdjęcie jako
+          background-image: kadr/zoom/tekstury z placu zabaw (globals.css). */}
+      {heroPhoto && (
         <div className="hero-photo" aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={heroPhoto}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            onError={() => setPhotoFailed(true)}
-          />
+          <div className="hp-img" style={{ backgroundImage: `url(${heroPhoto})` }} />
           <i className="hp-tint" />
           <i className="hp-half" />
           <i className="hp-grain" />

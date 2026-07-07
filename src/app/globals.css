@@ -1781,10 +1781,10 @@ button.solid-danger { background: var(--no); color: #fff; }
 }
 
 /* ===== Hero ze zdjęciem (fotka-nastrój) =====
-   Wartości dostrojone przez właściciela na mockupie „plac zabaw":
-   odsaturowana fotka + 14% oranżu (duotone), drobny raster 3px, grube miękkie
-   ziarno, winieta 46%, scrim 66%→100%. Bez zdjęcia (brak .hero-photo) karta
-   wygląda dokładnie jak dotąd — fallback pierwszej klasy. */
+   Kadr, zoom, filtry i tekstury dostrojone przez właściciela w placu zabaw
+   (na pełnych, nieprzyciętych zdjęciach). Warstwa .hp-img to background-image
+   (background-size = zoom, background-position = kadr). Bez zdjęcia (brak
+   .hero-photo) karta wygląda jak dotąd — fallback pierwszej klasy. */
 .hero-photo {
   position: absolute;
   inset: 0;
@@ -1793,19 +1793,16 @@ button.solid-danger { background: var(--no); color: #fff; }
   overflow: hidden;
   pointer-events: none;
 }
-.hero-photo img {
+.hero-photo .hp-img {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 30%;
-  filter: saturate(0) brightness(0.82) blur(3px) grayscale(0.25);
-  /* blur zostawia prześwitujące krawędzie — lekki zoom je chowa */
-  transform: scale(1.06);
+  background-repeat: no-repeat;
+  background-size: 163%;
+  background-position: 77% 10%;
+  filter: saturate(0.6) brightness(0.86) blur(2px) grayscale(0);
 }
 .hero-photo i { position: absolute; inset: 0; }
-.hero-photo .hp-tint { background: var(--accent); mix-blend-mode: color; opacity: 0.14; }
+.hero-photo .hp-tint { background: var(--accent); mix-blend-mode: color; opacity: 0; }
 .hero-photo .hp-half {
   background-image: radial-gradient(rgba(0, 0, 0, 0.5) 1px, transparent 1.4px);
   background-size: 3px 3px;
@@ -1814,7 +1811,7 @@ button.solid-danger { background: var(--no); color: #fff; }
 .hero-photo .hp-grain {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 256px 256px;
-  opacity: 0.6;
+  opacity: 0.35;
 }
 .hero-photo .hp-vig {
   background: radial-gradient(ellipse at 50% 45%, transparent 50%, rgba(4, 5, 6, 0.46) 100%);
