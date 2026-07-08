@@ -92,7 +92,7 @@ export default function Home() {
   const [votes, setVotes] = useState<Vote[]>(() => cached?.votes ?? []);
   const [profiles, setProfiles] = useState<Profile[]>(() => cached?.profiles ?? []);
   const [recentComments, setRecentComments] = useState<Comment[]>(() => cached?.recentComments ?? []);
-  const [heroCrops, setHeroCrops] = useState<HeroCrop[]>([]);
+  const [heroCrops, setHeroCrops] = useState<HeroCrop[]>(() => cached?.heroCrops ?? []);
   const [loading, setLoading] = useState(() => !cached);
 
   const [quote, setQuote] = useState('');
@@ -159,10 +159,12 @@ export default function Home() {
     setProfiles(profiles);
     const recentComments = (cm ?? []) as Comment[];
     setRecentComments(recentComments);
-    setCache({ events, slots, votes, profiles, recentComments }); // zaliczka dla strony wypadu
+    // Kadry hero — dociągamy razem, żeby trafiły do cache'a i przy powrocie z wypadu
+    // karta od razu miała właściwy kadr (bez „przeskoku" z domyślnego na zapisany).
+    const crops = await loadHeroCrops();
+    setHeroCrops(crops);
+    setCache({ events, slots, votes, profiles, recentComments, heroCrops: crops }); // zaliczka dla strony wypadu
     setLoading(false);
-    // Kadry hero (admin je ustawia) — rzadko się zmieniają, dociągamy w tle.
-    loadHeroCrops().then(setHeroCrops);
   }, []);
 
   // Kadr per emoji (do karty hero); brak wiersza → domyślny.

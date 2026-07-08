@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { loadHeroCrops, saveHeroCrop } from '@/lib/heroCrops';
+import { updateCachedCrop } from '@/lib/dataCache';
 import { IconX, IconChevron, IconPin } from '@/components/icons';
 
 // Admin: kadrowanie zdjęć hero per kategoria (emoji). Suwaki (zoom + pozycja) jak
@@ -48,7 +49,9 @@ export default function HeroCropEditor({ onClose }: { onClose: () => void }) {
       setError(err);
       return;
     }
-    setCrops((m) => ({ ...m, [sel]: { emoji: sel, zoom, pos_x: px, pos_y: py } }));
+    const crop = { emoji: sel, zoom, pos_x: px, pos_y: py };
+    setCrops((m) => ({ ...m, [sel]: crop }));
+    updateCachedCrop(crop); // powrót na dashboard od razu z nowym kadrem
     setSaved(true);
   }
 
