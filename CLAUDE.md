@@ -59,36 +59,53 @@ Guidance for AI assistants (and humans) working in this repository.
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
 │   ├── sw.js                     # Service worker (Web Push: push + notificationclick)
-│   └── icon.svg                  # Ikona aplikacji
+│   ├── icon.svg                  # Ikona aplikacji (+ icon-180/192/512.png dla PWA/iOS)
+│   └── hero/                     # Kuratorowane zdjęcia tła kart hero per kategoria (emoji)
 └── src/
     ├── app/
     │   ├── layout.tsx            # Root layout + AuthProvider (bramka logowania), metadata, analityka
     │   ├── globals.css           # Wszystkie style
-    │   ├── page.tsx              # Strona główna = dashboard: oś czasu wypadów + „Nowy wypad"
-    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, wynik na żywo, ustalanie terminu
+    │   ├── page.tsx              # Strona główna = dashboard: hero + rozkład wypadów + „Nowe lobby"
+    │   ├── error.tsx             # Granica błędów stron (komunikat w skórce apki + retry)
+    │   ├── global-error.tsx      # Awaryjny ekran, gdy wysypie się sam root layout
+    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, czat, ustalanie terminu
+    │   ├── event/[id]/loading.tsx # Skeleton przejścia do wypadu
     │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
+    │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
     │   ├── SlotRangeInput.tsx    # Wspólny input terminu: Od / Do / Godzina
+    │   ├── DateTimeInput.tsx     # Pojedyncze pole daty/godziny (część SlotRangeInput)
     │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
+    │   ├── EventEmojiInput.tsx   # Wybór emoji/kategorii wypadu (spójny z heroImage.ts)
+    │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
+    │   ├── Dialogs.tsx           # appAlert/appConfirm + DialogHost (zamiast natywnych alertów)
+    │   ├── GlassBackground.tsx   # Tło „frosted glass" pod całą apką
     │   ├── HeroCropEditor.tsx    # Admin: kadrowanie zdjęć hero per kategoria (zoom+pozycja)
-    │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin…)
+    │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin, pogoda…)
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── admin.ts              # E-maile adminów (właściciel) + isAdminEmail; trzymaj w synchronie z is_admin() w schema.sql
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
-        ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina
+        ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina (+ testy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
+        ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
+        ├── notifyConfirmed.ts    # Fire-and-forget push „✓ GRAMY" (Edge Function notify-confirmed)
         ├── heroImage.ts          # Mapa emoji → zdjęcie tła karty hero (public/hero/*.jpg) + kategorie
         ├── heroCrops.ts          # Odczyt/zapis kadru hero per kategoria (tabela hero_crops)
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
+        ├── weather.ts            # Prognoza Open-Meteo na dzień wypadu + geokodowanie (cache w pamięci)
         ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
         ├── markdown.tsx          # Mini-renderer markdownu opisu → elementy React (bez surowego HTML)
-        └── types.ts              # Typy: EventRow, Slot, Vote, Profile, Availability
+        ├── transition.tsx        # Animowane przejścia stron (forward/back) + useTransitionNavigate
+        ├── dataCache.ts          # Cache danych w pamięci: dashboard ↔ strona wypadu bez „Wczytuję…"
+        ├── eventPrefetch.ts      # Prefetch danych wypadu na pointerdown (przed nawigacją)
+        ├── chatSeen.ts           # Lokalny znacznik „przeczytane" czatu (kropki nieprzeczytanych)
+        └── types.ts              # Typy + logika statusu wypadu (EventRow, Slot, Vote, Profile…) (+ testy)
 ```
 
 **Punkty wejścia:** `src/app/page.tsx` (`/`, dashboard wszystkich wypadów) oraz
@@ -130,6 +147,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
 - **comments** — komentarze pod wypadem (koordynacja): `event_id` + `user_id` (konto)
   + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; usuwa
   autor, organizator albo admin. Realtime + wątek pod terminami na stronie wypadu.
+- **hero_crops** — kadr zdjęcia hero per kategoria (emoji): `zoom` + `pos_x`/`pos_y`.
+  Zdjęcia są stałe (`public/hero/<slug>.jpg`), admin ustawia kadr w apce
+  (`HeroCropEditor`). Wszyscy czytają, zapisuje tylko admin (`is_admin()`).
 - Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
   przy głosach/wypadach/komentarzach zapisujemy dodatkowo migawkę nazwy.
 

@@ -44,7 +44,6 @@ export async function pingUser(eventId: string, targetUserId: string, targetName
       return `Ping padł: ${name}${status ? ` (${status})` : ''} — ${reason ?? bodyText ?? message}`;
     }
 
-    console.log('[ping] odpowiedź', data);
     const d = data as { sent?: number; reason?: string } | null;
     if (d && d.sent === 0) {
       return d.reason === 'no-subscriptions'

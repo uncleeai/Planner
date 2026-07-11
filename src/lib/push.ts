@@ -61,9 +61,6 @@ export async function subscribeToPush(userId: string): Promise<void> {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Brak zgody na powiadomienia.');
 
-  // DIAGNOSTYKA: jaki klucz publiczny faktycznie ma ten build (NEXT_PUBLIC_* jest
-  // wkompilowane przy buildzie — jeśli tu widać stary klucz, preview nie przebudował się).
-  console.log('[push] VAPID_PUBLIC_KEY w buildzie =', VAPID_PUBLIC_KEY);
   const desiredKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
   // Jeśli w przeglądarce jest już subskrypcja, ale zrobiona INNYM kluczem VAPID,
@@ -75,7 +72,6 @@ export async function subscribeToPush(userId: string): Promise<void> {
     const same =
       current.length === desiredKey.length && current.every((b, i) => b === desiredKey[i]);
     if (!same) {
-      console.warn('[push] istniejąca subskrypcja ma inny klucz — od-subskrybowuję i robię nową');
       await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
       await sub.unsubscribe();
       sub = null;

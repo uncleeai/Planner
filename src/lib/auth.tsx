@@ -146,14 +146,6 @@ function LoginForm() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [isPreview, setIsPreview] = useState(false);
-
-  // Guzik „gość" pokazujemy na preview i lokalnie (każdy adres *.vercel.app oraz localhost).
-  // Na własnej domenie produkcyjnej się nie pokaże.
-  useEffect(() => {
-    const h = window.location.hostname;
-    setIsPreview(h.endsWith('.vercel.app') || h.includes('localhost') || h.startsWith('127.'));
-  }, []);
 
   async function sendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -202,24 +194,6 @@ function LoginForm() {
       return;
     }
     // onAuthStateChange ustawi sesję i przełączy widok — w TEJ przeglądarce.
-  }
-
-  async function guestLogin() {
-    if (busy) return;
-    setBusy(true);
-    setError('');
-    const { error } = await supabase.auth.signInAnonymously({
-      options: {
-        data: {
-          display_name: `Gość ${Math.floor(Math.random() * 900 + 100)}`,
-          avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
-        },
-      },
-    });
-    if (error) {
-      setError(error.message);
-      setBusy(false);
-    }
   }
 
   return (
@@ -281,19 +255,6 @@ function LoginForm() {
             Zmień e-mail / wyślij ponownie
           </button>
         </form>
-      )}
-
-      {/* Guzik gościa tymczasowo wyłączony */}
-      {false && isPreview && (
-        <button
-          type="button"
-          className="ghost mt"
-          style={{ width: '100%' }}
-          disabled={busy}
-          onClick={guestLogin}
-        >
-          Wejdź bez logowania (gość)
-        </button>
       )}
     </main>
   );

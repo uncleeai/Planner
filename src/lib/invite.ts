@@ -12,10 +12,7 @@ export async function inviteMember(email: string): Promise<string | null> {
       body: { email: email.trim() },
     });
 
-    if (!error) {
-      console.log('[invite] OK', data);
-      return null;
-    }
+    if (!error) return null;
 
     // Wyciągnij ile się da z błędu invoke.
     const name = (error as Error).name;
