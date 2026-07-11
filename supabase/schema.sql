@@ -293,26 +293,52 @@ create policy "comments delete" on public.comments for delete to authenticated
     )
   );
 
--- Reakcje emoji na komentarze. Jeden wiersz = jedna reakcja (osoba, emoji);
--- ponowne tapnięcie tej samej emoji ją zdejmuje (delete). event_id dublujemy
--- z komentarza, żeby dało się tanio pobrać reakcje całego wypadu jednym zapytaniem.
+-- Reakcje emoji na komentarze (styl Messengera): JEDNA reakcja na osobę per
+-- komentarz — wybór innej emoji podmienia poprzednią (upsert), tap w tę samą
+-- zdejmuje (delete). event_id dublujemy z komentarza, żeby dało się tanio pobrać
+-- reakcje całego wypadu jednym zapytaniem.
 create table if not exists public.comment_reactions (
   comment_id uuid not null references public.comments(id) on delete cascade,
   event_id   uuid not null references public.events(id) on delete cascade,
   user_id    uuid not null references auth.users(id) on delete cascade,
   emoji      text not null,
   created_at timestamptz not null default now(),
-  primary key (comment_id, user_id, emoji)
+  primary key (comment_id, user_id)
 );
 create index if not exists comment_reactions_event_idx on public.comment_reactions(event_id);
+
+-- Migracja z pierwszej wersji tabeli (PK zawierał emoji → wiele reakcji na osobę):
+-- zostaw najświeższą reakcję każdej osoby i przełóż PK na (comment_id, user_id).
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.comment_reactions'::regclass
+      and contype = 'p' and array_length(conkey, 1) = 3
+  ) then
+    delete from public.comment_reactions r
+    using public.comment_reactions newer
+    where newer.comment_id = r.comment_id
+      and newer.user_id = r.user_id
+      and newer.ctid <> r.ctid
+      and (newer.created_at > r.created_at
+           or (newer.created_at = r.created_at and newer.ctid > r.ctid));
+    alter table public.comment_reactions drop constraint comment_reactions_pkey;
+    alter table public.comment_reactions add primary key (comment_id, user_id);
+  end if;
+end $$;
 
 alter table public.comment_reactions enable row level security;
 drop policy if exists "reactions read"   on public.comment_reactions;
 drop policy if exists "reactions insert" on public.comment_reactions;
+drop policy if exists "reactions update" on public.comment_reactions;
 drop policy if exists "reactions delete" on public.comment_reactions;
 create policy "reactions read"   on public.comment_reactions for select to authenticated using (true);
 create policy "reactions insert" on public.comment_reactions for insert to authenticated
   with check (user_id = auth.uid());
+-- update potrzebny do podmiany emoji (upsert = insert … on conflict do update).
+create policy "reactions update" on public.comment_reactions for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "reactions delete" on public.comment_reactions for delete to authenticated
   using (user_id = auth.uid());
 

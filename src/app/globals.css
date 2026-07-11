@@ -994,13 +994,22 @@ img.avatar { display: inline-block; }
 .comment-form.comment-edit input { padding: 8px 12px; font-size: 0.92rem; }
 .comment-form.comment-edit .send { width: 38px; height: 38px; font-size: 0.95rem; }
 
-/* Reakcje emoji pod komentarzem: chipy z licznikiem + „+" otwierający mini-picker. */
+/* Reakcje na komentarze (styl Messengera): przytrzymanie dymka otwiera picker
+   nad komentarzem; chipy pod komentarzem pokazują kto co dał (tap = lista). */
+.comment { position: relative; }
+/* Long-press na dotyku nie może odpalać zaznaczania tekstu / callout iOS. */
+@media (hover: none) {
+  .comment.pressable {
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
 .reactions {
   position: relative;
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   margin-top: 6px;
 }
-.reaction-chip, .reaction-add {
+.reaction-chip {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 3px 9px; min-height: 26px;
   font-family: var(--mono); font-size: 0.8rem; line-height: 1;
@@ -1014,25 +1023,51 @@ img.avatar { display: inline-block; }
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
-.reaction-add { color: var(--muted); }
 @media (hover: hover) {
-  .reaction-chip:hover, .reaction-add:hover { border-color: rgba(255, 255, 255, 0.3); }
+  .reaction-chip:hover { border-color: rgba(255, 255, 255, 0.3); }
 }
 .reaction-picker {
-  position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 30;
-  display: flex; gap: 2px; padding: 4px 6px;
+  position: absolute; left: 34px; bottom: calc(100% - 4px); z-index: 60;
+  display: flex; gap: 2px; padding: 5px 7px;
   background: rgba(20, 23, 26, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transform-origin: left bottom;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reaction-picker { animation: picker-pop 0.16s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
+}
+@keyframes picker-pop {
+  from { opacity: 0; transform: scale(0.7); }
 }
 .reaction-picker button {
-  background: none; border: none; padding: 5px 6px;
-  font-size: 1.05rem; line-height: 1; cursor: pointer; border-radius: 8px;
+  background: none; border: none; padding: 6px 7px;
+  font-size: 1.15rem; line-height: 1; cursor: pointer; border-radius: 999px;
+}
+.reaction-picker button.sel {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
 }
 @media (hover: hover) {
   .reaction-picker button:hover { background: rgba(255, 255, 255, 0.08); }
 }
+/* Lista „kto zareagował" — po tapnięciu w chipy. */
+.who-pop {
+  position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 60;
+  display: flex; flex-direction: column; gap: 5px;
+  min-width: 130px; padding: 8px 12px;
+  background: rgba(20, 23, 26, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.who-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 0.82rem;
+}
+.who-row b { font-weight: 600; }
+/* Przezroczysta warstwa łapiąca tap poza pickerem/listą. */
+.tap-catcher { position: fixed; inset: 0; z-index: 50; }
 
 /* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */
 .toast {

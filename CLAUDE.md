@@ -152,8 +152,10 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; edytuje
   tylko autor; usuwa autor, organizator albo admin. Realtime + wątek pod terminami na
   stronie wypadu.
-- **comment_reactions** — reakcje emoji na komentarze: PK `(comment_id, user_id, emoji)`,
-  `event_id` zdublowany dla taniego pobrania per wypad. Tap dodaje, tap w swoją zdejmuje.
+- **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
+  `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
+  tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
+  UX: long-press komentarza otwiera picker; tap w chipy pokazuje kto co dał.
   RLS: czytają wszyscy zalogowani, każdy zarządza tylko swoimi. Uwaga na Realtime:
   subskrypcja BEZ filtra (filtry działają tylko na INSERT/UPDATE, a zdjęcie reakcji to
   DELETE). Zestaw emoji: `REACTION_EMOJIS` na stronie wypadu.

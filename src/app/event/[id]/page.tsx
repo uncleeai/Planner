@@ -33,6 +33,41 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
 // Zestaw reakcji na komentarze (stały — picker ma być jednym tapnięciem, nie klawiaturą emoji).
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '💀', '🍺'];
 
+// Przytrzymanie (long-press) komentarza otwiera picker reakcji — jak w iMessage/
+// Messengerze. Ruch palca > 12px (scroll) anuluje; prawy klik na desktopie też otwiera.
+const LONG_PRESS_MS = 450;
+function longPressHandlers(fire: () => void) {
+  let timer = 0;
+  let sx = 0;
+  let sy = 0;
+  const cancel = () => {
+    if (timer) window.clearTimeout(timer);
+    timer = 0;
+  };
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      sx = e.clientX;
+      sy = e.clientY;
+      cancel();
+      timer = window.setTimeout(() => {
+        timer = 0;
+        navigator.vibrate?.(10);
+        fire();
+      }, LONG_PRESS_MS);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) cancel();
+    },
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onPointerLeave: cancel,
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      fire();
+    },
+  };
+}
+
 function formatCommentTime(iso: string): string {
   return new Date(iso).toLocaleString('pl-PL', {
     day: 'numeric',
@@ -99,8 +134,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
 
-  // Komentarz z otwartym pickerem reakcji.
+  // Komentarz z otwartym pickerem reakcji (long-press) / z listą „kto zareagował" (tap w chipy).
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [whoFor, setWhoFor] = useState<string | null>(null);
 
   // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
   const [editing, setEditing] = useState(false);
@@ -435,20 +471,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (error) load();
   }
 
-  // Reakcja emoji: tap dodaje, tap w już swoją — zdejmuje. Optymistycznie w obie strony.
+  // Reakcja jak w Messengerze: jedna na osobę per komentarz. Wybór innej emoji
+  // podmienia poprzednią (upsert), tap w tę samą — zdejmuje. Optymistycznie.
   async function toggleReaction(commentId: string, emoji: string) {
     setPickerFor(null);
-    const mine = reactions.find(
-      (r) => r.comment_id === commentId && r.user_id === userId && r.emoji === emoji,
-    );
-    if (mine) {
+    const mine = reactions.find((r) => r.comment_id === commentId && r.user_id === userId);
+    if (mine && mine.emoji === emoji) {
       setReactions((prev) => prev.filter((r) => r !== mine));
       const { error } = await supabase
         .from('comment_reactions')
         .delete()
         .eq('comment_id', commentId)
-        .eq('user_id', userId)
-        .eq('emoji', emoji);
+        .eq('user_id', userId);
       if (error) load();
     } else {
       const optimistic: Reaction = {
@@ -458,13 +492,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         emoji,
         created_at: new Date().toISOString(),
       };
-      setReactions((prev) => [...prev, optimistic]);
-      const { error } = await supabase.from('comment_reactions').insert({
-        comment_id: commentId,
-        event_id: eventId,
-        user_id: userId,
-        emoji,
-      });
+      setReactions((prev) => [
+        ...prev.filter((r) => !(r.comment_id === commentId && r.user_id === userId)),
+        optimistic,
+      ]);
+      const { error } = await supabase.from('comment_reactions').upsert(
+        { comment_id: commentId, event_id: eventId, user_id: userId, emoji },
+        { onConflict: 'comment_id,user_id' },
+      );
       if (error) load();
     }
   }
@@ -580,22 +615,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
-  // Reakcje pogrupowane per komentarz: emoji + liczba + czy moja (podświetlenie)
-  // + imiona (tooltip). Kolejność emoji stała (wg REACTION_EMOJIS).
+  // Reakcje pogrupowane per komentarz: emoji + liczba + czy moja (podświetlenie).
+  // Kolejność emoji stała (wg REACTION_EMOJIS). Kto dał którą — lista po tapnięciu w chipy.
   const reactionsByComment = useMemo(() => {
-    type Group = { emoji: string; count: number; mine: boolean; names: string[] };
+    type Group = { emoji: string; count: number; mine: boolean };
     const m = new Map<string, Group[]>();
     for (const r of reactions) {
       const arr = m.get(r.comment_id) ?? [];
       let g = arr.find((x) => x.emoji === r.emoji);
       if (!g) {
-        g = { emoji: r.emoji, count: 0, mine: false, names: [] };
+        g = { emoji: r.emoji, count: 0, mine: false };
         arr.push(g);
       }
       g.count++;
       if (r.user_id === userId) g.mine = true;
-      const name = profileById.get(r.user_id)?.display_name;
-      if (name) g.names.push(name);
       m.set(r.comment_id, arr);
     }
     const order = (e: string) => {
@@ -604,7 +637,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
     for (const arr of m.values()) arr.sort((a, b) => order(a.emoji) - order(b.emoji));
     return m;
-  }, [reactions, userId, profileById]);
+  }, [reactions, userId]);
 
   // Uczestnicy, którzy oddali jakikolwiek głos — z awatarami (do stosu na górze).
   const participantsPeople = useMemo<Person[]>(() => {
@@ -990,10 +1023,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               const canDel = c.user_id === userId || isOrganizer;
               const canEdit = saved && c.user_id === userId;
               const groups = saved ? reactionsByComment.get(c.id) ?? [] : [];
+              const myEmoji = saved
+                ? reactions.find((r) => r.comment_id === c.id && r.user_id === userId)?.emoji ?? null
+                : null;
+              const pressable = saved && editingCommentId !== c.id;
               return (
                 <div
                   key={c.id}
-                  className={`comment${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}`}
+                  className={`comment${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}${pressable ? ' pressable' : ''}`}
+                  {...(pressable
+                    ? longPressHandlers(() => {
+                        setWhoFor(null);
+                        setPickerFor(c.id);
+                      })
+                    : {})}
                 >
                   <Avatar name={name} avatar={prof?.avatar ?? null} size={30} />
                   <div className="comment-body">
@@ -1040,34 +1083,45 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     ) : (
                       <p className="comment-text">{c.body}</p>
                     )}
-                    {saved && editingCommentId !== c.id && (
+                    {pickerFor === c.id && (
+                      <span className="reaction-picker" onPointerDown={(e) => e.stopPropagation()}>
+                        {REACTION_EMOJIS.map((e) => (
+                          <button
+                            key={e}
+                            type="button"
+                            className={myEmoji === e ? 'sel' : ''}
+                            onClick={() => toggleReaction(c.id, e)}
+                          >
+                            {e}
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                    {groups.length > 0 && editingCommentId !== c.id && (
                       <div className="reactions">
                         {groups.map((g) => (
                           <button
                             key={g.emoji}
                             type="button"
                             className={`reaction-chip${g.mine ? ' mine' : ''}`}
-                            title={g.names.join(', ')}
-                            onClick={() => toggleReaction(c.id, g.emoji)}
+                            onClick={() => {
+                              setPickerFor(null);
+                              setWhoFor(whoFor === c.id ? null : c.id);
+                            }}
                           >
                             {g.emoji}{g.count > 1 ? ` ${g.count}` : ''}
                           </button>
                         ))}
-                        <button
-                          type="button"
-                          className="reaction-add"
-                          aria-label="Dodaj reakcję"
-                          onClick={() => setPickerFor(pickerFor === c.id ? null : c.id)}
-                        >
-                          {groups.length === 0 ? '🙂+' : '+'}
-                        </button>
-                        {pickerFor === c.id && (
-                          <span className="reaction-picker">
-                            {REACTION_EMOJIS.map((e) => (
-                              <button key={e} type="button" onClick={() => toggleReaction(c.id, e)}>
-                                {e}
-                              </button>
-                            ))}
+                        {whoFor === c.id && (
+                          <span className="who-pop" onPointerDown={(e) => e.stopPropagation()}>
+                            {reactions
+                              .filter((r) => r.comment_id === c.id)
+                              .map((r) => (
+                                <span key={r.user_id} className="who-row">
+                                  <b>{r.user_id === userId ? 'Ty' : profileById.get(r.user_id)?.display_name ?? '?'}</b>
+                                  <span>{r.emoji}</span>
+                                </span>
+                              ))}
                           </span>
                         )}
                       </div>
@@ -1098,6 +1152,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             Usuń ten wypad
           </button>
         </div>
+      )}
+
+      {/* Tap poza pickerem/listą reakcji zamyka je (przezroczysta warstwa pod spodem). */}
+      {(pickerFor || whoFor) && (
+        <div
+          className="tap-catcher"
+          onClick={() => {
+            setPickerFor(null);
+            setWhoFor(null);
+          }}
+        />
       )}
     </main>
   );
