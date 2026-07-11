@@ -205,9 +205,21 @@ create policy "events update" on public.events for update to authenticated
 create policy "events delete" on public.events for delete to authenticated
   using (created_by_user_id = auth.uid() or created_by_user_id is null or public.is_admin());
 
--- slots: każdy zalogowany czyta i może proponować termin; usunąć może autor lub organizator.
+-- slots: każdy zalogowany czyta i może proponować termin; edytować/usunąć może
+-- autor terminu lub organizator wypadu (lub admin).
 create policy "slots read"   on public.slots for select to authenticated using (true);
 create policy "slots insert" on public.slots for insert to authenticated with check (true);
+drop policy if exists "slots update" on public.slots;
+create policy "slots update" on public.slots for update to authenticated
+  using (
+    created_by_user_id = auth.uid()
+    or created_by_user_id is null
+    or public.is_admin()
+    or exists (
+      select 1 from public.events e
+      where e.id = slots.event_id and e.created_by_user_id = auth.uid()
+    )
+  );
 create policy "slots delete" on public.slots for delete to authenticated
   using (
     created_by_user_id = auth.uid()
@@ -218,6 +230,31 @@ create policy "slots delete" on public.slots for delete to authenticated
       where e.id = slots.event_id and e.created_by_user_id = auth.uid()
     )
   );
+
+-- Zmiana terminu unieważnia oddane na niego głosy — stary głos na nową datę byłby
+-- mylący. Trigger (security definer — RLS pozwala kasować tylko własne głosy, a tu
+-- kasujemy wszystkie) czyści głosy przy KAŻDEJ zmianie czasu slotu; przy okazji
+-- synchronizuje events.confirmed_at, jeśli edytowany slot był klepnięty.
+create or replace function public.reset_votes_on_slot_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (old.starts_at, old.ends_at, old.all_day)
+     is distinct from (new.starts_at, new.ends_at, new.all_day) then
+    delete from public.votes where slot_id = new.id;
+    update public.events
+      set confirmed_at = new.starts_at
+      where id = new.event_id and confirmed_slot_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists slots_reset_votes on public.slots;
+create trigger slots_reset_votes after update on public.slots
+  for each row execute function public.reset_votes_on_slot_change();
 
 -- votes: każdy zalogowany czyta; ale dodać/zmienić/usunąć można tylko swój głos.
 create policy "votes read"   on public.votes for select to authenticated using (true);
@@ -235,13 +272,17 @@ create policy "profiles insert" on public.profiles for insert to authenticated
 create policy "profiles update" on public.profiles for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
--- comments: każdy zalogowany czyta i dodaje (jako on sam); usuwa autor, organizator albo admin.
+-- comments: każdy zalogowany czyta i dodaje (jako on sam); edytuje tylko autor;
+-- usuwa autor, organizator albo admin.
 drop policy if exists "comments read"   on public.comments;
 drop policy if exists "comments insert" on public.comments;
+drop policy if exists "comments update" on public.comments;
 drop policy if exists "comments delete" on public.comments;
 create policy "comments read"   on public.comments for select to authenticated using (true);
 create policy "comments insert" on public.comments for insert to authenticated
   with check (user_id = auth.uid());
+create policy "comments update" on public.comments for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "comments delete" on public.comments for delete to authenticated
   using (
     user_id = auth.uid()
@@ -251,6 +292,29 @@ create policy "comments delete" on public.comments for delete to authenticated
       where e.id = comments.event_id and e.created_by_user_id = auth.uid()
     )
   );
+
+-- Reakcje emoji na komentarze. Jeden wiersz = jedna reakcja (osoba, emoji);
+-- ponowne tapnięcie tej samej emoji ją zdejmuje (delete). event_id dublujemy
+-- z komentarza, żeby dało się tanio pobrać reakcje całego wypadu jednym zapytaniem.
+create table if not exists public.comment_reactions (
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  event_id   uuid not null references public.events(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  emoji      text not null,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id, emoji)
+);
+create index if not exists comment_reactions_event_idx on public.comment_reactions(event_id);
+
+alter table public.comment_reactions enable row level security;
+drop policy if exists "reactions read"   on public.comment_reactions;
+drop policy if exists "reactions insert" on public.comment_reactions;
+drop policy if exists "reactions delete" on public.comment_reactions;
+create policy "reactions read"   on public.comment_reactions for select to authenticated using (true);
+create policy "reactions insert" on public.comment_reactions for insert to authenticated
+  with check (user_id = auth.uid());
+create policy "reactions delete" on public.comment_reactions for delete to authenticated
+  using (user_id = auth.uid());
 
 -- Subskrypcje Web Push (powiadomienia o nowych wypadach). Jeden wiersz = jedno
 -- urządzenie/przeglądarka (klucz: endpoint). Wysyłką zajmuje się Edge Function
@@ -284,7 +348,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['events', 'slots', 'votes', 'profiles', 'comments'] loop
+  foreach t in array array['events', 'slots', 'votes', 'profiles', 'comments', 'comment_reactions'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

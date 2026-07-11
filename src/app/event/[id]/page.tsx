@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
-import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib/types';
+import type { Availability, Comment, EventRow, Profile, Reaction, Slot, Vote } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
@@ -13,7 +13,7 @@ import DescriptionInput from '@/components/DescriptionInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import EventEmojiInput from '@/components/EventEmojiInput';
 import { Markdown } from '@/lib/markdown';
-import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
+import { buildSlotTimes, slotToRange, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
 import { loadEventBundle } from '@/lib/eventPrefetch';
@@ -29,6 +29,9 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'maybe', label: 'MOŻE', cls: 'on-maybe' },
   { value: 'no', label: 'PAS', cls: 'on-no' },
 ];
+
+// Zestaw reakcji na komentarze (stały — picker ma być jednym tapnięciem, nie klawiaturą emoji).
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '💀', '🍺'];
 
 function formatCommentTime(iso: string): string {
   return new Date(iso).toLocaleString('pl-PL', {
@@ -83,9 +86,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [reactions, setReactions] = useState<Reaction[]>([]);
 
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Edycja terminu (autor terminu lub organizator/admin) — inline w kaflu slotu.
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [editSlotDraft, setEditSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
+
+  // Edycja własnego komentarza — inline w wierszu czatu.
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
+
+  // Komentarz z otwartym pickerem reakcji.
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
   const [editing, setEditing] = useState(false);
@@ -110,7 +125,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
 
   const load = useCallback(async () => {
-    const { event: ev, slots: sl, votes: vo, profiles: pr, comments: cm, notFound: nf } =
+    const { event: ev, slots: sl, votes: vo, profiles: pr, comments: cm, reactions: re, notFound: nf } =
       await loadEventBundle(eventId);
 
     if (nf || !ev) {
@@ -120,6 +135,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setSlots(sl);
       setMembers(pr);
       setComments(cm);
+      setReactions(re);
 
       // Nałóż oczekujące głosy bieżącego użytkownika na świeży stan z bazy:
       // jego ostatni wybór wygrywa, dopóki baza go nie potwierdzi (wtedy czyścimy pending).
@@ -205,6 +221,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         { event: '*', schema: 'public', table: 'comments', filter: `event_id=eq.${eventId}` },
         scheduleReload,
       )
+      // Bez filtra: Realtime filtruje tylko INSERT/UPDATE, a zdjęcie reakcji to DELETE —
+      // z filtrem nie doszłoby do innych. Ruch znikomy (paczka znajomych), reload i tak
+      // jest sklejany debouncem.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comment_reactions' },
+        scheduleReload,
+      )
       .subscribe();
 
     // Wybudzenie: odśwież od razu, zamiast czekać aż reconnect realtime odpali
@@ -239,6 +263,48 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       created_by_user_id: userId,
     });
     setSlotDraft(EMPTY_SLOT_RANGE);
+  }
+
+  function startSlotEdit(slot: Slot) {
+    setEditSlotDraft(slotToRange(slot));
+    setEditingSlotId(slot.id);
+  }
+
+  async function saveSlotEdit(e: React.FormEvent, slot: Slot) {
+    e.preventDefault();
+    const times = buildSlotTimes(editSlotDraft);
+    if (!times) return;
+    if (slotEndMs(times) < Date.now() - 60000) {
+      appAlert('Zły termin', 'Termin nie może być z przeszłości.');
+      return;
+    }
+    // Porównanie po czasie, nie po stringu — baza zwraca ISO w innym formacie niż toISOString().
+    const ms = (v: string | null) => (v ? new Date(v).getTime() : null);
+    const changed =
+      ms(times.starts_at) !== ms(slot.starts_at) ||
+      ms(times.ends_at) !== ms(slot.ends_at) ||
+      times.all_day !== slot.all_day;
+    if (!changed) {
+      setEditingSlotId(null);
+      return;
+    }
+    // Zmiana terminu zeruje oddane na niego głosy (trigger w bazie) — stary głos
+    // na nową datę byłby mylący. Uprzedź, jeśli ktoś już głosował.
+    const hasVotes = votesLatestRef.current.some((v) => v.slot_id === slot.id);
+    if (hasVotes) {
+      const ok = await appConfirm('Zmienić termin?', {
+        message: 'Oddane na niego głosy zostaną wyzerowane — paczka klika od nowa.',
+        confirmLabel: 'Zmień termin',
+      });
+      if (!ok) return;
+    }
+    const { error } = await supabase.from('slots').update(times).eq('id', slot.id);
+    if (error) {
+      appAlert('Błąd', 'Nie udało się zmienić terminu.');
+      return;
+    }
+    setEditingSlotId(null);
+    load();
   }
 
   async function deleteSlot(slotId: string) {
@@ -353,6 +419,56 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (error) load();
   }
 
+  function startCommentEdit(c: Comment) {
+    setEditCommentText(c.body);
+    setEditingCommentId(c.id);
+  }
+
+  async function saveCommentEdit(e: React.FormEvent, id: string) {
+    e.preventDefault();
+    const body = editCommentText.trim();
+    if (!body) return;
+    setEditingCommentId(null);
+    // Optymistycznie podmień treść; przy błędzie load() przywróci prawdę z bazy.
+    setComments((prev) => prev.map((c) => (c.id === id ? { ...c, body } : c)));
+    const { error } = await supabase.from('comments').update({ body }).eq('id', id);
+    if (error) load();
+  }
+
+  // Reakcja emoji: tap dodaje, tap w już swoją — zdejmuje. Optymistycznie w obie strony.
+  async function toggleReaction(commentId: string, emoji: string) {
+    setPickerFor(null);
+    const mine = reactions.find(
+      (r) => r.comment_id === commentId && r.user_id === userId && r.emoji === emoji,
+    );
+    if (mine) {
+      setReactions((prev) => prev.filter((r) => r !== mine));
+      const { error } = await supabase
+        .from('comment_reactions')
+        .delete()
+        .eq('comment_id', commentId)
+        .eq('user_id', userId)
+        .eq('emoji', emoji);
+      if (error) load();
+    } else {
+      const optimistic: Reaction = {
+        comment_id: commentId,
+        event_id: eventId,
+        user_id: userId,
+        emoji,
+        created_at: new Date().toISOString(),
+      };
+      setReactions((prev) => [...prev, optimistic]);
+      const { error } = await supabase.from('comment_reactions').insert({
+        comment_id: commentId,
+        event_id: eventId,
+        user_id: userId,
+        emoji,
+      });
+      if (error) load();
+    }
+  }
+
   function startEdit() {
     if (!event) return;
     setEditTitle(event.title ?? '');
@@ -463,6 +579,32 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }, [headerSlot]);
 
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+
+  // Reakcje pogrupowane per komentarz: emoji + liczba + czy moja (podświetlenie)
+  // + imiona (tooltip). Kolejność emoji stała (wg REACTION_EMOJIS).
+  const reactionsByComment = useMemo(() => {
+    type Group = { emoji: string; count: number; mine: boolean; names: string[] };
+    const m = new Map<string, Group[]>();
+    for (const r of reactions) {
+      const arr = m.get(r.comment_id) ?? [];
+      let g = arr.find((x) => x.emoji === r.emoji);
+      if (!g) {
+        g = { emoji: r.emoji, count: 0, mine: false, names: [] };
+        arr.push(g);
+      }
+      g.count++;
+      if (r.user_id === userId) g.mine = true;
+      const name = profileById.get(r.user_id)?.display_name;
+      if (name) g.names.push(name);
+      m.set(r.comment_id, arr);
+    }
+    const order = (e: string) => {
+      const i = REACTION_EMOJIS.indexOf(e);
+      return i === -1 ? REACTION_EMOJIS.length : i;
+    };
+    for (const arr of m.values()) arr.sort((a, b) => order(a.emoji) - order(b.emoji));
+    return m;
+  }, [reactions, userId, profileById]);
 
   // Uczestnicy, którzy oddali jakikolwiek głos — z awatarami (do stosu na górze).
   const participantsPeople = useMemo<Person[]>(() => {
@@ -708,6 +850,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   <button
                     type="button"
                     className="ghost slot-del"
+                    aria-label="Zmień termin"
+                    onClick={() => (editingSlotId === slot.id ? setEditingSlotId(null) : startSlotEdit(slot))}
+                  >
+                    <IconPencil size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost slot-del"
                     aria-label="Usuń termin"
                     onClick={() => deleteSlot(slot.id)}
                   >
@@ -717,34 +867,48 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               )}
             </div>
 
-            {slotVotes.length > 0 && (
-              <div className="voters">
-                {slotVotes.map((v) => {
-                  const prof = v.user_id ? profileById.get(v.user_id) : undefined;
-                  const name = prof?.display_name ?? v.participant_name;
-                  return (
-                    <span key={v.id} className={`voter-chip ${v.availability}`} title={name}>
-                      <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
-                      {v.availability === 'yes' ? 'READY' : v.availability === 'maybe' ? 'MOŻE' : 'PAS'}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-
-            {!isPast && (
-              <div className="seg3 slot-seg3" role="group" aria-label="Twój głos">
-                {CHOICES.map((c) => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    className={mine === c.value ? c.cls : ''}
-                    onClick={() => vote(slot.id, c.value)}
-                  >
-                    {c.label}
+            {editingSlotId === slot.id ? (
+              <form className="add-slot-form" onSubmit={(e) => saveSlotEdit(e, slot)}>
+                <SlotRangeInput value={editSlotDraft} onChange={setEditSlotDraft} idPrefix={`edit-${slot.id}`} />
+                <div className="add-slot-actions">
+                  <button type="submit" disabled={!editSlotDraft.od}>Zapisz</button>
+                  <button type="button" className="ghost" onClick={() => setEditingSlotId(null)}>
+                    Anuluj
                   </button>
-                ))}
-              </div>
+                </div>
+              </form>
+            ) : (
+              <>
+                {slotVotes.length > 0 && (
+                  <div className="voters">
+                    {slotVotes.map((v) => {
+                      const prof = v.user_id ? profileById.get(v.user_id) : undefined;
+                      const name = prof?.display_name ?? v.participant_name;
+                      return (
+                        <span key={v.id} className={`voter-chip ${v.availability}`} title={name}>
+                          <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
+                          {v.availability === 'yes' ? 'READY' : v.availability === 'maybe' ? 'MOŻE' : 'PAS'}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!isPast && (
+                  <div className="seg3 slot-seg3" role="group" aria-label="Twój głos">
+                    {CHOICES.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        className={mine === c.value ? c.cls : ''}
+                        onClick={() => vote(slot.id, c.value)}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
           );
@@ -822,7 +986,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             {comments.map((c) => {
               const prof = c.user_id ? profileById.get(c.user_id) : undefined;
               const name = prof?.display_name ?? c.author_name;
+              const saved = !c.id.startsWith('optimistic'); // optymistyczny nie ma jeszcze id z bazy
               const canDel = c.user_id === userId || isOrganizer;
+              const canEdit = saved && c.user_id === userId;
+              const groups = saved ? reactionsByComment.get(c.id) ?? [] : [];
               return (
                 <div
                   key={c.id}
@@ -833,6 +1000,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     <div className="comment-head">
                       <span className="comment-author">{name}</span>
                       <span className="comment-time">{formatCommentTime(c.created_at)}</span>
+                      {canEdit && editingCommentId !== c.id && (
+                        <button
+                          type="button"
+                          className="comment-del"
+                          aria-label="Edytuj komentarz"
+                          onClick={() => startCommentEdit(c)}
+                        >
+                          <IconPencil size={12} />
+                        </button>
+                      )}
                       {canDel && (
                         <button
                           type="button"
@@ -844,7 +1021,57 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         </button>
                       )}
                     </div>
-                    <p className="comment-text">{c.body}</p>
+                    {editingCommentId === c.id ? (
+                      <form className="comment-form comment-edit" onSubmit={(e) => saveCommentEdit(e, c.id)}>
+                        <input
+                          type="text"
+                          value={editCommentText}
+                          onChange={(e) => setEditCommentText(e.target.value)}
+                          maxLength={500}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') setEditingCommentId(null);
+                          }}
+                        />
+                        <button type="submit" className="send" disabled={!editCommentText.trim()} aria-label="Zapisz">
+                          ✓
+                        </button>
+                      </form>
+                    ) : (
+                      <p className="comment-text">{c.body}</p>
+                    )}
+                    {saved && editingCommentId !== c.id && (
+                      <div className="reactions">
+                        {groups.map((g) => (
+                          <button
+                            key={g.emoji}
+                            type="button"
+                            className={`reaction-chip${g.mine ? ' mine' : ''}`}
+                            title={g.names.join(', ')}
+                            onClick={() => toggleReaction(c.id, g.emoji)}
+                          >
+                            {g.emoji}{g.count > 1 ? ` ${g.count}` : ''}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="reaction-add"
+                          aria-label="Dodaj reakcję"
+                          onClick={() => setPickerFor(pickerFor === c.id ? null : c.id)}
+                        >
+                          {groups.length === 0 ? '🙂+' : '+'}
+                        </button>
+                        {pickerFor === c.id && (
+                          <span className="reaction-picker">
+                            {REACTION_EMOJIS.map((e) => (
+                              <button key={e} type="button" onClick={() => toggleReaction(c.id, e)}>
+                                {e}
+                              </button>
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

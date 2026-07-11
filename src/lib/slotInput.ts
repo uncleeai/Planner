@@ -18,6 +18,22 @@ export function todayDate(): string {
 
 export type SlotTimes = { starts_at: string; ends_at: string | null; all_day: boolean };
 
+// Odwrotność buildSlotTimes — istniejący slot z powrotem na pola Od / Do / Godzina
+// (czas lokalny), do prefillu formularza edycji terminu.
+export function slotToRange(slot: SlotTimes): SlotRange {
+  const local = (iso: string) => {
+    const d = new Date(iso);
+    const tz = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tz).toISOString();
+  };
+  const start = local(slot.starts_at);
+  return {
+    od: start.slice(0, 10),
+    doDate: slot.ends_at ? local(slot.ends_at).slice(0, 10) : '',
+    time: slot.all_day ? '' : start.slice(11, 16),
+  };
+}
+
 // Zamień pola formularza na wartości do zapisu w tabeli `slots`.
 // Zwraca null, gdy brak daty „Od".
 export function buildSlotTimes(r: SlotRange): SlotTimes | null {

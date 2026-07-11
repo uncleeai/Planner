@@ -124,6 +124,15 @@ export type Comment = {
   created_at: string;
 };
 
+// Reakcja emoji na komentarz — klucz (comment_id, user_id, emoji).
+export type Reaction = {
+  comment_id: string;
+  event_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+};
+
 export function getConfirmedSlot(
   eventSlots: Slot[],
   eventVotes: Vote[]

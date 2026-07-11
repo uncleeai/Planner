@@ -129,8 +129,12 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   `notify-confirmed`, wołana z klienta po LOCK IN / kompletującym głosie).
 - **slots** — proponowany termin powiązany z wypadem: `starts_at` + opcjonalnie `ends_at`
   (zakres dni) i `all_day` (cały dzień, bez godziny). Warianty: moment, cały dzień,
-  zakres dni, zakres z godziną wyjazdu. Budowanie z pól Od/Do/Godzina: `src/lib/slotInput.ts`;
-  formatowanie i logika końca terminu: `formatSlotRange` / `slotEndMs` w `src/lib/types.ts`.
+  zakres dni, zakres z godziną wyjazdu. Budowanie z pól Od/Do/Godzina: `src/lib/slotInput.ts`
+  (`buildSlotTimes` ↔ `slotToRange` do edycji); formatowanie i logika końca terminu:
+  `formatSlotRange` / `slotEndMs` w `src/lib/types.ts`. Edytować/usunąć termin może jego
+  autor lub organizator. **Zmiana czasu terminu zeruje oddane na niego głosy** — pilnuje
+  tego trigger `slots_reset_votes` w bazie (security definer), który przy okazji
+  synchronizuje `events.confirmed_at`, jeśli edytowany slot był klepnięty.
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
 - **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name` + `avatar` (emoji
@@ -145,15 +149,22 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   na iOS tylko w PWA dodanym do ekranu głównego (16.4+). Toast „na żywo" przy otwartej apce
   jest w `auth.tsx` (Realtime na INSERT `events`).
 - **comments** — komentarze pod wypadem (koordynacja): `event_id` + `user_id` (konto)
-  + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; usuwa
-  autor, organizator albo admin. Realtime + wątek pod terminami na stronie wypadu.
+  + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; edytuje
+  tylko autor; usuwa autor, organizator albo admin. Realtime + wątek pod terminami na
+  stronie wypadu.
+- **comment_reactions** — reakcje emoji na komentarze: PK `(comment_id, user_id, emoji)`,
+  `event_id` zdublowany dla taniego pobrania per wypad. Tap dodaje, tap w swoją zdejmuje.
+  RLS: czytają wszyscy zalogowani, każdy zarządza tylko swoimi. Uwaga na Realtime:
+  subskrypcja BEZ filtra (filtry działają tylko na INSERT/UPDATE, a zdjęcie reakcji to
+  DELETE). Zestaw emoji: `REACTION_EMOJIS` na stronie wypadu.
 - **hero_crops** — kadr zdjęcia hero per kategoria (emoji): `zoom` + `pos_x`/`pos_y`.
   Zdjęcia są stałe (`public/hero/<slug>.jpg`), admin ustawia kadr w apce
   (`HeroCropEditor`). Wszyscy czytają, zapisuje tylko admin (`is_admin()`).
 - Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
   przy głosach/wypadach/komentarzach zapisujemy dodatkowo migawkę nazwy.
 
-Realtime włączony dla `events`, `slots`, `votes`, `profiles`, `comments` (publikacja `supabase_realtime`).
+Realtime włączony dla `events`, `slots`, `votes`, `profiles`, `comments`,
+`comment_reactions` (publikacja `supabase_realtime`).
 **RLS:** dostęp tylko dla zalogowanych (`authenticated`); każdy edytuje wyłącznie swoje
 rekordy (głos po `user_id`, ustalanie terminu tylko twórca wypadu). To realna ochrona
 przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodności.

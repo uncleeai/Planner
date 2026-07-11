@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { EventRow, Slot, Vote, Profile, Comment } from './types';
+import type { EventRow, Slot, Vote, Profile, Comment, Reaction } from './types';
 
 // Prefetch danych jednego wypadu, odpalany na dotknięcie karty (pointerdown). Round-trip
 // do bazy nakłada się wtedy na tap + animację wejścia + montowanie strony, więc wypad
@@ -12,17 +12,19 @@ export type EventBundle = {
   votes: Vote[];
   profiles: Profile[];
   comments: Comment[];
+  reactions: Reaction[];
   notFound: boolean;
 };
 
 async function fetchBundle(eventId: string): Promise<EventBundle> {
-  const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] =
+  const [{ data: ev, error: evErr }, { data: sl }, { data: vo }, { data: pr }, { data: cm }, { data: re }] =
     await Promise.all([
       supabase.from('events').select('*').eq('id', eventId).maybeSingle(),
       supabase.from('slots').select('*').eq('event_id', eventId).order('starts_at'),
       supabase.from('votes').select('*').eq('event_id', eventId),
       supabase.from('profiles').select('*'),
       supabase.from('comments').select('*').eq('event_id', eventId).order('created_at'),
+      supabase.from('comment_reactions').select('*').eq('event_id', eventId),
     ]);
   return {
     event: (ev as EventRow) ?? null,
@@ -30,6 +32,7 @@ async function fetchBundle(eventId: string): Promise<EventBundle> {
     votes: (vo ?? []) as Vote[],
     profiles: (pr ?? []) as Profile[],
     comments: (cm ?? []) as Comment[],
+    reactions: (re ?? []) as Reaction[],
     notFound: !!evErr || !ev,
   };
 }
