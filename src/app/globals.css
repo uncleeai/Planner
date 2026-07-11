@@ -35,6 +35,17 @@ html {
      nie ma czego rezerwować (a rezerwacja zostawiałaby pusty margines bez powodu). */
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* Apka, nie strona: tekst UI jest nieselektowalny GLOBALNIE. To jedyny skuteczny
+     fix na long-press (reakcje na czacie) — gdy nieselektowalny był tylko komentarz,
+     iOS/Android zaznaczały „najbliższy selektowalny" element, czyli CAŁĄ stronę.
+     Pola tekstowe przywracają zaznaczanie niżej. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 html::-webkit-scrollbar {
   display: none;
@@ -974,15 +985,18 @@ img.avatar { display: inline-block; }
 .comment-head { display: flex; align-items: center; gap: 8px; }
 .comment-author { font-weight: 600; font-size: 0.9rem; }
 .comment-time { font-size: 0.75rem; color: var(--muted); }
-/* Akcje komentarza (ołówek + ✕) — jeden wrapper dosunięty do prawej; bez niego
-   dwa przyciski z własnym margin-left:auto rozjeżdżały się po całej szerokości. */
-.comment-actions {
-  margin-left: auto;
-  display: inline-flex; align-items: center; gap: 2px;
-  flex-shrink: 0;
+/* Ołówek edycji — zaraz przy godzinie dodania; ✕ zostaje przy prawej krawędzi. */
+.comment-edit-btn {
+  display: inline-flex; align-items: center;
+  background: none; border: none;
+  color: var(--muted); padding: 2px 4px;
+  cursor: pointer; opacity: 0.55;
+}
+@media (hover: hover) {
+  .comment-edit-btn:hover { opacity: 1; }
 }
 .comment-del {
-  background: none; border: none;
+  margin-left: auto; background: none; border: none;
   color: var(--muted); font-size: 0.8rem; padding: 2px 6px;
   cursor: pointer; opacity: 0.55;
 }
@@ -1004,18 +1018,6 @@ img.avatar { display: inline-block; }
 /* Reakcje na komentarze (styl Messengera): przytrzymanie dymka otwiera picker
    nad komentarzem; chipy pod komentarzem pokazują kto co dał (tap = lista). */
 .comment { position: relative; }
-/* Long-press nie może odpalać zaznaczania tekstu (przytrzymanie potrafiło zaznaczyć
-   pół apki na niebiesko) ani callout/lupy iOS — czat jest nieselektowalny w całości. */
-.comment-list {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-/* …ale pole edycji komentarza musi normalnie zaznaczać (Safari dziedziczy none na inputy). */
-.comment-list input {
-  -webkit-user-select: text;
-  user-select: text;
-}
 .reactions {
   position: relative;
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;

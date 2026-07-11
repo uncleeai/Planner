@@ -1047,29 +1047,25 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     <div className="comment-head">
                       <span className="comment-author">{name}</span>
                       <span className="comment-time">{formatCommentTime(c.created_at)}</span>
-                      {(canEdit || canDel) && (
-                        <span className="comment-actions">
-                          {canEdit && editingCommentId !== c.id && (
-                            <button
-                              type="button"
-                              className="comment-del"
-                              aria-label="Edytuj komentarz"
-                              onClick={() => startCommentEdit(c)}
-                            >
-                              <IconPencil size={12} />
-                            </button>
-                          )}
-                          {canDel && (
-                            <button
-                              type="button"
-                              className="comment-del"
-                              aria-label="Usuń komentarz"
-                              onClick={() => deleteComment(c.id)}
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </span>
+                      {canEdit && editingCommentId !== c.id && (
+                        <button
+                          type="button"
+                          className="comment-edit-btn"
+                          aria-label="Edytuj komentarz"
+                          onClick={() => startCommentEdit(c)}
+                        >
+                          <IconPencil size={12} />
+                        </button>
+                      )}
+                      {canDel && (
+                        <button
+                          type="button"
+                          className="comment-del"
+                          aria-label="Usuń komentarz"
+                          onClick={() => deleteComment(c.id)}
+                        >
+                          ✕
+                        </button>
                       )}
                     </div>
                     {editingCommentId === c.id ? (
