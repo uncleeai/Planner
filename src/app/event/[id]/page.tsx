@@ -30,8 +30,9 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'no', label: 'PAS', cls: 'on-no' },
 ];
 
-// Zestaw reakcji na komentarze (stały — picker ma być jednym tapnięciem, nie klawiaturą emoji).
-const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '💀', '🍺'];
+// Zestaw reakcji na komentarze (stały — picker ma być jednym tapnięciem, nie klawiaturą
+// emoji). Kolejność: aprobata → serce → beka → szok → luz → wołanie → śmierć.
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😎', '🤙', '💀'];
 
 // Przytrzymanie (long-press) komentarza otwiera picker reakcji — jak w iMessage/
 // Messengerze. Ruch palca > 12px (scroll) anuluje; prawy klik na desktopie też otwiera.
@@ -51,6 +52,9 @@ function longPressHandlers(fire: () => void) {
       cancel();
       timer = window.setTimeout(() => {
         timer = 0;
+        // Gdyby przeglądarka mimo wszystko zaczęła zaznaczać (np. start poza czatem) —
+        // zdejmij zaznaczenie, zanim pokaże się picker.
+        window.getSelection?.()?.removeAllRanges();
         navigator.vibrate?.(10);
         fire();
       }, LONG_PRESS_MS);
@@ -1043,25 +1047,29 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     <div className="comment-head">
                       <span className="comment-author">{name}</span>
                       <span className="comment-time">{formatCommentTime(c.created_at)}</span>
-                      {canEdit && editingCommentId !== c.id && (
-                        <button
-                          type="button"
-                          className="comment-del"
-                          aria-label="Edytuj komentarz"
-                          onClick={() => startCommentEdit(c)}
-                        >
-                          <IconPencil size={12} />
-                        </button>
-                      )}
-                      {canDel && (
-                        <button
-                          type="button"
-                          className="comment-del"
-                          aria-label="Usuń komentarz"
-                          onClick={() => deleteComment(c.id)}
-                        >
-                          ✕
-                        </button>
+                      {(canEdit || canDel) && (
+                        <span className="comment-actions">
+                          {canEdit && editingCommentId !== c.id && (
+                            <button
+                              type="button"
+                              className="comment-del"
+                              aria-label="Edytuj komentarz"
+                              onClick={() => startCommentEdit(c)}
+                            >
+                              <IconPencil size={12} />
+                            </button>
+                          )}
+                          {canDel && (
+                            <button
+                              type="button"
+                              className="comment-del"
+                              aria-label="Usuń komentarz"
+                              onClick={() => deleteComment(c.id)}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </span>
                       )}
                     </div>
                     {editingCommentId === c.id ? (
