@@ -3,12 +3,11 @@
 // Krótki haptic tick przy gestach (głos, LOCK IN, long-press, ping).
 //
 // Android/Chrome: standardowe navigator.vibrate.
-// iOS: WebKit nie wspiera Vibration API — ale od iOS 17.4 programowe kliknięcie
-// natywnego przełącznika <input type="checkbox" switch> odpala systemowy tick
-// (ten sam co przełączniki w Ustawieniach). To znany trik; jedyny haptic dostępny
-// z poziomu PWA. Działa wyłącznie w kontekście gestu użytkownika.
-let iosSwitch: HTMLInputElement | null = null;
-
+// iOS: WebKit nie wspiera Vibration API. Trik: natywny przełącznik
+// <input type="checkbox" switch> (Safari 17.4+) tyka silniczkiem przy przełączeniu —
+// ale WYŁĄCZNIE gdy klik idzie przez powiązany <label> (klik w sam input nie działa).
+// Świeży element na każde wywołanie, jak w znanym, sprawdzonym snippecie.
+// UWAGA: Apple załatało ten trik w iOS 26.5 — na nowszych wersjach po prostu cisza.
 export function haptic(): void {
   if (typeof window === 'undefined') return;
   if (typeof navigator.vibrate === 'function') {
@@ -16,14 +15,16 @@ export function haptic(): void {
     return;
   }
   try {
-    if (!iosSwitch) {
-      iosSwitch = document.createElement('input');
-      iosSwitch.type = 'checkbox';
-      iosSwitch.setAttribute('switch', '');
-      iosSwitch.style.display = 'none';
-      document.body.appendChild(iosSwitch);
-    }
-    iosSwitch.click();
+    const label = document.createElement('label');
+    label.ariaHidden = 'true';
+    label.style.display = 'none';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.setAttribute('switch', '');
+    label.appendChild(input);
+    document.head.appendChild(label);
+    label.click();
+    document.head.removeChild(label);
   } catch {
     /* brak wsparcia — po prostu bez wibracji */
   }
