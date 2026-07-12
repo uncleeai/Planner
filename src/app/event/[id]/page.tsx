@@ -878,14 +878,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           >
             <div className="slot-head">
               <SlotWhen slot={slot} />
-              {isSettledSlot && (
-                <span className="badge">✓ USTALONY{status.source === 'auto' ? ' · KOMPLET' : ''}</span>
-              )}
+              {isSettledSlot && <span className="badge">✓ USTALONY</span>}
               {showBestBadge && <span className="badge">Prowadzi</span>}
               {showTieBadge && <span className="badge badge-open">Remis</span>}
               {canDelete && !isPast && (
-                <>
-                  <span className="spacer" />
+                <span className="slot-actions">
                   <button
                     type="button"
                     className="ghost slot-del"
@@ -902,7 +899,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   >
                     ✕
                   </button>
-                </>
+                </span>
               )}
             </div>
 

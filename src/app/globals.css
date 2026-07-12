@@ -249,15 +249,15 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 .slot-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .slot-date { font-family: var(--mono); font-weight: 700; font-size: 0.98rem; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
 /* Akcje slotu (ołówek/✕) — ciche gołe ikony jak w czacie, nie obramowane kafle.
-   Pierwsza dosuwa grupę do prawej także wtedy, gdy nagłówek zawinie je do
-   drugiej linii (spacer działa tylko w obrębie pierwszego wiersza flexa). */
+   Grupa jest jednym elementem flexa: łamie się (i dosuwa do prawej) w całości,
+   zamiast gubić ✕ w osobnej linii pod liściem daty. */
+.slot-actions { margin-left: auto; display: inline-flex; align-items: center; }
 .slot .slot-del {
   min-width: 34px; min-height: 34px;
   display: inline-flex; align-items: center; justify-content: center;
   padding: 4px; font-size: 1rem; line-height: 1; color: var(--muted);
   background: none; border: 0; opacity: 0.65;
 }
-.slot .slot-del:first-of-type { margin-left: auto; }
 @media (hover: hover) {
   .slot .slot-del:hover { color: var(--no); opacity: 1; }
 }
