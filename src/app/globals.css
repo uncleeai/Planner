@@ -673,17 +673,20 @@ img.avatar { display: inline-block; }
 .settings-trigger:active { transform: scale(0.94); }
 
 /* Modal profilu (wyśrodkowany, rozmyte tło) */
-/* Wejście modala w stylu iOS: tło gaśnie i rozmywa się (blur to krótki one-shot
-   przy otwarciu — dozwolony wyjątek od zakazu blurów w animacjach), a karta
-   „osiada" ze skali 1.08 do 1.0 bez odbicia i bez podjazdu z dołu. */
+/* Wejście modala: choreografia trzech warstw zamiast jednego „puf".
+   Tło rozmywa się i gaśnie; karta wjeżdża minimalnie z dołu na długiej
+   apple'owskiej krzywej sprężyny (tej samej co bottom sheet) i JEDNOCZEŚNIE
+   wyostrza się z lekkiego bluru (efekt „focus-in" jak w visionOS). Fade kończy
+   się wcześnie, ruch trwa dłużej — to rozwarstwienie robi wrażenie premium.
+   Blury to krótkie one-shoty przy otwarciu (dozwolony wyjątek). */
 .profile-overlay {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.42);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  animation: overlayFadeIn 0.25s ease-out both;
+  background: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  animation: overlayFadeIn 0.3s ease both;
 }
 .profile-modal {
   position: relative;
@@ -694,7 +697,7 @@ img.avatar { display: inline-block; }
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   padding: 28px 20px 20px;
   text-align: center;
-  animation: modalSettleIn 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation: modalFocusIn 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @keyframes overlayFadeIn {
@@ -702,14 +705,22 @@ img.avatar { display: inline-block; }
   to { opacity: 1; }
 }
 
-@keyframes modalSettleIn {
+@keyframes modalFocusIn {
   from {
     opacity: 0;
-    transform: scale(1.08);
+    transform: scale(0.94) translateY(16px);
+    filter: blur(12px);
+  }
+  40% {
+    opacity: 1;
+  }
+  65% {
+    filter: blur(0);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: none;
+    filter: blur(0);
   }
 }
 .modal-close {
