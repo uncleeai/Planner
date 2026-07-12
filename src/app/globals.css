@@ -1439,9 +1439,10 @@ main::before {
   margin-top: 14px; padding-top: 13px;
 }
 /* Sloty graczy bez szarych obrysów: głębię robi „glass" (przezroczysty fill +
-   top-highlight), a stan niesie miękka PLAMA koloru głosu wypływająca zza awatara
-   (radial, bez żadnej twardej krawędzi). Ramka zostaje TYLKO tam, gdzie coś znaczy:
-   przerywana na AFK (puste miejsce w składzie), akcentowa na twoim pustym slocie. */
+   top-highlight), a stan niesie miękka PLAMA koloru bijąca ZE ŹRÓDŁA — z labelki
+   READY/MOŻE/PAS (radial zakotwiczony tam, gdzie siedzi napis, + neonowa poświata
+   samego tekstu). Ramka zostaje TYLKO tam, gdzie coś znaczy: przerywana na AFK
+   (puste miejsce w składzie), akcentowa na twoim pustym slocie. */
 .slot-p {
   display: flex; align-items: center; gap: 9px;
   background: color-mix(in srgb, var(--card-2) 80%, transparent);
@@ -1457,8 +1458,11 @@ main::before {
 .slot-p.s-no    { --state: var(--no); }
 .slot-p.s-yes, .slot-p.s-maybe, .slot-p.s-no {
   background:
-    radial-gradient(130% 150% at 0% 50%, color-mix(in srgb, var(--state) 20%, transparent), transparent 62%),
+    radial-gradient(120% 170% at 30% 82%, color-mix(in srgb, var(--state) 19%, transparent), transparent 58%),
     color-mix(in srgb, var(--card-2) 80%, transparent);
+}
+.slot-p.s-yes .who span, .slot-p.s-maybe .who span, .slot-p.s-no .who span {
+  text-shadow: 0 0 9px color-mix(in srgb, var(--state) 75%, transparent);
 }
 .slot-p .who { min-width: 0; flex: 1; }
 .slot-p .who b {
@@ -1471,7 +1475,8 @@ main::before {
 }
 .slot-p.s-yes .who span { color: var(--yes); }
 .slot-p.s-no .who span { color: var(--no); }
-/* „może" celowo bez koloru — niezdecydowanie wygląda jak niezdecydowanie */
+/* „może" w bursztynie — labelka jest źródłem poświaty, więc musi mieć jej kolor */
+.slot-p.s-maybe .who span { color: var(--maybe); }
 .slot-p.s-none { border-style: dashed; border-color: var(--border-strong); background: transparent; }
 .slot-p.s-none .who b { color: var(--muted); }
 .slot-p.s-none .who span { color: var(--accent); }
