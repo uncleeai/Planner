@@ -336,19 +336,21 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 /* Tytuł + ikona edycji obok */
 .title-row { display: flex; align-items: center; gap: 10px; }
 .title-row .large-title { min-width: 0; }
+/* Ołówek przy tytule — cicha goła ikona (ostatni obramowany kafelek akcji zszedł). */
 .title-edit-btn {
   flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; padding: 0;
   border-radius: var(--radius-sm);
-  background: var(--card-2);
-  border: 1px solid var(--border);
+  background: none;
+  border: 0;
   color: var(--muted);
+  opacity: 0.65;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 @media (hover: hover) {
-  .title-edit-btn:hover { color: var(--text); background: #232830; border-color: var(--border-strong); }
+  .title-edit-btn:hover { color: var(--text); opacity: 1; }
 }
 .title-edit-btn:active { transform: scale(0.94); }
 
@@ -941,6 +943,9 @@ img.avatar { display: inline-block; }
     var(--card-2);
   border-color: rgba(61, 220, 139, 0.24);
 }
+/* Po klepnięciu terminu pozostałe propozycje są nieaktualne — wyciszone w całości
+   (razem z przyciskami głosu), żeby ustalony slot był jedynym głośnym elementem. */
+.glass-page .slot.stale { opacity: 0.6; }
 
 /* Opis wypadu na stronie wydarzenia — płaski tekst, bez ramki (jak w mockupie) */
 .event-description {

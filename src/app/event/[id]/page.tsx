@@ -874,7 +874,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           return (
           <div
             key={slot.id}
-            className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
+            className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}${
+              // Termin klepnięty → pozostałe propozycje są nieaktualne: wyciszone,
+              // ale wciąż klikalne (zmiana głosu może przestawić automat).
+              status.settled && !isSettledSlot ? ' stale' : ''
+            }`}
           >
             <div className="slot-head">
               <SlotWhen slot={slot} />
