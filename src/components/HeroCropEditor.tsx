@@ -15,6 +15,7 @@ export default function HeroCropEditor({ onClose }: { onClose: () => void }) {
   const [zoom, setZoom] = useState(DEFAULT_CROP.zoom);
   const [px, setPx] = useState(DEFAULT_CROP.pos_x);
   const [py, setPy] = useState(DEFAULT_CROP.pos_y);
+  const [bright, setBright] = useState(DEFAULT_CROP.brightness);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -33,6 +34,7 @@ export default function HeroCropEditor({ onClose }: { onClose: () => void }) {
     setZoom(c.zoom);
     setPx(c.pos_x);
     setPy(c.pos_y);
+    setBright(c.brightness ?? DEFAULT_CROP.brightness);
     setSaved(false);
     setError('');
   }, [sel, crops]);
@@ -43,13 +45,13 @@ export default function HeroCropEditor({ onClose }: { onClose: () => void }) {
   async function save() {
     setBusy(true);
     setError('');
-    const err = await saveHeroCrop({ emoji: sel, zoom, pos_x: px, pos_y: py });
+    const err = await saveHeroCrop({ emoji: sel, zoom, pos_x: px, pos_y: py, brightness: bright });
     setBusy(false);
     if (err) {
       setError(err);
       return;
     }
-    const crop = { emoji: sel, zoom, pos_x: px, pos_y: py };
+    const crop = { emoji: sel, zoom, pos_x: px, pos_y: py, brightness: bright };
     setCrops((m) => ({ ...m, [sel]: crop }));
     updateCachedCrop(crop); // powrót na dashboard od razu z nowym kadrem
     setSaved(true);
@@ -87,7 +89,12 @@ export default function HeroCropEditor({ onClose }: { onClose: () => void }) {
           <div className="hero-photo" aria-hidden="true">
             <div
               className="hp-img"
-              style={{ backgroundImage: `url(${src})`, backgroundSize: `${zoom}%`, backgroundPosition: `${px}% ${py}%` }}
+              style={{
+                backgroundImage: `url(${src})`,
+                backgroundSize: `${zoom}%`,
+                backgroundPosition: `${px}% ${py}%`,
+                ['--hp-bright' as string]: `${bright / 100}`,
+              } as React.CSSProperties}
             />
             <i className="hp-tint" /><i className="hp-half" /><i className="hp-grain" /><i className="hp-vig" /><i className="hp-scrim" />
           </div>
@@ -117,6 +124,7 @@ export default function HeroCropEditor({ onClose }: { onClose: () => void }) {
         <div className="crop-ctl"><label>Zoom</label><input type="range" min="100" max="340" value={zoom} onChange={touch(setZoom)} /><output>{zoom}%</output></div>
         <div className="crop-ctl"><label>Lewo↔prawo</label><input type="range" min="0" max="100" value={px} onChange={touch(setPx)} /><output>{px}%</output></div>
         <div className="crop-ctl"><label>Góra↔dół</label><input type="range" min="0" max="100" value={py} onChange={touch(setPy)} /><output>{py}%</output></div>
+        <div className="crop-ctl"><label>Jasność</label><input type="range" min="40" max="140" value={bright} onChange={touch(setBright)} /><output>{bright}%</output></div>
 
         {error && <p className="small" style={{ color: 'var(--no)', margin: '4px 0 0' }}>{error}</p>}
         <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'nowrap' }}>
@@ -126,7 +134,7 @@ export default function HeroCropEditor({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             className="ghost"
-            onClick={() => { setZoom(DEFAULT_CROP.zoom); setPx(DEFAULT_CROP.pos_x); setPy(DEFAULT_CROP.pos_y); setSaved(false); }}
+            onClick={() => { setZoom(DEFAULT_CROP.zoom); setPx(DEFAULT_CROP.pos_x); setPy(DEFAULT_CROP.pos_y); setBright(DEFAULT_CROP.brightness); setSaved(false); }}
           >
             Reset
           </button>

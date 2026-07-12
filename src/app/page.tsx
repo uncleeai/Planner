@@ -990,7 +990,8 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
               backgroundImage: `url(${heroPhoto})`,
               backgroundSize: `${c.zoom}%`,
               backgroundPosition: `${c.pos_x}% ${c.pos_y}%`,
-            }}
+              ['--hp-bright' as string]: `${c.brightness / 100}`,
+            } as React.CSSProperties}
           />
           <i className="hp-tint" />
           <i className="hp-half" />

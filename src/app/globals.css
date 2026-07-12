@@ -2020,7 +2020,8 @@ button.solid-danger { background: var(--no); color: #fff; }
   background-repeat: no-repeat;
   background-size: 163%;
   background-position: 77% 10%;
-  filter: saturate(1.25) contrast(1.18) brightness(0.92) blur(1.5px);
+  /* Jasność per kategoria (suwak w edytorze) przez zmienną; reszta filtrów stała. */
+  filter: saturate(1.25) contrast(1.18) brightness(var(--hp-bright, 0.92)) blur(1.5px);
 }
 .hero-photo i { position: absolute; inset: 0; }
 .hero-photo .hp-tint { background: var(--accent); mix-blend-mode: color; opacity: 0; }

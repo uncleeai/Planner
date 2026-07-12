@@ -80,8 +80,10 @@ create table if not exists public.hero_crops (
   zoom       int not null default 163,
   pos_x      int not null default 77,
   pos_y      int not null default 10,
+  brightness int not null default 86,   -- jasność tła (86 = 0.86), suwak w edytorze
   updated_at timestamptz not null default now()
 );
+alter table public.hero_crops add column if not exists brightness int not null default 86;
 alter table public.hero_crops enable row level security;
 drop policy if exists "hero_crops read" on public.hero_crops;
 create policy "hero_crops read" on public.hero_crops for select to authenticated using (true);

@@ -28,9 +28,15 @@ const SLUG_BY_EMOJI: Record<string, string> = Object.fromEntries(
 
 // Domyślny kadr (gdy kategoria nie ma jeszcze wiersza w hero_crops) — nastawy
 // dobrane w placu zabaw na poziomych zdjęciach z tematem w górnej strefie.
-export const DEFAULT_CROP = { zoom: 163, pos_x: 77, pos_y: 10 };
+export const DEFAULT_CROP = { zoom: 163, pos_x: 77, pos_y: 10, brightness: 92 };
 
-export type HeroCrop = { emoji: string; zoom: number; pos_x: number; pos_y: number };
+export type HeroCrop = {
+  emoji: string;
+  zoom: number;
+  pos_x: number;
+  pos_y: number;
+  brightness: number; // jasność tła w % (86 = 0.86 w filter: brightness())
+};
 
 // Zalecany format podmienianych zdjęć: poziome, temat w górnej-prawej strefie,
 // ~1400–1600 px dłuższy bok, JPEG q~80.
