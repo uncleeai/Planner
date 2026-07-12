@@ -1409,7 +1409,15 @@ main::before {
 }
 .wx-summary b { font-family: var(--mono); font-size: 1.3rem; }
 .wx-summary span { font-size: 0.82rem; color: var(--muted); }
-.wx-rows { max-height: 46vh; overflow-y: auto; text-align: left; }
+.wx-rows {
+  max-height: 46vh; overflow-y: auto; text-align: left;
+  /* Bez widocznego scrollbara (jak sheet) i bez łańcuchowania scrolla na stronę
+     pod modalem, gdy lista dobije do końca. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: contain;
+}
+.wx-rows::-webkit-scrollbar { display: none; }
 .wx-row {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 6px;

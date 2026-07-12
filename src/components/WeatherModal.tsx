@@ -40,6 +40,16 @@ export default function WeatherModal({
     };
   }, [lat, lon, dateISO]);
 
+  // Zablokuj scroll strony pod modalem — bez tego przeciąganie palcem po overlayu
+  // (obok karty) przewijało dashboard w tle.
+  useEffect(() => {
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = prev;
+    };
+  }, []);
+
   // Po załadowaniu przewiń listę do godziny zbiórki (jest poza widokiem dla późnych godzin).
   useEffect(() => {
     hotRef.current?.scrollIntoView({ block: 'center' });
