@@ -1353,11 +1353,14 @@ main::before {
    Płaskie wiersze bez własnych ramek — mniej kart w kartach. */
 /* Kafelki pogody/godziny w obramowanym boxie (jak na mockupie hero);
    półprzezroczyste tło + blur siada i na płaskiej karcie, i na fotce. */
+/* Ta sama szklana tafla co sloty graczy (fill + top-highlight) — kafelki nie mogą
+   być płaskie obok wypukłych slotów, cała dolna część karty gra jednym materiałem. */
 .hero-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0;
   border-radius: var(--radius-sm);
-  background: rgba(26, 30, 35, 0.62);
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--card-2) 80%, transparent);
+  backdrop-filter: blur(5px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
   margin-top: 14px;
 }
