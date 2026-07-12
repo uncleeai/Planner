@@ -1460,15 +1460,15 @@ main::before {
 .slot-p.s-yes   { --state: var(--yes); }
 .slot-p.s-maybe { --state: var(--maybe); }
 .slot-p.s-no    { --state: var(--no); }
+/* Łuna i ring przyciszone tak, by slot z głosem był z TEJ SAMEJ materii co reszta
+   (bez efektu „jeden kafelek 3D wśród płaskich") — kolor to informacja, nie relief. */
 .slot-p.s-yes, .slot-p.s-maybe, .slot-p.s-no {
   background:
-    radial-gradient(90% 160% at 24px 50%, color-mix(in srgb, var(--state) 20%, transparent), transparent 60%),
+    radial-gradient(90% 160% at 24px 50%, color-mix(in srgb, var(--state) 13%, transparent), transparent 58%),
     color-mix(in srgb, var(--card-2) 80%, transparent);
 }
 .slot-p.s-yes .avatar, .slot-p.s-maybe .avatar, .slot-p.s-no .avatar {
-  box-shadow:
-    0 0 0 1.5px color-mix(in srgb, var(--state) 65%, transparent),
-    0 0 12px 1px color-mix(in srgb, var(--state) 40%, transparent);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--state) 60%, transparent);
 }
 .slot-p .who { min-width: 0; flex: 1; }
 .slot-p .who b {
@@ -1483,7 +1483,12 @@ main::before {
 .slot-p.s-no .who span { color: var(--no); }
 /* „może" w bursztynie — labelka jest źródłem poświaty, więc musi mieć jej kolor */
 .slot-p.s-maybe .who span { color: var(--maybe); }
-.slot-p.s-none { border-style: dashed; border-color: var(--border-strong); background: transparent; }
+/* AFK z tej samej szklanej tafli co reszta (tylko lżejszy fill) — różni go kreska,
+   nie materiał; przezroczysta dziura obok wypełnionych slotów robiła dysonans. */
+.slot-p.s-none {
+  border-style: dashed; border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--card-2) 55%, transparent);
+}
 .slot-p.s-none .who b { color: var(--muted); }
 .slot-p.s-none .who span { color: var(--accent); }
 /* AFK = szara morda (jak offline na Discordzie) */
