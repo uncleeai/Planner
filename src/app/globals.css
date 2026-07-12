@@ -1445,11 +1445,11 @@ main::before {
   margin-top: 14px; padding-top: 13px;
 }
 /* Sloty graczy bez szarych obrysów: głębię robi „glass" (przezroczysty fill +
-   top-highlight), a stan niesie GRACZ — awatar dostaje cienki ring w kolorze głosu
-   i halo, które miękko rozchodzi się zza niego w tło slotu (radial zakotwiczony
-   w środku awatara, więc światło jest symetryczne, bez „zabrudzonego rogu").
-   Ramka zostaje TYLKO tam, gdzie coś znaczy: przerywana na AFK (puste miejsce
-   w składzie), akcentowa na twoim pustym slocie. */
+   top-highlight), a stan niesie halo w kolorze głosu, które miękko rozchodzi się
+   zza awatara w tło slotu (radial zakotwiczony w środku awatara — światło jest
+   symetryczne, bez „zabrudzonego rogu") + kolorowa labelka. Bez ringów na
+   awatarach — zero twardych elementów. Ramka zostaje TYLKO tam, gdzie coś znaczy:
+   przerywana na AFK (puste miejsce w składzie), akcentowa na twoim pustym slocie. */
 .slot-p {
   display: flex; align-items: center; gap: 9px;
   background: color-mix(in srgb, var(--card-2) 80%, transparent);
@@ -1469,9 +1469,6 @@ main::before {
   background:
     radial-gradient(90% 160% at 24px 50%, color-mix(in srgb, var(--state) 13%, transparent), transparent 58%),
     color-mix(in srgb, var(--card-2) 80%, transparent);
-}
-.slot-p.s-yes .avatar, .slot-p.s-maybe .avatar, .slot-p.s-no .avatar {
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--state) 60%, transparent);
 }
 .slot-p .who { min-width: 0; flex: 1; }
 .slot-p .who b {
