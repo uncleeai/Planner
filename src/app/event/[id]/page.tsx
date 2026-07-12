@@ -856,7 +856,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <div className="rail">
           <div className="section-label">Ready check</div>
           {memberCount > 0 && !isPast && slots.length > 0 && (
-            <span className="chip hot">{votedCount}/{memberCount} DAŁO ZNAĆ</span>
+            <span className={`chip ${votedCount >= memberCount ? 'ok' : 'hot'}`}>
+              {votedCount}/{memberCount} DAŁO ZNAĆ
+            </span>
           )}
         </div>
         {stats.length === 0 && (
@@ -921,10 +923,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     {slotVotes.map((v) => {
                       const prof = v.user_id ? profileById.get(v.user_id) : undefined;
                       const name = prof?.display_name ?? v.participant_name;
+                      // Imię zamiast READY/MOŻE/PAS — stan niesie już kolor chipa,
+                      // a KTO głosował to informacja, której wcześniej brakowało.
                       return (
                         <span key={v.id} className={`voter-chip ${v.availability}`} title={name}>
                           <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
-                          {v.availability === 'yes' ? 'READY' : v.availability === 'maybe' ? 'MOŻE' : 'PAS'}
+                          {name}
                         </span>
                       );
                     })}

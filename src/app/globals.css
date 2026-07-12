@@ -244,15 +244,22 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 }
 .slot.winner { border-color: rgba(61, 220, 139, 0.5); box-shadow: 0 0 0 1px rgba(61, 220, 139, 0.5) inset; }
 
-.slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+/* Plakietka może zawinąć się do drugiej linii — bez tego „Za 4 dni" łamało się
+   w pionową kolumnę, gdy nagłówek mieścił jeszcze akcje i plakietkę KOMPLET. */
+.slot-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .slot-date { font-family: var(--mono); font-weight: 700; font-size: 0.98rem; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
-.slot-del {
-  min-width: 40px; min-height: 40px;
+/* Akcje slotu (ołówek/✕) — ciche gołe ikony jak w czacie, nie obramowane kafle.
+   Pierwsza dosuwa grupę do prawej także wtedy, gdy nagłówek zawinie je do
+   drugiej linii (spacer działa tylko w obrębie pierwszego wiersza flexa). */
+.slot .slot-del {
+  min-width: 34px; min-height: 34px;
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 4px 10px; font-size: 1rem; line-height: 1; color: var(--muted);
+  padding: 4px; font-size: 1rem; line-height: 1; color: var(--muted);
+  background: none; border: 0; opacity: 0.65;
 }
+.slot .slot-del:first-of-type { margin-left: auto; }
 @media (hover: hover) {
-  .slot-del:hover { color: var(--no); border-color: var(--no); }
+  .slot .slot-del:hover { color: var(--no); opacity: 1; }
 }
 
 .badge {
@@ -294,30 +301,28 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   flex-wrap: wrap;
   gap: 6px;
 }
+/* Chip głosującego: awatar + IMIĘ w kolorze głosu (kolor niesie stan, więc
+   READY/MOŻE/PAS w tekście było dublowaniem). Sam tint, bez obrysu. */
 .voter-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 6px;
   border-radius: var(--radius-sm);
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: 1px solid transparent;
+  max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   transition: all 0.2s ease;
 }
 .voter-chip.yes {
   background: rgba(61, 220, 139, 0.1);
-  border-color: rgba(61, 220, 139, 0.25);
   color: #5eff84;
 }
 .voter-chip.maybe {
-  background: rgba(244, 183, 64, 0.08);
-  border-color: rgba(244, 183, 64, 0.25);
+  background: rgba(244, 183, 64, 0.09);
   color: #ffdf3d;
 }
 .voter-chip.no {
   background: rgba(255, 93, 93, 0.1);
-  border-color: rgba(255, 93, 93, 0.25);
   color: #ff6b63;
 }
 
@@ -532,9 +537,10 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   min-width: 0;
   display: flex; align-items: center; gap: 10px;
   padding: 9px 12px;
-  background: var(--card);
-  border: 1px solid var(--border-strong);
+  background: var(--card-2);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: var(--text);
   text-align: left;
   font-weight: 400;
@@ -908,28 +914,41 @@ img.avatar { display: inline-block; }
 
 .glass-page .section-label { color: var(--muted); }
 
-/* Karta terminu: płaski panel, stan niesie kolor ramki. */
+/* Karta terminu: ta sama miękka materia co sloty na dashboardzie — fill +
+   top-highlight zamiast szarego konturu; stan niesie łuna koloru (radial z rogu
+   liścia daty) i ledwie widoczna kolorowa kreska, nie twarda obwódka. */
 .glass-page .slot {
   background: var(--card-2);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 .glass-page .slot.winner {
-  background: rgba(61, 220, 139, 0.05);
-  border-color: rgba(61, 220, 139, 0.35);
+  background:
+    radial-gradient(120% 170% at 12% 0%, rgba(61, 220, 139, 0.1), transparent 58%),
+    var(--card-2);
+  border-color: rgba(61, 220, 139, 0.18);
 }
 .glass-page .slot.tie {
-  background: rgba(244, 183, 64, 0.04);
-  border-color: rgba(244, 183, 64, 0.25);
+  background:
+    radial-gradient(120% 170% at 12% 0%, rgba(244, 183, 64, 0.09), transparent 58%),
+    var(--card-2);
+  border-color: rgba(244, 183, 64, 0.15);
 }
 .glass-page .slot.confirmed {
-  background: rgba(61, 220, 139, 0.08);
-  border-color: rgba(61, 220, 139, 0.5);
+  background:
+    radial-gradient(120% 170% at 12% 0%, rgba(61, 220, 139, 0.13), transparent 58%),
+    var(--card-2);
+  border-color: rgba(61, 220, 139, 0.24);
 }
 
 /* Opis wypadu na stronie wydarzenia — płaski tekst, bez ramki (jak w mockupie) */
 .event-description {
   margin: 0 4px 18px;
+  padding-left: 12px;
+  /* Cienka akcentowa kreska kotwiczy opis — bez niej krótki tekst („Koks")
+     wyglądał na zgubiony między chipem kalendarza a ready checkiem. */
+  border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
   color: #9aa6ae; /* jaśniej niż --muted: opis to treść do czytania, nie metadane */
   font-size: 0.92rem;
   line-height: 1.55;
@@ -1661,7 +1680,9 @@ main.has-dock { padding-bottom: 24px; }
 .seg3 button {
   font-family: var(--mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
   padding: 12px 6px; border-radius: var(--radius-sm); cursor: pointer;
-  background: var(--card-2); color: var(--muted); border: 1px solid var(--border);
+  background: color-mix(in srgb, #fff 4%, var(--card-2));
+  color: var(--muted); border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .seg3 button.on-yes { background: var(--yes); border-color: var(--yes); color: #062b18; }
 .seg3 button.on-maybe { background: var(--maybe); border-color: var(--maybe); color: #2a1e00; }
@@ -1721,10 +1742,10 @@ main.has-dock { padding-bottom: 24px; }
 .leaf .day { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .leaf .mon { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); }
 .slot-when { min-width: 0; }
-.slot-when b { display: block; font-size: 0.95rem; font-weight: 600; line-height: 1.25; }
+.slot-when b { display: block; font-size: 0.95rem; font-weight: 600; line-height: 1.25; white-space: nowrap; }
 .slot-when span {
   display: block; font-family: var(--mono); font-size: 0.68rem;
-  color: var(--muted); letter-spacing: 0.04em;
+  color: var(--muted); letter-spacing: 0.04em; white-space: nowrap;
 }
 
 /* ===== Zgodność 1:1 z mockupem „Lobby" v2 ===== */
@@ -1740,6 +1761,8 @@ main.has-dock { padding-bottom: 24px; }
   letter-spacing: 0.12em; padding: 3px 10px; border-radius: 6px; white-space: nowrap;
 }
 .chip.hot { color: var(--accent); background: var(--accent-dim); border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); }
+/* Komplet głosów = sukces, nie alarm — chip zielenieje. */
+.chip.ok { color: var(--yes); background: rgba(61, 220, 139, 0.12); border: 1px solid rgba(61, 220, 139, 0.3); }
 
 /* Rozkład: płaskie wiersze list zamiast kart */
 .board { border-top: 1px solid var(--border); }
@@ -1814,7 +1837,8 @@ main.has-dock { padding-bottom: 24px; }
 
 /* Chipy głosów przy terminie: morda + mono-status (READY/MOŻE/DODGE) */
 .voter-chip {
-  font-family: var(--mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
+  font-family: var(--mono); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Głosowanie w slocie + LOCK IN pod terminami */
