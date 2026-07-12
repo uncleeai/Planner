@@ -106,6 +106,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── dataCache.ts          # Cache danych w pamięci: dashboard ↔ strona wypadu bez „Wczytuję…"
         ├── eventPrefetch.ts      # Prefetch danych wypadu na pointerdown (przed nawigacją)
         ├── chatSeen.ts           # Lokalny znacznik „przeczytane" czatu (kropki nieprzeczytanych)
+        ├── haptics.ts            # Haptic tick przy gestach (vibrate; iOS: trik z <input switch>)
         └── types.ts              # Typy + logika statusu wypadu (EventRow, Slot, Vote, Profile…) (+ testy)
 ```
 

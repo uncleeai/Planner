@@ -21,6 +21,7 @@ import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import { markChatSeen } from '@/lib/chatSeen';
+import { haptic } from '@/lib/haptics';
 import { appAlert, appConfirm } from '@/components/Dialogs';
 
 
@@ -55,7 +56,7 @@ function longPressHandlers(fire: () => void) {
         // Gdyby przeglądarka mimo wszystko zaczęła zaznaczać (np. start poza czatem) —
         // zdejmij zaznaczenie, zanim pokaże się picker.
         window.getSelection?.()?.removeAllRanges();
-        navigator.vibrate?.(10);
+        haptic();
         fire();
       }, LONG_PRESS_MS);
     },
@@ -361,6 +362,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function vote(slotId: string, availability: Availability) {
+    haptic();
     // Zapamiętaj zamiar — przeładowania z bazy będą go respektować aż do potwierdzenia.
     pendingVotesRef.current.set(slotId, availability);
     // Optymistyczna aktualizacja: pokaż wybór od razu, zanim baza odpowie —
@@ -405,6 +407,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   // Ręczne ustalenie terminu przez organizatora (ma pierwszeństwo nad automatem).
   async function confirmSlot(slot: Slot) {
+    haptic();
     const { error } = await supabase
       .from('events')
       .update({ confirmed_slot_id: slot.id, confirmed_at: slot.starts_at })
@@ -665,6 +668,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // „Pinguj kurwę": push do jednej osoby z losowym cytatem (wspólna logika w lib/ping).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
   async function doPing(m: Profile) {
+    haptic();
     const err = await pingUser(eventId, m.id, m.display_name);
     if (err) {
       appAlert('Ping nie poszedł', err);

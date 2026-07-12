@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
 import { pingUser } from '@/lib/ping';
+import { haptic } from '@/lib/haptics';
 import { appAlert } from '@/components/Dialogs';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
@@ -908,6 +909,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
     e.preventDefault();
     e.stopPropagation();
     if (pinged.has(m.id)) return;
+    haptic();
     const err = await pingUser(ev.id, m.id, m.name);
     if (err) {
       appAlert('Ping nie poszedł', err);
@@ -923,6 +925,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
     e.preventDefault();
     e.stopPropagation();
     if (!slot || myPick === availability) return;
+    haptic();
     setMyPick(availability);
     const { error } = await supabase.from('votes').upsert(
       { event_id: ev.id, slot_id: slot.id, user_id: userId, participant_name: displayName, availability },
