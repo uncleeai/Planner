@@ -55,7 +55,18 @@ export default function WeatherModal({
   const visible = Array.isArray(hours) ? hours.filter((h) => new Date(h.time).getHours() >= 6) : [];
 
   return createPortal(
-    <div className="profile-overlay" onClick={onClose}>
+    // Modal jest w portalu, ale zdarzenia React bąbelkują po drzewie KOMPONENTÓW —
+    // a rodzicem jest <Link> całej karty hero. Bez stopPropagation klik w tło
+    // zamykał modal i jednocześnie nawigował do wypadu.
+    <div
+      className="profile-overlay"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       <div className="profile-modal wx-modal" role="dialog" aria-label="Prognoza godzinowa" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Zamknij">
           <IconX size={14} />
