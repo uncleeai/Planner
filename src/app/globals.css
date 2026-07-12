@@ -1366,6 +1366,9 @@ main::before {
   padding: 15px 16px;
   min-width: 0;
 }
+/* Blok tekstu kafelka musi móc się kurczyć, inaczej długi opis pogody
+   („Częściowe zachmurzenie") rozpycha kafelek i nachodzi na sąsiedni. */
+.hero-tile > div { min-width: 0; }
 .hero-tile + .hero-tile { border-left: 1px solid var(--border); }
 .hero-tile-icon { color: var(--muted); flex-shrink: 0; }
 .hero-tile-main { font-family: var(--mono); font-size: 1.15rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
@@ -1439,10 +1442,11 @@ main::before {
   margin-top: 14px; padding-top: 13px;
 }
 /* Sloty graczy bez szarych obrysów: głębię robi „glass" (przezroczysty fill +
-   top-highlight), a stan niesie miękka PLAMA koloru bijąca ZE ŹRÓDŁA — z labelki
-   READY/MOŻE/PAS (radial zakotwiczony tam, gdzie siedzi napis, + neonowa poświata
-   samego tekstu). Ramka zostaje TYLKO tam, gdzie coś znaczy: przerywana na AFK
-   (puste miejsce w składzie), akcentowa na twoim pustym slocie. */
+   top-highlight), a stan niesie GRACZ — awatar dostaje cienki ring w kolorze głosu
+   i halo, które miękko rozchodzi się zza niego w tło slotu (radial zakotwiczony
+   w środku awatara, więc światło jest symetryczne, bez „zabrudzonego rogu").
+   Ramka zostaje TYLKO tam, gdzie coś znaczy: przerywana na AFK (puste miejsce
+   w składzie), akcentowa na twoim pustym slocie. */
 .slot-p {
   display: flex; align-items: center; gap: 9px;
   background: color-mix(in srgb, var(--card-2) 80%, transparent);
@@ -1458,11 +1462,13 @@ main::before {
 .slot-p.s-no    { --state: var(--no); }
 .slot-p.s-yes, .slot-p.s-maybe, .slot-p.s-no {
   background:
-    radial-gradient(120% 170% at 30% 82%, color-mix(in srgb, var(--state) 19%, transparent), transparent 58%),
+    radial-gradient(90% 160% at 24px 50%, color-mix(in srgb, var(--state) 20%, transparent), transparent 60%),
     color-mix(in srgb, var(--card-2) 80%, transparent);
 }
-.slot-p.s-yes .who span, .slot-p.s-maybe .who span, .slot-p.s-no .who span {
-  text-shadow: 0 0 9px color-mix(in srgb, var(--state) 75%, transparent);
+.slot-p.s-yes .avatar, .slot-p.s-maybe .avatar, .slot-p.s-no .avatar {
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--state) 65%, transparent),
+    0 0 12px 1px color-mix(in srgb, var(--state) 40%, transparent);
 }
 .slot-p .who { min-width: 0; flex: 1; }
 .slot-p .who b {
