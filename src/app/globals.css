@@ -1372,6 +1372,50 @@ main::before {
 /* Blok tekstu kafelka musi móc się kurczyć, inaczej długi opis pogody
    („Częściowe zachmurzenie") rozpycha kafelek i nachodzi na sąsiedni. */
 .hero-tile > div { min-width: 0; }
+
+/* Kafelek pogody jako przycisk (otwiera modal prognozy) — reset wyglądu buttona,
+   żeby był nie do odróżnienia od zwykłego kafelka. */
+.hero-tile-btn {
+  appearance: none; background: none; border: 0;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.hero-tile-btn:active { opacity: 0.75; }
+
+/* ===== Modal szczegółowej prognozy (WeatherModal) ===== */
+.wx-modal { max-width: 340px; }
+.wx-sub { margin: 2px 0 12px; }
+.wx-sub::first-letter { text-transform: uppercase; }
+.wx-summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; margin-bottom: 12px;
+  background: var(--card-2); border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.wx-summary b { font-family: var(--mono); font-size: 1.3rem; }
+.wx-summary span { font-size: 0.82rem; color: var(--muted); }
+.wx-rows { max-height: 46vh; overflow-y: auto; text-align: left; }
+.wx-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.wx-row:last-child { border-bottom: 0; }
+.wx-row .wx-h { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); width: 44px; }
+.wx-row .wx-i { color: var(--muted); flex-shrink: 0; }
+.wx-row .wx-t { font-family: var(--mono); font-weight: 700; width: 40px; }
+.wx-row .wx-p { font-size: 0.75rem; color: var(--muted); flex: 1; }
+.wx-row .wx-tag {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700; letter-spacing: 0.12em;
+  color: var(--accent); background: var(--accent-dim);
+  padding: 3px 7px; border-radius: 6px;
+}
+.wx-row.hot {
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
+  border-bottom-color: transparent;
+}
+.wx-row.hot .wx-h, .wx-row.hot .wx-i { color: var(--text); }
 .hero-tile + .hero-tile { border-left: 1px solid var(--border); }
 .hero-tile-icon { color: var(--muted); flex-shrink: 0; }
 .hero-tile-main { font-family: var(--mono); font-size: 1.15rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }

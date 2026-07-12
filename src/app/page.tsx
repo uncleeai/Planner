@@ -16,6 +16,7 @@ import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventEmojiInput from '@/components/EventEmojiInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import WeatherModal from '@/components/WeatherModal';
 import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useRouter } from 'next/navigation';
@@ -962,6 +963,9 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const wInfo = weather ? describeWeather(weather.code) : null;
   const responded = agg.squad.filter((m) => m.state).length;
 
+  // Modal szczegółowej prognozy (tap w kafelek pogody).
+  const [showWx, setShowWx] = useState(false);
+
   // Rząd hosta (awatar + nick + HOST, jak na mockupie) — poza trybami, które
   // hosta już pokazują (ready check: w meta; misja: side-label w rosterze).
   const host = ev.created_by_user_id
@@ -1085,13 +1089,23 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
       {!needsYou && (wInfo || meetTime) && (
         <div className="hero-grid">
           {wInfo && weather && (
-            <div className="hero-tile">
+            <button
+              type="button"
+              className="hero-tile hero-tile-btn"
+              aria-label="Pokaż prognozę godzinową"
+              onClick={(e) => {
+                // Kafelek siedzi w <Link> całej karty — tap ma otworzyć modal, nie wypad.
+                e.preventDefault();
+                e.stopPropagation();
+                setShowWx(true);
+              }}
+            >
               <WeatherIcon code={weather.code} size={24} className="hero-tile-icon" />
               <div>
                 <div className="hero-tile-main">{weather.tempMax}°</div>
                 <div className="hero-tile-sub">{wInfo.label}</div>
               </div>
-            </div>
+            </button>
           )}
           {meetTime && (
             <div className="hero-tile">
@@ -1113,6 +1127,18 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
             <p>{peek.body}</p>
           </span>
         </div>
+      )}
+
+      {showWx && hasCoords && (
+        <WeatherModal
+          lat={ev.latitude as number}
+          lon={ev.longitude as number}
+          dateISO={weatherDate as string}
+          location={ev.location}
+          day={weather}
+          meetHour={slot && !slot.all_day ? new Date(slot.starts_at).getHours() : null}
+          onClose={() => setShowWx(false)}
+        />
       )}
     </Link>
   );

@@ -93,6 +93,58 @@ export async function fetchDayWeather(
   }
 }
 
+// Prognoza godzinowa na dzień wypadu (modal szczegółów po tapnięciu kafelka pogody).
+export type HourWeather = {
+  time: string;   // ISO w strefie lokalnej miejsca (timezone=auto)
+  temp: number;
+  code: number;
+  precip: number; // szansa opadów w %
+};
+
+const hourlyCache = new Map<string, HourWeather[] | null>();
+
+export async function fetchHourlyWeather(
+  latitude: number,
+  longitude: number,
+  dateISO: string,
+): Promise<HourWeather[] | null> {
+  const key = wKey(latitude, longitude, dateISO);
+  const cached = hourlyCache.get(key);
+  if (cached !== undefined) return cached;
+
+  const target = new Date(`${dateISO}T12:00:00`);
+  const days = Math.floor((target.getTime() - Date.now()) / DAY_MS);
+  if (Number.isNaN(days) || days < -1 || days > 15) {
+    hourlyCache.set(key, null);
+    return null;
+  }
+
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+    `&hourly=temperature_2m,weather_code,precipitation_probability&timezone=auto` +
+    `&start_date=${dateISO}&end_date=${dateISO}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null; // błąd przejściowy — nie cache'ujemy, pozwól ponowić
+    const d = await res.json();
+    const times: string[] = d.hourly?.time ?? [];
+    const temps: number[] = d.hourly?.temperature_2m ?? [];
+    const codes: number[] = d.hourly?.weather_code ?? [];
+    const precs: number[] = d.hourly?.precipitation_probability ?? [];
+    const rows: HourWeather[] = times.map((t, i) => ({
+      time: t,
+      temp: Math.round(temps[i] ?? 0),
+      code: codes[i] ?? 0,
+      precip: Math.round(precs[i] ?? 0),
+    }));
+    const result = rows.length > 0 ? rows : null;
+    hourlyCache.set(key, result);
+    return result;
+  } catch {
+    return null; // sieć padła — nie cache'ujemy
+  }
+}
+
 // Kod pogody WMO → emoji + krótki polski opis.
 export function describeWeather(code: number): { emoji: string; label: string } {
   if (code === 0) return { emoji: '☀️', label: 'Słonecznie' };
