@@ -1439,8 +1439,8 @@ main::before {
   margin-top: 14px; padding-top: 13px;
 }
 /* Sloty graczy bez szarych obrysów: głębię robi „glass" (przezroczysty fill +
-   top-highlight), a stan niesie kolorowy RAIL przy lewej krawędzi (kolor głosu)
-   z poświatą wtapiającą się w tło. Ramka zostaje TYLKO tam, gdzie coś znaczy:
+   top-highlight), a stan niesie miękka PLAMA koloru głosu wypływająca zza awatara
+   (radial, bez żadnej twardej krawędzi). Ramka zostaje TYLKO tam, gdzie coś znaczy:
    przerywana na AFK (puste miejsce w składzie), akcentowa na twoim pustym slocie. */
 .slot-p {
   display: flex; align-items: center; gap: 9px;
@@ -1456,11 +1456,8 @@ main::before {
 .slot-p.s-maybe { --state: var(--maybe); }
 .slot-p.s-no    { --state: var(--no); }
 .slot-p.s-yes, .slot-p.s-maybe, .slot-p.s-no {
-  box-shadow:
-    inset 3px 0 0 var(--state),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--state) 13%, transparent), transparent 55%),
+    radial-gradient(130% 150% at 0% 50%, color-mix(in srgb, var(--state) 20%, transparent), transparent 62%),
     color-mix(in srgb, var(--card-2) 80%, transparent);
 }
 .slot-p .who { min-width: 0; flex: 1; }
