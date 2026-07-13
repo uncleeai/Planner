@@ -755,8 +755,11 @@ export default function Home() {
       {!loading && !heroEvent && events.length > 0 && (
         <section>
           <button type="button" className="empty-lobby" onClick={() => setShowForm(true)}>
-            {/* Klasyk. ResidentSleeper zamiast emoji — lobby dosłownie śpi. */}
-            <img className="el-emoji" src="/resident-sleeper.png" alt="" width={50} height={64} />
+            {/* Klasyk. ResidentSleeper zamiast emoji — lobby dosłownie śpi (z zzz). */}
+            <span className="el-sleeper" aria-hidden="true">
+              <img className="el-emoji" src="/resident-sleeper.png" alt="" width={50} height={64} />
+              <span className="el-zzz"><i>z</i><i>z</i><i>z</i></span>
+            </span>
             <span className="el-title">Lobby puste</span>
             <span className="el-sub">Nikt nic nie hostuje. Będziesz tym kimś?</span>
             {lastPlayedMs > 0 && (() => {

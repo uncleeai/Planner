@@ -2191,11 +2191,34 @@ button.solid-danger { background: var(--no); color: #fff; }
 @media (hover: hover) {
   .empty-lobby:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 }
+.el-sleeper { position: relative; display: inline-block; margin-bottom: 8px; }
 .el-emoji {
-  width: 64px; height: 64px; object-fit: contain;
-  margin-bottom: 8px;
-  /* Lekko przygaszony jak reszta pustego slotu — GIF nie ma świecić mocniej niż karta. */
+  display: block;
+  width: 50px; height: 64px; object-fit: contain;
+  /* Lekko przygaszony jak reszta pustego slotu — emote nie ma świecić mocniej niż karta. */
   filter: saturate(0.9) brightness(0.95);
+}
+/* „z z z" ulatujące znad głowy: trzy litery na tej samej ścieżce (w górę,
+   lekko w prawo, fade), przesunięte w fazie — klasyczny dymek snu. Pętla jest
+   celowa: to jedyny żywy element wygaszonej karty (reduced-motion ją wyłącza). */
+.el-zzz { position: absolute; top: 2px; right: -8px; }
+.el-zzz i {
+  position: absolute; right: 0; bottom: 0;
+  font-family: var(--mono); font-style: normal; font-weight: 700;
+  color: var(--muted); line-height: 1; opacity: 0;
+  animation: elZzz 3.6s ease-in-out infinite;
+}
+.el-zzz i:nth-child(1) { font-size: 0.66rem; }
+.el-zzz i:nth-child(2) { font-size: 0.8rem; animation-delay: 1.2s; }
+.el-zzz i:nth-child(3) { font-size: 0.95rem; animation-delay: 2.4s; }
+@keyframes elZzz {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.7) rotate(-6deg); }
+  18%  { opacity: 0.85; }
+  62%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translate(11px, -26px) scale(1.2) rotate(8deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .el-zzz { display: none; }
 }
 .el-title {
   font-family: var(--mono); font-size: 0.8rem; font-weight: 700;
