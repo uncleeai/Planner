@@ -1,4 +1,5 @@
 import type { EventRow, Slot, Vote, Profile, Comment } from './types';
+import type { HeroCrop } from './heroImage';
 
 // Lekki cache w pamięci (singleton po stronie klienta). Dashboard ładuje komplet danych;
 // strona wypadu odczytuje je na start, by pokazać się natychmiast — a potem i tak
@@ -11,6 +12,7 @@ export type AppData = {
   votes: Vote[];
   profiles: Profile[];
   recentComments: Comment[];
+  heroCrops: HeroCrop[];
 };
 
 let cache: AppData | null = null;
@@ -21,6 +23,16 @@ export function getCache(): AppData | null {
 
 export function setCache(data: AppData): void {
   cache = data;
+}
+
+// Po zapisaniu kadru w edytorze — odśwież jego kopię w cache, żeby powrót na
+// dashboard od razu pokazał nowy kadr (bez „przeskoku" z poprzedniego).
+export function updateCachedCrop(crop: HeroCrop): void {
+  if (!cache) return;
+  cache = {
+    ...cache,
+    heroCrops: [...cache.heroCrops.filter((c) => c.emoji !== crop.emoji), crop],
+  };
 }
 
 function upsertEvent(events: EventRow[], ev: EventRow): EventRow[] {
@@ -41,6 +53,7 @@ export function mergeEventData(
       votes: [...data.votes],
       profiles: [...data.profiles],
       recentComments: [],
+      heroCrops: [],
     };
     return;
   }
@@ -50,5 +63,6 @@ export function mergeEventData(
     votes: [...cache.votes.filter((v) => v.event_id !== eventId), ...data.votes],
     profiles: data.profiles.length ? data.profiles : cache.profiles,
     recentComments: cache.recentComments,
+    heroCrops: cache.heroCrops,
   };
 }

@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 
-// Pole opisu z paskiem formatowania (B / lista / link). Wstawia/owija zaznaczenie
+// Pole opisu z paskiem formatowania (B / nagłówek / lista / link). Wstawia/owija zaznaczenie
 // lekkim markdownem; render po stronie wypadu robi <Markdown> (src/lib/markdown.tsx).
 export default function DescriptionInput({
   id,
@@ -57,11 +57,32 @@ export default function DescriptionInput({
     });
   }
 
+  // Nagłówek sekcji: „# " na początku bieżącej linii (toggle).
+  function toggleHeading() {
+    const el = ref.current;
+    if (!el) return;
+    const s = el.selectionStart;
+    const ls = value.lastIndexOf('\n', s - 1) + 1;
+    const heading = /^#{1,3}\s+/.test(value.slice(ls));
+    const next = heading
+      ? value.slice(0, ls) + value.slice(ls).replace(/^#{1,3}\s+/, '')
+      : value.slice(0, ls) + '# ' + value.slice(ls);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const d = heading ? -2 : 2;
+      el.setSelectionRange(s + d, s + d);
+    });
+  }
+
   return (
     <div className="desc-input">
       <div className="desc-toolbar">
         <button type="button" className="desc-tool" onClick={() => surround('**', '**', 'pogrubienie')} aria-label="Pogrubienie">
           <b>B</b>
+        </button>
+        <button type="button" className="desc-tool" onClick={toggleHeading} aria-label="Nagłówek sekcji">
+          # Sekcja
         </button>
         <button type="button" className="desc-tool" onClick={toggleList} aria-label="Lista">
           • Lista

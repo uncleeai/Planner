@@ -4,25 +4,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
-import type { EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
-import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
+import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
+import { pingUser } from '@/lib/ping';
+import { haptic } from '@/lib/haptics';
+import { appAlert } from '@/components/Dialogs';
+import { notifyConfirmed } from '@/lib/notifyConfirmed';
+import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
+import { Avatar, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import EventEmojiInput from '@/components/EventEmojiInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import WeatherModal from '@/components/WeatherModal';
 import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
+import { useRouter } from 'next/navigation';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
-import { IconCalendar, IconPin, IconChevron, IconBulb, IconMessageSquare, IconClock, WeatherIcon } from '@/components/icons';
+import { getChatSeen } from '@/lib/chatSeen';
+import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { loadHeroCrops } from '@/lib/heroCrops';
+import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
-function progressColor(p: number): string {
-  return p >= 67 ? 'var(--yes)' : p >= 34 ? 'var(--maybe)' : 'var(--no)';
-}
 // Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
 function toDateISO(iso: string): string {
   const d = new Date(iso);
@@ -41,12 +47,16 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
 }
 
+// Stan gracza w składzie: najlepszy głos w wypadzie (yes > maybe > no) albo null = AFK.
+type SquadMember = { id: string; name: string; avatar: string | null; state: 'yes' | 'maybe' | 'no' | null };
+
 type Agg = {
   voters: Person[];
   percent: number;
   slot: Slot | null;           // USTALONY termin (do formatu zakresu/całodniowego)
+  squad: SquadMember[];        // cała paczka ze stanem — sloty graczy + segmenty
 };
-const EMPTY_AGG: Agg = { voters: [], percent: 0, slot: null };
+const EMPTY_AGG: Agg = { voters: [], percent: 0, slot: null, squad: [] };
 
 const MAJOR_QUOTES = [
   "„Żeby żyć trzeba jeść, żeby jeść trzeba żyć…”",
@@ -72,137 +82,9 @@ const MAJOR_QUOTES = [
   "„Muszę mieć lepszą wiadomość!”"
 ];
 
-type ActivityItem = {
-  id: string;
-  eventId: string;
-  eventTitle: string;
-  name: string;
-  avatar: string | null;
-  body: string;
-  createdAt: string;
-};
-
-// Wysokość jednego „slajdu" — musi być spójna z .activity-slide w globals.css.
-const SLIDE_H = 64;
-
-// Pastylka „liquid glass": jeden komentarz na raz na pionowym torze (transform —
-// płynnie, bez remountu). Przewijana palcem; gdy nikt nie dotyka, sama rotuje.
-function ActivityPill({ items, onOpen }: { items: ActivityItem[]; onOpen: (eventId: string) => void }) {
-  const [idx, setIdx] = useState(0);
-  const [drag, setDrag] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const dragRef = useRef(0);
-  const startY = useRef<number | null>(null);
-  const swallowClick = useRef(false);
-  const rafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (idx > items.length - 1) setIdx(0);
-  }, [items.length, idx]);
-
-  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
-
-  // Auto-rotacja: pojedynczy timeout przeplanowywany po KAŻDEJ zmianie idx i wstrzymywany
-  // na czas przeciągania. Dzięki temu Twój swipe resetuje zegar (auto nie wystrzeli zaraz
-  // po geście ani w trakcie dojazdu).
-  useEffect(() => {
-    if (items.length <= 1 || dragging) return;
-    const t = window.setTimeout(() => setIdx((i) => (i + 1) % items.length), 5000);
-    return () => window.clearTimeout(t);
-  }, [idx, items.length, dragging]);
-
-  const n = items.length;
-  const safeIdx = Math.min(idx, n - 1);
-  if (n === 0) return null;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    startY.current = e.touches[0].clientY;
-    swallowClick.current = false;
-    setDragging(true);
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (startY.current == null) return;
-    const raw = e.touches[0].clientY - startY.current;
-    const dir = raw < 0 ? -1 : 1;
-    // Rubber-band: tor zawsze reaguje na palec (małe ruchy ~1:1), ale opór rośnie i
-    // asymptotycznie nie przekracza ~jednego slajdu — bez twardego „zacięcia".
-    // W stronę pustki za krańcem toru opór jest dużo większy (ledwo drgnie, wróci).
-    const allowed = raw < 0 ? safeIdx < n - 1 : safeIdx > 0;
-    const c = SLIDE_H * (allowed ? 0.85 : 0.12);
-    const dy = dir * (1 - 1 / (Math.abs(raw) / c + 1)) * c;
-    dragRef.current = dy;
-    setDrag(dy);
-  };
-  const onTouchEnd = () => {
-    startY.current = null;
-    const dy = dragRef.current;
-    dragRef.current = 0;
-
-    const TH = SLIDE_H * 0.22;
-    let target = safeIdx;
-    if (dy <= -TH && safeIdx < n - 1) target = safeIdx + 1;
-    else if (dy >= TH && safeIdx > 0) target = safeIdx - 1;
-    // Połknij klik tylko gdy gest realnie zmienił komentarz — tap z drobnym
-    // drgnięciem palca dalej otwiera wypad (bez podwójnego klikania).
-    if (target !== safeIdx) swallowClick.current = true;
-
-    // Najpierw włącz transicję (tor zostaje w pozycji z palca), a docelową pozycję
-    // ustaw dopiero w następnej klatce — inaczej zmiana transformu w tej samej klatce
-    // co transition:none→0.38s skacze bez animacji („teleport").
-    setDragging(false);
-    rafRef.current = requestAnimationFrame(() => {
-      setDrag(0);
-      setIdx(target);
-    });
-  };
-  const onClick = () => {
-    if (swallowClick.current) {
-      swallowClick.current = false;
-      return;
-    }
-    onOpen(items[safeIdx].eventId);
-  };
-
-  const translate = -safeIdx * SLIDE_H + drag;
-
-  return (
-    <div className="activity-pill">
-      <div
-        className="activity-pill-touch"
-        style={{ height: SLIDE_H }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onClick={onClick}
-        role="button"
-        tabIndex={0}
-      >
-        <div
-          className="activity-track"
-          style={{ transform: `translateY(${translate}px)`, transition: dragging ? 'none' : undefined }}
-        >
-          {items.map((it) => (
-            <div key={it.id} className="activity-slide" style={{ height: SLIDE_H }}>
-              <Avatar name={it.name} avatar={it.avatar} size={34} />
-              <div className="activity-body">
-                <div className="activity-head">
-                  <span className="activity-author">{it.name}</span>
-                  <span className="activity-event">· {it.eventTitle}</span>
-                  <span className="activity-time">{timeAgo(it.createdAt)}</span>
-                </div>
-                <p className="activity-text">{it.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const navigate = useTransitionNavigate();
+  const router = useRouter();
   const { userId, displayName } = useAuth();
 
   // Seed z cache (jeśli wracamy z wypadu) — lista pojawia się od razu, bez „Wczytuję…".
@@ -212,6 +94,7 @@ export default function Home() {
   const [votes, setVotes] = useState<Vote[]>(() => cached?.votes ?? []);
   const [profiles, setProfiles] = useState<Profile[]>(() => cached?.profiles ?? []);
   const [recentComments, setRecentComments] = useState<Comment[]>(() => cached?.recentComments ?? []);
+  const [heroCrops, setHeroCrops] = useState<HeroCrop[]>(() => cached?.heroCrops ?? []);
   const [loading, setLoading] = useState(() => !cached);
 
   const [quote, setQuote] = useState('');
@@ -236,6 +119,11 @@ export default function Home() {
   };
 
   const [showForm, setShowForm] = useState(false);
+  // Zamykanie sheeta: najpierw animacja wyjazdu (klasa .closing), odmontowanie
+  // dopiero po jej końcu (animationend na overlayu).
+  const [sheetClosing, setSheetClosing] = useState(false);
+  const closeSheet = () => setSheetClosing(true);
+  const [showArchive, setShowArchive] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -261,7 +149,7 @@ export default function Home() {
       supabase.from('slots').select('*'),
       supabase.from('votes').select('*'),
       supabase.from('profiles').select('*'),
-      supabase.from('comments').select('*').order('created_at', { ascending: false }).limit(3),
+      supabase.from('comments').select('*').order('created_at', { ascending: false }).limit(30),
     ]);
     const events = (ev ?? []) as EventRow[];
     const slots = (sl ?? []) as Slot[];
@@ -273,14 +161,28 @@ export default function Home() {
     setProfiles(profiles);
     const recentComments = (cm ?? []) as Comment[];
     setRecentComments(recentComments);
-    setCache({ events, slots, votes, profiles, recentComments }); // zaliczka dla strony wypadu
+    // Kadry hero — dociągamy razem, żeby trafiły do cache'a i przy powrocie z wypadu
+    // karta od razu miała właściwy kadr (bez „przeskoku" z domyślnego na zapisany).
+    const crops = await loadHeroCrops();
+    setHeroCrops(crops);
+    setCache({ events, slots, votes, profiles, recentComments, heroCrops: crops }); // zaliczka dla strony wypadu
     setLoading(false);
   }, []);
+
+  // Kadr per emoji (do karty hero); brak wiersza → domyślny.
+  const cropByEmoji = useMemo(() => {
+    const m = new Map<string, HeroCrop>();
+    for (const c of heroCrops) m.set(c.emoji, c);
+    return m;
+  }, [heroCrops]);
 
   // Realtime potrafi przysłać serię zmian naraz (własny głos + cudze + reconnect po
   // uśpieniu). Bez tego każdy wiersz wołał osobny load() = 5 zapytań + pełny re-render
   // pod rząd, co na telefonie (zwł. w trybie oszczędzania) zapychało główny wątek i
   // taps przez chwilę nie łapały. Sklejamy serię w jeden load() (trailing debounce).
+  const eventsRef = useRef<EventRow[]>(events);
+  eventsRef.current = events;
+
   const reloadTimer = useRef<number | null>(null);
   const scheduleReload = useCallback(() => {
     if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
@@ -291,7 +193,11 @@ export default function Home() {
   }, [load]);
 
   useEffect(() => {
-    load();
+    // Powrót z wypadu: seed z cache już stoi na ekranie, a natychmiastowy load()
+    // (5 zapytań + przeliczenie agregacji + re-render całej listy) lądował w środku
+    // animacji wejścia — na telefonie widoczny jank, zwłaszcza po wybudzeniu (zimny
+    // JIT). Z seedem odsuwamy odświeżenie tuż za koniec kaskady; bez seedu — od razu.
+    const initialLoad = window.setTimeout(load, cached ? 700 : 0);
     const channel = supabase
       .channel('dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, scheduleReload)
@@ -303,12 +209,24 @@ export default function Home() {
     // tym zdarzeniem. Dwa kanały Realtime na tej samej tabeli gubiły dostawy (toast
     // łapał tylko pierwszy wypad), więc dashboard nie subskrybuje `events` osobno.
     window.addEventListener('planner:events-changed', scheduleReload);
+    // Wybudzenie telefonu: zrób od razu to, co i tak zaraz by się wydarzyło —
+    // odśwież dane (reconnect realtime i tak odpali serię) i ponów prefetch tras
+    // wypadów (cache prefetchu wygasa w uśpieniu). Dzięki temu ta robota schodzi
+    // w momencie wake, a nie w trakcie pierwszego tapnięcia/animacji wejścia.
+    const onWake = () => {
+      if (document.visibilityState !== 'visible') return;
+      scheduleReload();
+      for (const ev of eventsRef.current.slice(0, 8)) router.prefetch(`/event/${ev.id}`);
+    };
+    document.addEventListener('visibilitychange', onWake);
     return () => {
+      window.clearTimeout(initialLoad);
       if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
       supabase.removeChannel(channel);
       window.removeEventListener('planner:events-changed', scheduleReload);
+      document.removeEventListener('visibilitychange', onWake);
     };
-  }, [load, scheduleReload]);
+  }, [load, scheduleReload, router]);
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
@@ -356,13 +274,27 @@ export default function Home() {
     navigate(`/event/${data.id}`, 'forward');
   }
 
-  const { open, upcoming, expired, past } = useMemo(() => {
+  // Kategoryzacja + wybór hero. Hero działa jak skrzynka odbiorcza:
+  // (1) wypad czekający na TWÓJ głos, (2) czekamy na innych, (3) najbliższy
+  // klepnięty. Data rozstrzyga dopiero remisy w obrębie klasy. Reszta listy
+  // to jedna chronologiczna sekcja „Przed nami" — status niesie plakietka
+  // przy wierszu, nie osobny nagłówek sekcji (4 nagłówki na kilka wypadów
+  // robiły więcej szumu niż treści).
+  const { heroId, heroMode, heroVariant, ahead, past, archived } = useMemo(() => {
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
-    const open: EventRow[] = [];
-    const upcoming: EventRow[] = [];
-    const expired: EventRow[] = [];
-    const past: EventRow[] = [];
+    // Retencja na głównej: odbyte wiszą w „Bylim już" miesiąc, nieustalone tydzień
+    // (wiersze są małe, nie zawadzają). Starsze spadają do zwijanego Archiwum —
+    // nic nie znika bez śladu.
+    const PAST_KEEP = 30 * DAY;
+    const EXPIRED_KEEP = 7 * DAY;
+    const archivedItems: { ev: EventRow; variant: 'past' | 'expired'; slot: Slot | null; endMs: number }[] = [];
+
+    type AheadItem = { ev: EventRow; variant: 'open' | 'upcoming' | 'expired'; sortMs: number; slot: Slot | null };
+    const openItems: AheadItem[] = [];
+    const upcomingItems: AheadItem[] = [];
+    const expiredItems: AheadItem[] = [];
+    const pastItems: { ev: EventRow; endMs: number }[] = [];
 
     const slotsByEvent = new Map<string, Slot[]>();
     for (const s of slots) {
@@ -376,9 +308,6 @@ export default function Home() {
       arr.push(v);
       votesByEvent.set(v.event_id, arr);
     }
-
-    const confirmedDateMap = new Map<string, string>();
-    const expiredAtMap = new Map<string, number>();
     const memberIds = profiles.map((p) => p.id);
 
     for (const ev of events) {
@@ -386,55 +315,93 @@ export default function Home() {
       const evVotes = votesByEvent.get(ev.id) ?? [];
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
 
-      // Ustalony (ręcznie LUB wszyscy dali znać) → Nadchodzące / Bylim już.
+      // Ustalony (ręcznie LUB wszyscy dali znać) → nadchodzący / Bylim już.
       // Liczone od KOŃCA terminu (zakres/cały dzień trwa do końca ostatniego dnia).
       if (status.settled && status.date) {
-        confirmedDateMap.set(ev.id, status.date);
-        const settledSlot = evSlots.find((s) => s.id === status.slotId);
+        const settledSlot = evSlots.find((s) => s.id === status.slotId) ?? null;
         const endMs = settledSlot ? slotEndMs(settledSlot) : new Date(status.date).getTime();
         if (endMs >= now) {
-          upcoming.push(ev);
-        } else if (endMs >= now - 7 * DAY) {
-          // „Bylim już" pokazujemy do tygodnia po wypadzie; starsze → archiwum
-          // (pomijamy z listy, zostają w bazie pod przyszły widok archiwum).
-          past.push(ev);
+          upcomingItems.push({ ev, variant: 'upcoming', sortMs: endMs, slot: settledSlot });
+        } else if (endMs >= now - PAST_KEEP) {
+          pastItems.push({ ev, endMs });
+        } else {
+          archivedItems.push({ ev, variant: 'past', slot: settledSlot, endMs });
         }
         continue;
       }
 
       // Nieustalony: czy jest jeszcze jakiś termin, który się nie skończył?
-      const latest = evSlots.reduce((m, s) => Math.max(m, slotEndMs(s)), 0);
+      const latestSlot = evSlots.reduce<Slot | null>(
+        (m, s) => (!m || slotEndMs(s) > slotEndMs(m) ? s : m),
+        null,
+      );
+      const latest = latestSlot ? slotEndMs(latestSlot) : 0;
       const hasFuture = evSlots.some((s) => slotEndMs(s) > now);
 
       if (evSlots.length > 0 && !hasFuture) {
-        // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono". Pokazujemy do 24h
-        // po ostatnim terminie, potem archiwizujemy (pomijamy → znika z listy, zostaje w bazie).
-        if (latest >= now - DAY) {
-          expired.push(ev);
-          expiredAtMap.set(ev.id, latest);
+        // Wszystkie terminy minęły, nikt nie ustalił = „Nie ustalono".
+        if (latest >= now - EXPIRED_KEEP) {
+          expiredItems.push({ ev, variant: 'expired', sortMs: latest, slot: latestSlot });
+        } else {
+          archivedItems.push({ ev, variant: 'expired', slot: latestSlot, endMs: latest });
         }
       } else {
-        // Ma przyszły termin albo brak terminów → wciąż „W trakcie".
-        open.push(ev);
+        // Ma przyszły termin albo brak terminów → wciąż zbiera głosy.
+        // Klucz sortowania: najbliższy przyszły termin (brak terminów → na koniec).
+        let nearestSlot: Slot | null = null;
+        for (const s of evSlots) {
+          const end = slotEndMs(s);
+          if (end > now && (!nearestSlot || end < slotEndMs(nearestSlot))) nearestSlot = s;
+        }
+        openItems.push({
+          ev,
+          variant: 'open',
+          sortMs: nearestSlot ? slotEndMs(nearestSlot) : Infinity,
+          slot: nearestSlot,
+        });
       }
     }
 
-    upcoming.sort((a, b) => {
-      const da = new Date(confirmedDateMap.get(a.id)!).getTime();
-      const db = new Date(confirmedDateMap.get(b.id)!).getTime();
-      return da - db;
-    });
+    const byNearest = (a: AheadItem, b: AheadItem) => a.sortMs - b.sortMs;
 
-    past.sort((a, b) => {
-      const da = new Date(confirmedDateMap.get(a.id)!).getTime();
-      const db = new Date(confirmedDateMap.get(b.id)!).getTime();
-      return db - da;
-    });
+    // Klasa 1: czeka na MÓJ głos (jest na co głosować i nie oddałem głosu).
+    const myVotedEventIds = new Set(
+      votes.filter((v) => v.user_id === userId).map((v) => v.event_id),
+    );
+    const needsMyVote = (it: AheadItem) =>
+      it.sortMs !== Infinity && !myVotedEventIds.has(it.ev.id);
+    const classVote = openItems.filter(needsMyVote).sort(byNearest);
+    const classWaiting = openItems.filter((it) => !needsMyVote(it)).sort(byNearest);
+    const classLocked = upcomingItems.slice().sort(byNearest);
 
-    expired.sort((a, b) => (expiredAtMap.get(b.id) ?? 0) - (expiredAtMap.get(a.id) ?? 0));
+    const heroItem = classVote[0] ?? classWaiting[0] ?? classLocked[0] ?? null;
+    const heroMode: 'vote' | 'waiting' | 'locked' | null = !heroItem
+      ? null
+      : heroItem === classVote[0] ? 'vote'
+      : heroItem === classWaiting[0] ? 'waiting'
+      : 'locked';
 
-    return { open, upcoming, expired, past };
-  }, [events, slots, votes, profiles]);
+    // „Przed nami": aktywne + klepnięte chronologicznie (bez hero);
+    // minione-nieustalone na końcu, najświeższe pierwsze.
+    const ahead = [
+      ...[...openItems, ...upcomingItems]
+        .filter((it) => it.ev.id !== heroItem?.ev.id)
+        .sort(byNearest),
+      ...expiredItems.sort((a, b) => b.sortMs - a.sortMs),
+    ];
+
+    pastItems.sort((a, b) => b.endMs - a.endMs);
+    archivedItems.sort((a, b) => b.endMs - a.endMs);
+
+    return {
+      heroId: heroItem?.ev.id ?? null,
+      heroMode,
+      heroVariant: (heroItem?.variant === 'upcoming' ? 'upcoming' : 'open') as 'open' | 'upcoming',
+      ahead,
+      past: pastItems.map((p) => p.ev),
+      archived: archivedItems,
+    };
+  }, [events, slots, votes, profiles, userId]);
 
   const aggByEvent = useMemo(() => {
     const profileById = new Map(profiles.map((p) => [p.id, p]));
@@ -469,56 +436,66 @@ export default function Home() {
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
       const status = getEventStatus(ev, evSlots, evVotes, memberIds);
       const slot = status.settled ? evSlots.find((s) => s.id === status.slotId) ?? null : null;
-      result.set(ev.id, { voters, percent, slot });
+      // Skład: stan każdego z paczki = najlepszy głos w tym wypadzie (yes > maybe > no),
+      // brak głosu = null (AFK). Kolejność profili stała — sloty nie skaczą między kartami.
+      const squad: SquadMember[] = profiles.map((p) => {
+        let state: SquadMember['state'] = null;
+        for (const v of evVotes) {
+          if (v.user_id !== p.id) continue;
+          if (v.availability === 'yes') { state = 'yes'; break; }
+          if (v.availability === 'maybe') state = 'maybe';
+          else if (state === null) state = 'no';
+        }
+        return { id: p.id, name: p.display_name, avatar: p.avatar, state };
+      });
+      result.set(ev.id, { voters, percent, slot, squad });
     }
     return result;
   }, [events, slots, votes, profiles]);
 
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
 
-  const activityItems = useMemo<ActivityItem[]>(
-    () =>
-      recentComments.map((c) => {
-        const ev = events.find((e) => e.id === c.event_id);
-        const prof = c.user_id ? profileById.get(c.user_id) : undefined;
-        return {
-          id: c.id,
-          eventId: c.event_id,
-          eventTitle: ev?.title ?? 'wypad',
-          name: prof?.display_name ?? c.author_name,
-          avatar: prof?.avatar ?? null,
-          body: c.body,
-          createdAt: c.created_at,
-        };
-      }),
-    [recentComments, events, profileById],
-  );
+  // Nieprzeczytany czat: ostatnia cudza wiadomość per wypad vs lokalny znacznik
+  // „kiedy ostatnio otwierałem" (chatSeen). Realtime na comments odświeża listę,
+  // więc kropki aktualizują się na żywo.
+  const unreadByEvent = useMemo(() => {
+    const latest = new Map<string, number>();
+    for (const c of recentComments) {
+      if (c.user_id === userId) continue;
+      const t = new Date(c.created_at).getTime();
+      if (t > (latest.get(c.event_id) ?? 0)) latest.set(c.event_id, t);
+    }
+    const unread = new Set<string>();
+    for (const [evId, t] of latest) {
+      if (t > getChatSeen(evId)) unread.add(evId);
+    }
+    return unread;
+  }, [recentComments, userId]);
 
-  // Hero = wypad z najbliższym (w przyszłości) terminem — czy to ustalony „nadchodzący",
-  // czy aktywny zbierający głosy. Pokazujemy go powiększonego na górze, raz.
-  const heroId = useMemo(() => {
-    const now = Date.now();
-    let bestId: string | null = null;
-    let bestMs = Infinity;
-    const consider = (ev: EventRow) => {
-      let ms = Infinity;
-      for (const s of slots) {
-        if (s.event_id !== ev.id) continue;
-        const end = slotEndMs(s);
-        if (end >= now && end < ms) ms = end;
-      }
-      if (ms < bestMs) {
-        bestMs = ms;
-        bestId = ev.id;
-      }
-    };
-    upcoming.forEach(consider);
-    open.forEach(consider);
-    return bestId;
-  }, [upcoming, open, slots]);
   const heroEvent = heroId ? events.find((e) => e.id === heroId) ?? null : null;
-  const heroVariant: 'open' | 'upcoming' =
-    heroId && upcoming.some((e) => e.id === heroId) ? 'upcoming' : 'open';
+
+  // Ile innych (przyszłych) terminów czeka w lobby poza tym pokazanym w hero.
+  const heroOtherSlots = useMemo(() => {
+    if (!heroId) return 0;
+    const now = Date.now();
+    const future = slots.filter((s) => s.event_id === heroId && slotEndMs(s) > now).length;
+    return Math.max(0, future - 1);
+  }, [heroId, slots]);
+
+  // Karta misji: gdy hero jest JEDYNYM wypadem przed nami, dostaje zajawkę
+  // ostatniej wiadomości z czatu — ekran z jednym lobby nie wygląda na pusty.
+  const heroPeek = useMemo(() => {
+    if (!heroId || ahead.length > 0) return null;
+    const c = recentComments.find((cm) => cm.event_id === heroId);
+    if (!c) return null;
+    const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+    return {
+      name: prof?.display_name ?? c.author_name,
+      avatar: prof?.avatar ?? null,
+      body: c.body,
+      createdAt: c.created_at,
+    };
+  }, [heroId, ahead, recentComments, profileById]);
 
   // Termin hero (do pogody i godziny zbiórki): ustalony, a jak brak — najbliższy proponowany.
   const heroSlot = useMemo<Slot | null>(() => {
@@ -539,103 +516,110 @@ export default function Home() {
     return best;
   }, [heroId, aggByEvent, slots]);
 
+  // Chip odliczania na railu hero: dni do STARTU pokazywanego terminu.
+  const heroCountdown = useMemo(() => {
+    if (!heroSlot) return null;
+    const mid = (t: number) => {
+      const d = new Date(t);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    };
+    const days = Math.round((mid(new Date(heroSlot.starts_at).getTime()) - mid(Date.now())) / (24 * 3600 * 1000));
+    if (days < 0) return 'TRWA';
+    if (days === 0) return 'DZIŚ';
+    if (days === 1) return 'JUTRO';
+    return `START ZA ${days} DNI`;
+  }, [heroSlot]);
+
+  // Pola formularza „Nowe lobby" — jedna lista dla obu wariantów (rozwijany nad
+  // rozkładem i wewnątrz pustego stanu), żeby treść nie rozjeżdżała się między nimi.
+  const lobbyFields = [
+    <div key="head" className="modal-label" style={{ marginBottom: 14 }}>Nowe lobby</div>,
+    <div className="field" key="title">
+      <label htmlFor="title">Nazwa</label>
+      <input
+        id="title"
+        type="text"
+        placeholder="np. Piwo w piątek, baskecik…"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        ref={titleInputRef}
+      />
+    </div>,
+    <div className="field" key="loc">
+      <label htmlFor="location">Miejsce (opcjonalnie)</label>
+      <LocationAutocomplete
+        id="location"
+        value={location}
+        onChange={setLocation}
+        onCoords={setLocationCoords}
+        placeholder="np. Zakopane, Łabiszyn…"
+      />
+    </div>,
+    <div className="field" key="desc">
+      <label htmlFor="description">Opis (opcjonalnie)</label>
+      <DescriptionInput
+        id="description"
+        value={description}
+        onChange={setDescription}
+        placeholder="np. co bierzemy, plan, szczegóły…"
+      />
+    </div>,
+    <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
+    <div className="field" key="date">
+      <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
+    </div>,
+    error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
+    <button
+      key="submit"
+      type="submit"
+      className="cta-gradient"
+      disabled={!title.trim() || !slotDraft.od || busy}
+    >
+      {busy ? 'Odpalam…' : 'Odpal lobby'}
+    </button>,
+  ].filter(Boolean);
+
   return (
-    <main className="glass-page">
-      <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', zIndex: 2 }}>
-        {/* Logo */}
-        <div style={{
-          width: 38, height: 38, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 12,
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
-        }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="5" ry="5" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-        </div>
-
-        {/* Nazwa + powitanie */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff', lineHeight: 1.2 }}>
-            Wypad.exe
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.3, marginTop: 1 }}>
-            Hej, {displayName} 👋
-          </div>
-        </div>
-
+    <main className={`glass-page${events.length > 0 ? ' has-dock' : ''}`}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, position: 'relative', zIndex: 2 }}>
+        <span className="wordmark cursor">WYPAD<span>.EXE</span></span>
+        <div className="spacer" />
         <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
           <SettingsMenu />
           <ProfileMenu />
         </div>
       </header>
 
-      {events.length > 0 && (
-        <button className="cta-gradient" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Anuluj' : '+ Nowy wypad'}
-        </button>
-      )}
-
-      {events.length > 0 && (
-        <div className={`form-collapse ${showForm ? 'open' : ''}`}>
-          <form className="card" onSubmit={createEvent}>
-            <h2>Nowy wypad</h2>
-            <div className="field">
-              <label htmlFor="title">Nazwa</label>
-              <input
-                id="title"
-                type="text"
-                placeholder="np. Piwo w piątek, baskecik…"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                ref={titleInputRef}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="location">Miejsce (opcjonalnie)</label>
-              <LocationAutocomplete
-                id="location"
-                value={location}
-                onChange={setLocation}
-                onCoords={setLocationCoords}
-                placeholder="np. Zakopane, Łabiszyn…"
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="description">Opis (opcjonalnie)</label>
-              <DescriptionInput
-                id="description"
-                value={description}
-                onChange={setDescription}
-                placeholder="np. co bierzemy, plan xd, szczegóły…"
-              />
-            </div>
-
-            <EventEmojiInput value={emoji} onChange={setEmoji} />
-
-            <div className="field">
-              <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
-            </div>
-
-            {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-            <button type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
-              {busy ? 'Tworzę…' : 'Utwórz wypad'}
-            </button>
-          </form>
+      {/* Formularz jako bottom sheet: wysuwa się znad doku „+ Nowe lobby", który go
+          otwiera — zero teleportacji na górę strony i zero reflow listy (sam transform). */}
+      {events.length > 0 && showForm && (
+        <div
+          className={`sheet-overlay${sheetClosing ? ' closing' : ''}`}
+          onClick={closeSheet}
+          onAnimationEnd={(e) => {
+            // Tylko animacja SAMEGO overlaya (fade-out) — eventy z sheeta bąbelkują.
+            if (sheetClosing && e.target === e.currentTarget) {
+              setShowForm(false);
+              setSheetClosing(false);
+            }
+          }}
+        >
+          <div className="sheet" role="dialog" aria-label="Nowe lobby" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-grip" aria-hidden="true" />
+            <form onSubmit={createEvent}>
+              {lobbyFields}
+              <button
+                type="button"
+                className="ghost"
+                style={{ width: '100%', marginTop: 8 }}
+                onClick={closeSheet}
+              >
+                Anuluj
+              </button>
+            </form>
+          </div>
         </div>
-      )}
-
-      {activityItems.length > 0 && (
-        <section className="activity">
-          <div className="section-label">Ostatnia aktywność</div>
-          <ActivityPill items={activityItems} onOpen={(id) => navigate(`/event/${id}`, 'forward')} />
-        </section>
       )}
 
       {loading && <p className="muted mt">Wczytuję…</p>}
@@ -667,29 +651,17 @@ export default function Home() {
                 }}>
                   <IconCalendar size={26} />
                 </div>,
-                <h2 key="title" style={{ margin: '0 0 4px', textAlign: 'center' }}>Brak wypadów</h2>,
+                <h2 key="title" style={{ margin: '0 0 4px', textAlign: 'center' }}>Cisza w eterze</h2>,
                 <p key="desc" style={{ color: 'var(--muted)', margin: '0 auto 18px', maxWidth: '30ch', textAlign: 'center' }}>
-                  Zaproponuj pierwszy termin i wyślij znajomym.
+                  Załóż pierwsze lobby i wyślij składowi.
                 </p>,
                 <button
                   key="cta"
+                  className="cta-gradient"
                   onClick={() => setShowForm(true)}
-                  style={{
-                    background: 'rgba(10, 132, 255, 0.22)',
-                    border: '1px solid rgba(10, 132, 255, 0.4)',
-                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px rgba(10, 132, 255, 0.12)',
-                    color: '#ffffff',
-                    padding: '12px 24px',
-                    borderRadius: '16px',
-                    fontWeight: 600,
-                    fontSize: '0.95rem',
-                    margin: '0 auto',
-                    display: 'block'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(10, 132, 255, 0.3)' }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(10, 132, 255, 0.22)' }}
+                  style={{ width: 'auto', padding: '12px 24px', fontSize: '0.95rem', margin: '0 auto', display: 'block' }}
                 >
-                  + Nowy wypad
+                  + Nowe lobby
                 </button>,
               ].map((child, i) => (
                 <div
@@ -716,45 +688,7 @@ export default function Home() {
             <div style={{ minHeight: 0, overflow: 'hidden', padding: '0 4px' }}>
               <form onSubmit={createEvent} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
-                  <h2 key="h" style={{ margin: 0 }}>Nowy wypad</h2>,
-                  <div className="field" key="title">
-                    <label htmlFor="title">Nazwa</label>
-                    <input
-                      id="title"
-                      type="text"
-                      placeholder="np. Piwo w piątek, wyjazd w góry…"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      ref={titleInputRef}
-                    />
-                  </div>,
-                  <div className="field" key="loc">
-                    <label htmlFor="location">Miejsce (opcjonalnie)</label>
-                    <LocationAutocomplete
-                      id="location"
-                      value={location}
-                      onChange={setLocation}
-                      onCoords={setLocationCoords}
-                      placeholder="np. Zakopane, Łabiszyn…"
-                    />
-                  </div>,
-                  <div className="field" key="desc">
-                    <label htmlFor="description">Opis (opcjonalnie)</label>
-                    <DescriptionInput
-                      id="description"
-                      value={description}
-                      onChange={setDescription}
-                      placeholder="np. co bierzemy, plan, szczegóły…"
-                    />
-                  </div>,
-                  <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
-                  <div className="field" key="date">
-                    <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create-empty" />
-                  </div>,
-                  error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
-                  <button key="submit" type="submit" disabled={!title.trim() || !slotDraft.od || busy} style={{ width: '100%' }}>
-                    {busy ? 'Tworzę…' : 'Utwórz wypad'}
-                  </button>,
+                  ...lobbyFields,
                   <button
                     key="cancel"
                     type="button"
@@ -764,7 +698,7 @@ export default function Home() {
                   >
                     Anuluj
                   </button>,
-                ].filter(Boolean).map((child, i) => (
+                ].map((child, i) => (
                   <div
                     key={i}
                     style={{
@@ -785,51 +719,151 @@ export default function Home() {
 
       {heroEvent && (
         <section>
-          <div className="section-label">Najbliższy</div>
-          <HeroCard ev={heroEvent} agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG} memberCount={profiles.length} slot={heroSlot} variant={heroVariant} />
+          <div className="rail">
+            <div className={`section-label${heroMode === 'vote' ? ' hot' : ''}`}>
+              {heroMode === 'vote' ? 'Twoja kolej' : heroMode === 'waiting' ? 'Czekamy na resztę' : 'Najbliższy'}
+            </div>
+            {heroCountdown && <span className="chip hot">{heroCountdown}</span>}
+          </div>
+          <HeroCard
+            ev={heroEvent}
+            agg={aggByEvent.get(heroEvent.id) ?? EMPTY_AGG}
+            memberCount={profiles.length}
+            slot={heroSlot}
+            variant={heroVariant}
+            needsYou={heroMode === 'vote'}
+            otherSlots={heroOtherSlots}
+            peek={heroPeek}
+            mission={ahead.length === 0}
+            unread={unreadByEvent.has(heroEvent.id)}
+            crop={heroEvent.emoji ? cropByEmoji.get(heroEvent.emoji) ?? null : null}
+          />
         </section>
       )}
-      <Section title="W trakcie" events={open.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="open" />
-      <Section title="Nadchodzące" events={upcoming.filter((e) => e.id !== heroId)} agg={aggByEvent} variant="upcoming" />
-      <Section title="Nie ustalono" events={expired} agg={aggByEvent} variant="expired" muted />
-      <Section title="Bylim już" events={past} agg={aggByEvent} variant="past" muted />
+      <Board title="Przed nami" items={ahead} agg={aggByEvent} unread={unreadByEvent} />
+      <Board
+        title="Bylim już"
+        items={past.map((ev) => ({ ev, variant: 'past' as const, slot: aggByEvent.get(ev.id)?.slot ?? null }))}
+        agg={aggByEvent}
+        muted
+      />
+
+      {archived.length > 0 && (
+        <button
+          type="button"
+          className="archive-toggle"
+          onClick={() => setShowArchive((v) => !v)}
+          aria-expanded={showArchive}
+        >
+          Archiwum · {archived.length} {showArchive ? '▴' : '▾'}
+        </button>
+      )}
+      {showArchive && (
+        <Board
+          title="Archiwum"
+          items={archived.map(({ ev, variant, slot }) => ({ ev, variant, slot }))}
+          agg={aggByEvent}
+          muted
+        />
+      )}
 
       {!loading && events.length > 0 && quote && (
-        <div 
-          className="tip-banner" 
-          onClick={handleNextQuote}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-          title="Kliknij, aby wylosować kolejny cytat"
-        >
-          <IconBulb size={20} className="tip-icon" />
+        <figure className="motd" onClick={handleNextQuote} title="Kliknij, aby wylosować kolejny cytat">
+          <span className="motd-label">MOTD</span>
           <span className={`quote-text ${fade ? 'fade-in' : 'fade-out'}`}>{quote}</span>
+        </figure>
+      )}
+
+      {events.length > 0 && (
+        <div className="cta-dock">
+          <button className="cta-gradient" onClick={() => setShowForm(true)}>
+            + Nowe lobby
+          </button>
         </div>
       )}
     </main>
   );
 }
 
-function Section({
-  title,
-  events,
-  agg,
-  variant,
-  muted,
-}: {
+type RowVariant = 'open' | 'upcoming' | 'expired' | 'past';
+
+// Segmenty gotowości: po jednym na osobę, w kolorze głosu (nie „pierwsze N na
+// zielono" — komplet PASów wyglądał jak komplet chętnych). Zapełnione z lewej.
+const SEG_RANK = { yes: 0, maybe: 1, no: 2 } as const;
+function segStates(squad: SquadMember[]): (SquadMember['state'])[] {
+  return squad
+    .map((m) => m.state)
+    .sort((a, b) => (a ? SEG_RANK[a] : 3) - (b ? SEG_RANK[b] : 3));
+}
+
+// Sekcja rozkładu: mono-etykieta + płaskie wiersze z cienkimi liniami (bez kart).
+function Board({ title, items, agg, muted, unread }: {
   title: string;
-  events: EventRow[];
+  items: { ev: EventRow; variant: RowVariant; slot: Slot | null }[];
   agg: Map<string, Agg>;
-  variant: 'open' | 'upcoming' | 'expired' | 'past';
   muted?: boolean;
+  unread?: Set<string>;
 }) {
-  if (events.length === 0) return null;
+  if (items.length === 0) return null;
   return (
     <section>
       <div className={`section-label${muted ? ' faded' : ''}`}>{title}</div>
-      {events.map((ev) => (
-        <EventCard key={ev.id} ev={ev} agg={agg.get(ev.id) ?? EMPTY_AGG} variant={variant} />
-      ))}
+      <div className="board">
+        {items.map(({ ev, variant, slot }) => (
+          <Row
+            key={ev.id}
+            ev={ev}
+            variant={variant}
+            slot={slot}
+            agg={agg.get(ev.id) ?? EMPTY_AGG}
+            unread={unread?.has(ev.id)}
+          />
+        ))}
+      </div>
     </section>
+  );
+}
+
+// Płaski wiersz: tytuł + mono-podpis (data · godzina · miejsce);
+// po prawej segmenty gotowości albo plakietka statusu.
+function Row({ ev, variant, slot, agg, unread }: {
+  ev: EventRow; variant: RowVariant; slot: Slot | null; agg: Agg; unread?: boolean;
+}) {
+  const { href, handlers } = useEventNav(ev.id);
+  const responded = agg.squad.filter((m) => m.state).length;
+
+  const parts: string[] = [];
+  if (variant === 'expired') {
+    parts.push('Termin minął');
+  } else if (slot) {
+    parts.push(formatSlotShort(slot));
+    if (!slot.ends_at && !slot.all_day) {
+      parts.push(`od ${new Date(slot.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`);
+    }
+  } else {
+    parts.push('Zbieramy terminy');
+  }
+  if (ev.location) parts.push(ev.location);
+
+  return (
+    <Link href={href} prefetch={true} className="trow" {...handlers}>
+      <span className="trow-main">
+        <b>
+          {ev.emoji ? `${ev.emoji} ` : ''}{ev.title}
+          {unread && <i className="unread-dot" aria-label="Nowe wiadomości na czacie" />}
+        </b>
+        <span>{parts.join(' · ')}</span>
+      </span>
+      {variant === 'open' && agg.squad.length > 0 && (
+        <span className="mini-segs" aria-label={`${responded} z ${agg.squad.length} dało znać`}>
+          {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
+        </span>
+      )}
+      {variant === 'upcoming' && <span className="badge">USTALONY</span>}
+      {variant === 'past' && <span className="badge badge-muted">GG</span>}
+      {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
+      <IconChevron size={16} className="row-chevron" />
+    </Link>
   );
 }
 
@@ -848,12 +882,66 @@ function useEventNav(eventId: string) {
   return { href, handlers };
 }
 
-// Bogata karta najbliższego wypadu (układ z mockupu): emoji w kółku + tytuł + status,
-// lokalizacja/data, szklany pod-panel (avatary + „X z Y" + pasek), grid Pogoda + Zbiórka.
-function HeroCard({ ev, agg, memberCount, slot, variant }: {
-  ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming';
+// Karta najbliższego lobby: tytuł + meta (miejsce · mono-data), skład (sloty graczy
+// z READY/MOŻE/PAS/AFK), segmenty gotowości. Gdy czeka na twój głos — ready check
+// prosto w karcie (fakty pogoda/zbiórka wtedy schodzą z drogi). W trybie misji
+// (jedyny wypad) skład rośnie do pionowego rosteru z „Pinguj" przy AFK.
+function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 0, peek, mission, unread, crop }: {
+  ev: EventRow; agg: Agg; memberCount: number; slot: Slot | null; variant: 'open' | 'upcoming'; needsYou?: boolean;
+  otherSlots?: number;
+  peek?: { name: string; avatar: string | null; body: string; createdAt: string } | null;
+  mission?: boolean;
+  unread?: boolean;
+  crop?: HeroCrop | null;
 }) {
   const { href, handlers } = useEventNav(ev.id);
+  const { userId, displayName, isAdmin } = useAuth();
+  const isOrg = isAdmin || !ev.created_by_user_id || ev.created_by_user_id === userId;
+
+  // Tło hero dobierane po emoji wypadu (public/hero/<kategoria>.jpg). Brak pliku →
+  // background-image jest po prostu pusty, więc zostaje sam raster (bez błędu).
+  const heroPhoto = heroImageForEmoji(ev.emoji);
+  const c = crop ?? DEFAULT_CROP;
+
+  // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
+  const [pinged, setPinged] = useState<Set<string>>(new Set());
+  async function nudge(e: React.MouseEvent, m: SquadMember) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (pinged.has(m.id)) return;
+    haptic();
+    const err = await pingUser(ev.id, m.id, m.name);
+    if (err) {
+      appAlert('Ping nie poszedł', err);
+      return;
+    }
+    setPinged((p) => new Set(p).add(m.id));
+  }
+
+  // Głos z dashboardu: optymistyczne zaznaczenie od razu, realtime dociągnie prawdę
+  // (i przełączy hero w tryb „Czekamy na resztę").
+  const [myPick, setMyPick] = useState<Availability | null>(null);
+  async function castVote(e: React.MouseEvent, availability: Availability) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!slot || myPick === availability) return;
+    haptic();
+    setMyPick(availability);
+    const { error } = await supabase.from('votes').upsert(
+      { event_id: ev.id, slot_id: slot.id, user_id: userId, participant_name: displayName, availability },
+      { onConflict: 'slot_id,user_id' },
+    );
+    if (error) {
+      setMyPick(null);
+      return;
+    }
+    // Ten głos mógł skompletować ready check: reszta paczki już dała znać, a po
+    // moim głosie istnieje prowadzący (≥1 READY) → „✓ GRAMY" do wszystkich.
+    // Serwer i tak pilnuje, by pushnąć tylko raz na wypad.
+    const othersVoted = agg.squad.length > 0 && agg.squad.every((m) => m.id === userId || m.state !== null);
+    const anyYes = availability === 'yes' || agg.squad.some((m) => m.id !== userId && m.state === 'yes');
+    if (othersVoted && anyYes) notifyConfirmed(ev.id, slot.id);
+  }
 
   // Termin hero: data do prognozy + godzina zbiórki (jeśli slot ma konkretną godzinę).
   const weatherDate = slot ? toDateISO(slot.starts_at) : null;
@@ -875,54 +963,157 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
     return () => { alive = false; };
   }, [hasCoords, ev.latitude, ev.longitude, weatherDate]);
 
-  const badge = variant === 'upcoming'
-    ? { label: 'Ustalone', cls: 'hero-badge hero-badge-green' }
-    : { label: 'Aktywny', cls: 'hero-badge hero-badge-blue' };
-
   const wInfo = weather ? describeWeather(weather.code) : null;
+  const responded = agg.squad.filter((m) => m.state).length;
+
+  // Modal szczegółowej prognozy (tap w kafelek pogody).
+  const [showWx, setShowWx] = useState(false);
+
+  // Rząd hosta (awatar + nick + HOST, jak na mockupie) — poza trybami, które
+  // hosta już pokazują (ready check: w meta; misja: side-label w rosterze).
+  const host = ev.created_by_user_id
+    ? agg.squad.find((m) => m.id === ev.created_by_user_id) ?? null
+    : null;
+  const hostName = host?.name ?? ev.created_by;
+  const showHostRow = !needsYou && !mission && !!hostName;
 
   return (
-    <Link href={href} className="event-rich hero" {...handlers}>
+    <Link href={href} prefetch={true} className={`event-rich hero${needsYou ? ' needs-you' : ''}`} {...handlers}>
+      {/* Fotka-nastrój pod treścią hero — zdjęcie kategorii z emoji wypadu. Bez emoji
+          (albo emoji bez pliku → tło transparentne) zostaje sam raster. Zdjęcie jako
+          background-image: kadr/zoom/tekstury z placu zabaw (globals.css). */}
+      {heroPhoto && (
+        <div className="hero-photo" aria-hidden="true">
+          <div
+            className="hp-img"
+            style={{
+              backgroundImage: `url(${heroPhoto})`,
+              backgroundSize: `${c.zoom}%`,
+              backgroundPosition: `${c.pos_x}% ${c.pos_y}%`,
+              ['--hp-bright' as string]: `${c.brightness / 100}`,
+            } as React.CSSProperties}
+          />
+          <i className="hp-tint" />
+          <i className="hp-half" />
+          <i className="hp-grain" />
+          <i className="hp-vig" />
+          <i className="hp-scrim" />
+        </div>
+      )}
+      {/* Emoji duże nad tytułem — jak na mockupie hero */}
+      {ev.emoji && <div className="hero-emoji-top" aria-hidden="true">{ev.emoji}</div>}
       <div className="hero-head">
-        <div className="hero-emoji">{ev.emoji ?? '📅'}</div>
-        <div className="hero-head-main">
-          <span className="hero-title">{ev.title}</span>
-          <span className={badge.cls}>{badge.label}</span>
+        <div className="hero-title-block">
+          <span className="hero-title">
+            {ev.title}
+            {unread && <i className="unread-dot" aria-label="Nowe wiadomości na czacie" />}
+          </span>
+          <div className="hero-meta">
+            {ev.location && (
+              <>
+                <span className="event-meta"><IconPin size={13} /> {ev.location}</span>
+                <span className="sep">·</span>
+              </>
+            )}
+            {/* W trybie ready check data i tak jest w etykiecie głosowania niżej —
+                zamiast dublować, meta pokazuje hosta (jak na stronie wypadu). */}
+            {needsYou && slot && ev.created_by ? (
+              <span className="event-meta">host: {ev.created_by}</span>
+            ) : (
+              <span className="mono-date">{slot ? formatSlotShort(slot) : 'Zbieramy terminy'}</span>
+            )}
+          </div>
         </div>
         <IconChevron size={20} className="row-chevron" />
       </div>
 
-      <div className="hero-meta">
-        {ev.location && <span className="event-meta"><IconPin size={14} /> {ev.location}</span>}
-        <span className="event-meta"><IconCalendar size={14} /> {agg.slot ? formatSlotRange(agg.slot) : 'Zbieramy terminy'}</span>
-      </div>
+      {showHostRow && (
+        <div className="hero-host">
+          <Avatar name={hostName as string} avatar={host?.avatar ?? null} size={24} />
+          <b>{hostName}</b>
+          <span className="host-tag">HOST</span>
+        </div>
+      )}
 
-      <div className="hero-panel">
-        <div className="hero-panel-top">
-          {agg.voters.length > 0
-            ? <AvatarStack people={agg.voters} size={28} />
-            : <span className="small muted">Jeszcze nikt nie dał znać</span>}
+      {agg.squad.length > 0 ? (
+        <>
+          <div className={`squad${mission ? ' roster' : ''}`}>
+            {agg.squad.map((m) => {
+              const isYou = m.id === userId;
+              const label =
+                m.state === 'yes' ? 'READY'
+                : m.state === 'maybe' ? 'MOŻE'
+                : m.state === 'no' ? 'PAS'
+                : isYou ? 'TWÓJ SLOT' : 'AFK';
+              const showNudge = mission && isOrg && !m.state && !isYou;
+              return (
+                <div key={m.id} className={`slot-p ${m.state ? `s-${m.state}` : 's-none'}${isYou && !m.state ? ' is-you' : ''}`}>
+                  <Avatar name={m.name} avatar={m.avatar} size={26} />
+                  <span className="who"><b>{m.name}</b><span>{label}</span></span>
+                  {showNudge ? (
+                    <button type="button" className="nudge-sm" onClick={(e) => nudge(e, m)}>
+                      {pinged.has(m.id) ? '✓' : 'Pinguj'}
+                    </button>
+                  ) : mission && isYou ? (
+                    <span className="side">TY</span>
+                  ) : mission && ev.created_by_user_id === m.id ? (
+                    <span className="side">HOST</span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className="readybar">
+            <span className="segs" aria-hidden="true">
+              {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
+            </span>
+            <b>{responded}/{agg.squad.length} <span>DAŁO ZNAĆ</span></b>
+          </div>
+        </>
+      ) : (
+        <div className="readybar">
           <span className="small muted">{agg.voters.length} z {memberCount} dało znać</span>
         </div>
-        <div className="progress">
-          <div className="progress-bar" style={{ width: `${agg.percent}%` }} />
-        </div>
-      </div>
+      )}
 
-      {(wInfo || meetTime) && (
+      {needsYou && slot && (
+        <div className="hero-vote">
+          <div className="hero-vote-label">
+            <span>Ready check: <b>{formatSlotShort(slot)}</b></span>
+            {otherSlots > 0 && <span className="more">+{otherSlots} w lobby</span>}
+          </div>
+          <div className="seg3">
+            <button type="button" className={myPick === 'yes' ? 'on-yes' : ''} onClick={(e) => castVote(e, 'yes')}>READY</button>
+            <button type="button" className={myPick === 'maybe' ? 'on-maybe' : ''} onClick={(e) => castVote(e, 'maybe')}>MOŻE</button>
+            <button type="button" className={myPick === 'no' ? 'on-no' : ''} onClick={(e) => castVote(e, 'no')}>PAS</button>
+          </div>
+        </div>
+      )}
+
+      {!needsYou && (wInfo || meetTime) && (
         <div className="hero-grid">
           {wInfo && weather && (
-            <div className="hero-tile">
-              <WeatherIcon code={weather.code} size={22} className="hero-tile-icon" />
+            <button
+              type="button"
+              className="hero-tile hero-tile-btn"
+              aria-label="Pokaż prognozę godzinową"
+              onClick={(e) => {
+                // Kafelek siedzi w <Link> całej karty — tap ma otworzyć modal, nie wypad.
+                e.preventDefault();
+                e.stopPropagation();
+                setShowWx(true);
+              }}
+            >
+              <WeatherIcon code={weather.code} size={24} className="hero-tile-icon" />
               <div>
                 <div className="hero-tile-main">{weather.tempMax}°</div>
                 <div className="hero-tile-sub">{wInfo.label}</div>
               </div>
-            </div>
+            </button>
           )}
           {meetTime && (
             <div className="hero-tile">
-              <IconClock size={22} className="hero-tile-icon" />
+              <IconClock size={24} className="hero-tile-icon" />
               <div>
                 <div className="hero-tile-main">{meetTime}</div>
                 <div className="hero-tile-sub">Godzina</div>
@@ -931,63 +1122,29 @@ function HeroCard({ ev, agg, memberCount, slot, variant }: {
           )}
         </div>
       )}
-    </Link>
-  );
-}
 
-function EventCard({ ev, agg, variant, hero }: { ev: EventRow; agg: Agg; variant: 'open' | 'upcoming' | 'expired' | 'past'; hero?: boolean }) {
-  const { href, handlers } = useEventNav(ev.id);
-  return (
-    <Link href={href} className={`event-rich${hero ? ' hero' : ''}`} {...handlers}>
-      <div className="event-rich-head">
-        <span className="event-rich-title">{ev.title}</span>
-        <IconChevron size={18} className="row-chevron" />
-      </div>
-
-      {ev.location && (
-        <div className="event-meta" style={{ marginTop: 6 }}>
-          <IconPin size={14} /> {ev.location}
+      {peek && (
+        <div className="peek">
+          <Avatar name={peek.name} avatar={peek.avatar} size={26} />
+          <span className="peek-body">
+            <span className="peek-head"><b>{peek.name}</b><time>{timeAgo(peek.createdAt)}</time></span>
+            <p>{peek.body}</p>
+          </span>
         </div>
       )}
 
-      <div className="event-meta-row">
-        {variant === 'expired' ? (
-          <span className="event-meta"><IconCalendar size={14} /> Termin minął</span>
-        ) : agg.slot ? (
-          <span className="event-meta"><IconCalendar size={14} /> {formatSlotRange(agg.slot)}</span>
-        ) : (
-          <span className="event-meta"><IconCalendar size={14} /> Zbieramy terminy</span>
-        )}
-      </div>
-
-      <div className="event-rich-foot">
-        {agg.voters.length > 0 ? (
-          <AvatarStack people={agg.voters} size={28} />
-        ) : (
-          <span className="small muted">Jeszcze nikt nie dał znać</span>
-        )}
-
-        {variant === 'open' ? (
-          <div className="progress-inline-wrap">
-            <div className="progress">
-              <div
-                className="progress-bar"
-                style={{ width: `${agg.percent}%` }}
-              />
-            </div>
-            <span className="progress-label">
-              {agg.percent}% <span className="label-sub">dało znać</span>
-            </span>
-          </div>
-        ) : (
-          <>
-            <span className="spacer" />
-            {variant === 'past' && <span className="badge">✓ Bylim już</span>}
-            {variant === 'upcoming' && <span className="badge">Ustalone</span>}
-            {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
-          </>
-        )}
-      </div>
+      {showWx && hasCoords && (
+        <WeatherModal
+          lat={ev.latitude as number}
+          lon={ev.longitude as number}
+          dateISO={weatherDate as string}
+          location={ev.location}
+          day={weather}
+          meetHour={slot && !slot.all_day ? new Date(slot.starts_at).getHours() : null}
+          onClose={() => setShowWx(false)}
+        />
+      )}
     </Link>
   );
 }
+

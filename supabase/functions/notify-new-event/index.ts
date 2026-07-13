@@ -29,6 +29,8 @@ const supabase = createClient(
 type EventRecord = {
   id: string;
   title: string;
+  emoji: string | null;
+  location: string | null;
   created_by: string | null;
   created_by_user_id: string | null;
 };
@@ -57,9 +59,12 @@ Deno.serve(async (req) => {
   const { data: subs, error } = await query;
   if (error) return new Response(error.message, { status: 500 });
 
+  const host = record.created_by?.trim() || 'Ktoś';
+  const where = record.location?.trim();
+  const emoji = record.emoji?.trim();
   const message = JSON.stringify({
-    title: 'Nowy wypad 🎉',
-    body: `${record.created_by ?? 'Ktoś'}: ${record.title}`,
+    title: emoji ? `${emoji} ${record.title}` : record.title,
+    body: `${host} hostuje${where ? ` • ${where}` : ''}`,
     url: `/event/${record.id}`,
     tag: `event-${record.id}`,
   });

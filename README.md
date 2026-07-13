@@ -97,18 +97,29 @@ rozdzielić — bez zmian w kodzie:
 
 ## Logowanie
 
-Logowanie to **e-mail + jednorazowy kod** (Supabase Auth). Konfiguracja w panelu:
+Logowanie to **e-mail + jednorazowy kod** (Supabase Auth). Apka jest **prywatna dla
+jednej paczki**: nowe konta zakłada się **tylko przez zaproszenie** w panelu Supabase,
+a apka nie tworzy kont sama (`shouldCreateUser: false`). Adres spoza listy dostaje w apce
+komunikat „Ten adres nie jest na liście paczki". Konfiguracja w panelu:
 
 1. *Authentication → Providers → Email* — włączone (domyślnie jest).
-2. *Authentication → Email Templates* — dodaj **kod** `{{ .Token }}` do treści w **obu**
-   szablonach (domyślne pokazują tylko link, a my logujemy się kodem wpisywanym w apce):
-   - **Magic Link** — używany dla **istniejących** kont. Np. `Twój kod logowania: {{ .Token }}`.
-   - **Confirm signup** — używany przy **pierwszym** logowaniu nowego adresu. Też dodaj
-     `{{ .Token }}`, inaczej nowi użytkownicy dostaną link zamiast kodu.
-   (Alternatywa: wyłączyć *Confirm email* w ustawieniach providera Email — wtedy nowe
-   adresy też idą szablonem Magic Link.)
-3. Uruchom (lub uruchom ponownie) `supabase/schema.sql` — włącza reguły RLS „tylko
+2. *Authentication → Sign In / Providers → User Signups* — **wyłącz „Allow new users to
+   sign up"**. Dzięki temu tylko zaproszone adresy mogą się kiedykolwiek zalogować (to
+   nasza „allowlista", bez listy maili w kodzie).
+3. **Dodawanie paczki:** dwie drogi, obie bez zmian w kodzie i bez re-runu schematu:
+   - **Z apki (dla admina):** menu profilu → „Dodaj osobę do paczki" → wpisz e-mail.
+     Woła to Edge Function `invite-user` (Admin API), więc wdróż ją raz:
+     `supabase functions deploy invite-user`. Nowa osoba od razu loguje się kodem w apce.
+   - **Z panelu:** *Authentication → Users → Add user* dla każdego znajomego.
+4. *Authentication → Email Templates* — dodaj **kod** `{{ .Token }}` do treści szablonu
+   **Magic Link** (używany przy logowaniu kodem), np. `Twój kod logowania: {{ .Token }}`.
+   Domyślny szablon pokazuje tylko link, a my logujemy się kodem wpisywanym w apce.
+5. Uruchom (lub uruchom ponownie) `supabase/schema.sql` — włącza reguły RLS „tylko
    zalogowani; każdy edytuje swoje".
+
+> Uwaga: guzik „gość" (anonimowe logowanie) pokazuje się **tylko** na preview
+> (`*.vercel.app`, localhost), nie na produkcji. Jeśli chcesz go domknąć całkiem,
+> wyłącz też *Allow anonymous sign-ins* w ustawieniach Auth.
 
 Wbudowana wysyłka maili Supabase jest limitowana (kilka/godz.) — dla paczki znajomych
 wystarcza; docelowo można podpiąć własny SMTP. Sesja trzymana jest w przeglądarce
@@ -151,11 +162,15 @@ Konfiguracja push:
 Bez kroku 2 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`) przełącznik powiadomień się nie pokazuje —
 działa wtedy sam toast na żywo.
 
-### Przypomnienia „nie dałeś znać" (cykliczny push)
+### Przypomnienia (cykliczny push): „nie dałeś znać" + „Jutro gramy!"
 
-Osobna funkcja `notify-reminders` raz na jakiś czas wysyła push do osób, które ~24h
-po utworzeniu wypadu wciąż nie oddały głosu (a wypad ma termin w przyszłości). Każdy
-wypad jest przypominany **raz** (znacznik `events.reminded_at`).
+Funkcja `notify-reminders` robi dwa przebiegi:
+- **„Nie dałeś znać"** — ~24h po utworzeniu wypadu push do osób bez głosu (raz na
+  wypad, znacznik `events.reminded_at`).
+- **„Jutro gramy!"** — dzień przed klepniętym terminem (ręcznym lub automatem)
+  push do **całej paczki**, wysyłany po 16:00 czasu polskiego (raz na wypad,
+  znacznik `events.day_before_notified_at`; wymaga ponownego uruchomienia
+  `schema.sql`).
 
 1. **Uruchom `supabase/schema.sql`** — dodaje kolumnę `events.reminded_at`.
 2. **Wdróż funkcję:**
@@ -178,6 +193,37 @@ wypad jest przypominany **raz** (znacznik `events.reminded_at`).
    ```
    Jeśli ustawiłeś `WEBHOOK_SECRET`, dopisz do URL `?key=<sekret>`. Wyłączenie:
    `select cron.unschedule('notify-reminders-hourly');`.
+
+### „Pinguj kurwę" (celowany ping do jednej osoby)
+
+Na stronie wypadu, przy osobach ze statusem AFK (bez głosu), organizator ma przycisk
+**„Pinguj kurwę”** — wysyła Web Push do tej jednej osoby z losowym cytatem Majora.
+Obsługuje to funkcja `ping-user`:
+
+```bash
+supabase functions deploy ping-user
+```
+
+**Uwaga:** w odróżnieniu od funkcji webhookowych **bez** `--no-verify-jwt` —
+wywołać ją może tylko zalogowany użytkownik apki (klient przekazuje token sam,
+przez `supabase.functions.invoke`). Używa tych samych sekretów VAPID.
+Limit: klient pozwala pingować tę samą osobę w tym samym wypadzie raz na 12h.
+
+### Push „✓ GRAMY" po klepnięciu terminu
+
+Gdy termin zostaje ustalony (ręczny LOCK IN organizatora **albo** automat przy
+komplecie głosów), cała paczka dostaje Web Push „✓ GRAMY: <wypad> — <data>".
+Obsługuje to funkcja `notify-confirmed`:
+
+```bash
+supabase functions deploy notify-confirmed
+```
+
+Jak `ping-user`: **bez** `--no-verify-jwt` (woła ją klient po klepnięciu /
+kompletującym głosie), te same sekrety VAPID. Idempotencja po stronie serwera —
+atomowy stempel `events.confirmed_notified_at` gwarantuje jedno powiadomienie
+na wypad, niezależnie ilu klientów zawoła. **Wymaga ponownego uruchomienia
+`supabase/schema.sql`** (dochodzi kolumna `confirmed_notified_at`).
 
 ## Utrzymanie i analityka
 
@@ -212,9 +258,10 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 - **Wspólna baza / cutover.** Włączenie nowego `schema.sql` (logowanie + RLS) sprawia,
   że stara wersja bez logowania przestaje działać na tej samej bazie. Uruchamiaj nowy
   schemat **razem** z wdrożeniem nowego kodu na produkcję.
-- **Każdy zweryfikowany ma dostęp.** Nie ma listy zaproszonych — kto się zaloguje, ten
-  korzysta (ale tylko jako on sam). Jeśli zajdzie potrzeba trzymania obcych z daleka,
-  dochodzi allowlista e-maili.
+- **Dostęp tylko dla zaproszonych.** Rejestracja z apki jest wyłączona
+  (`shouldCreateUser: false` + „Allow new users to sign up" off), więc konto ma tylko
+  ten, kogo zaprosisz w panelu Supabase. „Allowlistę" trzyma samo Supabase — nie ma listy
+  maili w kodzie do utrzymania. RLS i tak wpuszcza każdego tylko jako on sam.
 - **Migawki nazw.** Nazwę wyświetlaną zapisujemy przy głosie/wypadzie w chwili akcji;
   zmiana nazwy nie aktualizuje wstecz starych wpisów.
 - **`npm audit`** zgłasza jedną podatność *moderate* w pakiecie `postcss`

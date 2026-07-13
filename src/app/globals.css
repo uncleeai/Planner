@@ -1,19 +1,27 @@
 :root {
-  --bg: #050505;
-  --card: rgba(255, 255, 255, 0.03);
-  --card-2: rgba(255, 255, 255, 0.05);
-  --text: rgba(255, 255, 255, 0.9);
-  --muted: rgba(255, 255, 255, 0.55);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
-  --primary: rgba(255, 255, 255, 0.12);
-  --primary-hover: rgba(255, 255, 255, 0.18);
-  --yes: #1fc98e;
+  /* Skórka „Lobby": taktyczny scoreboard. Chłodna prawie-czerń, solidne panele
+     (bez glassu), jeden sygnałowy akcent (oranż), zieleń/czerwień wyłącznie jako
+     semantyka głosów. Promienie: karty 12px, kontrolki 8px. */
+  --bg: #0c0e10;
+  --card: #14171b;
+  --card-2: #1a1e23;
+  --text: #e8edf0;
+  --muted: #7f8b94;
+  --border: rgba(232, 237, 240, 0.08);
+  --border-strong: rgba(232, 237, 240, 0.17);
+  --primary: rgba(232, 237, 240, 0.12);
+  --primary-hover: rgba(232, 237, 240, 0.2);
+  --accent: #ff8a3d;
+  --accent-ink: #171210;
+  --accent-dim: color-mix(in srgb, var(--accent) 12%, transparent);
+  --yes: #3ddc8b;
   --maybe: #f4b740;
-  --no: #f0455f;
-  --radius: 24px;
-  --radius-sm: 16px;
-  --shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  --no: #ff5d5d;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  /* --font-mono wstrzykuje next/font (JetBrains Mono) w layout.tsx; reszta to fallback. */
+  --mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* Ciemny motyw również dla kontrolek natywnych (picker daty, scrollbary) na iOS. */
   color-scheme: dark;
 }
@@ -27,6 +35,17 @@ html {
      nie ma czego rezerwować (a rezerwacja zostawiałaby pusty margines bez powodu). */
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* Apka, nie strona: tekst UI jest nieselektowalny GLOBALNIE. To jedyny skuteczny
+     fix na long-press (reakcje na czacie) — gdy nieselektowalny był tylko komentarz,
+     iOS/Android zaznaczały „najbliższy selektowalny" element, czyli CAŁĄ stronę.
+     Pola tekstowe przywracają zaznaczanie niżej. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 html::-webkit-scrollbar {
   display: none;
@@ -85,7 +104,16 @@ a { color: var(--primary-hover); text-decoration: none; touch-action: manipulati
   box-shadow: var(--shadow);
 }
 
-label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
 
 input[type="text"],
 input[type="email"],
@@ -104,7 +132,7 @@ input:focus {
   border-color: rgba(255, 255, 255, 0.35);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
-input::placeholder { color: #6a6f80; }
+input::placeholder { color: var(--muted); }
 
 textarea {
   width: 100%;
@@ -125,7 +153,7 @@ textarea:focus {
   border-color: rgba(255, 255, 255, 0.35);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
-textarea::placeholder { color: #6a6f80; }
+textarea::placeholder { color: var(--muted); }
 
 /* Input daty z własnym placeholderem (iOS nie pokazuje nic w pustym datetime-local) */
 .dt-field { position: relative; display: flex; width: 100%; }
@@ -141,7 +169,7 @@ textarea::placeholder { color: #6a6f80; }
 .dt-field.dt-empty > input:not(:focus) { color: transparent; }
 .dt-placeholder {
   position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
-  text-align: center; color: #aeb4c6; font-size: 1rem;
+  text-align: center; color: var(--muted); font-size: 1rem;
   pointer-events: none; white-space: nowrap;
 }
 /* Przy fokusie chowamy nakładkę, by nie nachodziła na natywne pola */
@@ -182,16 +210,13 @@ button.ghost {
   font-weight: 500;
 }
 @media (hover: hover) {
-  button.ghost:hover { background: #262833; border-color: var(--border-strong); }
+  button.ghost:hover { background: #232830; border-color: var(--border-strong); }
 }
 
-button.ghost.danger { color: var(--no); border-color: rgba(240, 69, 95, 0.35); background: rgba(255, 15, 2, 0.08); }
+button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); background: rgba(255, 15, 2, 0.08); }
 @media (hover: hover) {
-  button.ghost.danger:hover { background: rgba(240, 69, 95, 0.14); border-color: var(--no); }
+  button.ghost.danger:hover { background: rgba(255, 93, 93, 0.14); border-color: var(--no); }
 }
-
-.chips { gap: 8px; }
-button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weight: 500; border-radius: 999px; }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .spacer { flex: 1; }
@@ -217,139 +242,57 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   background: var(--card-2);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.slot.winner { border-color: rgba(31, 201, 142, 0.5); box-shadow: 0 0 0 1px rgba(31, 201, 142, 0.5) inset; }
+.slot.winner { border-color: rgba(61, 220, 139, 0.5); box-shadow: 0 0 0 1px rgba(61, 220, 139, 0.5) inset; }
 
-.slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.slot-date { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; }
-.slot-del {
-  min-width: 40px; min-height: 40px;
+/* Plakietka może zawinąć się do drugiej linii — bez tego „Za 4 dni" łamało się
+   w pionową kolumnę, gdy nagłówek mieścił jeszcze akcje i plakietkę KOMPLET. */
+.slot-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.slot-date { font-family: var(--mono); font-weight: 700; font-size: 0.98rem; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+/* Akcje slotu (ołówek/✕) — ciche gołe ikony jak w czacie, nie obramowane kafle.
+   Grupa jest jednym elementem flexa: łamie się (i dosuwa do prawej) w całości,
+   zamiast gubić ✕ w osobnej linii pod liściem daty. */
+.slot-actions { margin-left: auto; display: inline-flex; align-items: center; }
+.slot .slot-del {
+  min-width: 34px; min-height: 34px;
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 4px 10px; font-size: 1rem; line-height: 1; color: var(--muted);
+  padding: 4px; font-size: 1rem; line-height: 1; color: var(--muted);
+  background: none; border: 0; opacity: 0.65;
 }
 @media (hover: hover) {
-  .slot-del:hover { color: var(--no); border-color: var(--no); }
+  .slot .slot-del:hover { color: var(--no); opacity: 1; }
 }
 
 .badge {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(31, 201, 142, 0.16);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(61, 220, 139, 0.14);
   color: var(--yes);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 .badge-open { background: rgba(244, 183, 64, 0.16); color: var(--maybe); }
 .badge-muted { background: rgba(255, 255, 255, 0.08); color: var(--muted); }
 
 /* Ustalanie terminu przez organizatora (na stronie wypadu) */
-.slot-confirm-row {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
 .slot-confirm-btn { width: 100%; font-size: 0.9rem; }
-/* „Ustal ten termin" — jedyna akcja, która realnie finalizuje wypad, więc dostaje
-   ten sam niebieski akcent co główny CTA, zamiast wtapiać się jako kolejny .ghost. */
+/* „Klepnij ten termin" (LOCK IN) — jedyna akcja finalizująca wypad, więc dostaje
+   sygnałowy akcent zamiast wtapiać się jako kolejny .ghost. */
 .slot-confirm-btn.primary {
-  background: rgba(10, 132, 255, 0.22);
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px rgba(10, 132, 255, 0.12);
-  color: #fff;
-}
-@media (hover: hover) {
-  .slot-confirm-btn.primary:hover { background: rgba(10, 132, 255, 0.3); }
-}
-/* Ustalony termin w nagłówku — mocniej (zielono) niż „Na czele" */
-.confirmed-inline.settled .confirmed-tag {
-  background: rgba(31, 201, 142, 0.18);
-  color: var(--yes);
-}
-
-.tally { display: flex; gap: 8px; margin-bottom: 12px; }
-.tally span { font-size: 0.8rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
-.tally .yes { color: var(--yes); background: rgba(31, 201, 142, 0.14); }
-.tally .maybe { color: var(--maybe); background: rgba(244, 183, 64, 0.14); }
-.tally .no { color: var(--no); background: rgba(240, 69, 95, 0.14); }
-
-/* Głosowanie jako kontrolka segmentowa (iOS-like). */
-.choices {
-  position: relative;
-  display: flex;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px;
-  z-index: 1;
-}
-.choices-slider {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc((100% - 16px) / 3);
-  border-radius: 9px;
-  pointer-events: none;
-  z-index: 0;
-  transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s ease, background-color 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
-  opacity: 1;
-  transform-origin: center;
-}
-.choices.no-active .choices-slider {
-  opacity: 0;
-  transform: scale(0.92);
-}
-/* Przesunięcia slidera */
-.choices.active-index-0 .choices-slider {
-  transform: translateX(0);
-  background: rgba(31, 201, 142, 0.18);
-  border: 1px solid rgba(31, 201, 142, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(31, 201, 142, 0.25);
-}
-.choices.active-index-1 .choices-slider {
-  transform: translateX(calc(100% + 4px));
-  background: rgba(244, 183, 64, 0.15);
-  border: 1px solid rgba(244, 183, 64, 0.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(244, 183, 64, 0.25);
-}
-.choices.active-index-2 .choices-slider {
-  transform: translateX(calc((100% + 4px) * 2));
-  background: rgba(240, 69, 95, 0.18);
-  border: 1px solid rgba(240, 69, 95, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 16px rgba(240, 69, 95, 0.25);
-}
-.choices button {
-  position: relative;
-  flex: 1;
   background: transparent;
-  border: none;
-  color: var(--muted);
-  font-weight: 600;
-  border-radius: 9px;
-  padding: 10px 8px;
-  z-index: 2;
-  transition: color 0.25s ease;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 @media (hover: hover) {
-  .choices button:hover {
-    color: var(--text);
-  }
+  .slot-confirm-btn.primary:hover { background: var(--accent-dim); }
 }
-.choices button.active {
-  color: #ffffff;
-}
-.choices button.active-yes.active {
-  color: #5eff84;
-}
-.choices button.active-maybe.active {
-  color: #ffdf3d;
-}
-.choices button.active-no.active {
-  color: #ff6b63;
-}
-
 .voters {
   font-size: 0.82rem;
   color: var(--muted);
@@ -358,33 +301,28 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   flex-wrap: wrap;
   gap: 6px;
 }
-.voters .name {
-  color: var(--text);
-}
+/* Chip głosującego: awatar + IMIĘ w kolorze głosu (kolor niesie stan, więc
+   READY/MOŻE/PAS w tekście było dublowaniem). Sam tint, bez obrysu. */
 .voter-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 6px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   transition: all 0.2s ease;
 }
 .voter-chip.yes {
-  background: rgba(31, 201, 142, 0.1);
-  border-color: rgba(31, 201, 142, 0.25);
+  background: rgba(61, 220, 139, 0.1);
   color: #5eff84;
 }
 .voter-chip.maybe {
-  background: rgba(244, 183, 64, 0.08);
-  border-color: rgba(244, 183, 64, 0.25);
+  background: rgba(244, 183, 64, 0.09);
   color: #ffdf3d;
 }
 .voter-chip.no {
-  background: rgba(240, 69, 95, 0.1);
-  border-color: rgba(240, 69, 95, 0.25);
+  background: rgba(255, 93, 93, 0.1);
   color: #ff6b63;
 }
 
@@ -398,58 +336,47 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 /* Tytuł + ikona edycji obok */
 .title-row { display: flex; align-items: center; gap: 10px; }
 .title-row .large-title { min-width: 0; }
+/* Ołówek przy tytule — cicha goła ikona (ostatni obramowany kafelek akcji zszedł). */
 .title-edit-btn {
   flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; padding: 0;
-  border-radius: 999px;
-  background: var(--card-2);
-  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  border: 0;
   color: var(--muted);
+  opacity: 0.65;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 @media (hover: hover) {
-  .title-edit-btn:hover { color: var(--text); background: #262833; border-color: var(--border-strong); }
+  .title-edit-btn:hover { color: var(--text); opacity: 1; }
 }
 .title-edit-btn:active { transform: scale(0.94); }
 
-/* Nagłówki sekcji (jak grupy w Ustawieniach iOS) */
+/* Nagłówki sekcji — mono, jak etykiety na scoreboardzie */
 .section-label {
-  font-size: 0.78rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
-  margin: 14px 4px 8px;
+  margin: 20px 4px 10px;
 }
-.section-label.faded { color: #6a6f80; }
+.section-label.faded { color: #5c656d; }
+.section-label.hot { color: var(--accent); }
 
-/* Zgrupowana lista — jedna „wyspa" z cienkimi separatorami */
-.list-group {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-.list-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 16px;
-  text-decoration: none;
-  color: var(--text);
-  transition: background 0.15s ease, transform 0.06s ease;
-}
-.list-row + .list-row { border-top: 1px solid var(--border); }
-@media (hover: hover) {
-  .list-row:hover { background: var(--card-2); }
-}
-.list-row:active { transform: scale(0.992); }
-.list-row-main { min-width: 0; flex: 1; }
-.list-row-title { font-weight: 600; letter-spacing: -0.01em; }
 .row-chevron { flex-shrink: 0; color: var(--muted); font-size: 1.3rem; line-height: 1; }
+
+/* Kropka „nowe na czacie" przy tytule wypadu */
+.unread-dot {
+  display: inline-block;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  margin-left: 7px;
+  vertical-align: 2px;
+}
 
 /* Drobna linia meta (miejsce, organizator) */
 .meta { font-size: 0.85rem; color: var(--muted); margin: 3px 0 0; }
@@ -464,43 +391,28 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
-.empty-state .emoji { font-size: 2.4rem; line-height: 1; }
 .empty-state h2 { margin: 14px 0 4px; }
 .empty-state p { color: var(--muted); margin: 0 auto 18px; max-width: 30ch; }
 
-/* Pille statusu głosowania */
-.pill-wait, .pill-done {
-  display: inline-block;
-  font-size: 0.85rem;
-  font-weight: 500;
-  padding: 8px 14px;
-  border-radius: 999px;
-}
-.pill-wait { color: var(--maybe); background: rgba(244, 183, 64, 0.12); border: 1px solid rgba(244, 183, 64, 0.25); }
-.pill-done { color: var(--yes); background: rgba(31, 201, 142, 0.12); border: 1px solid rgba(31, 201, 142, 0.3); }
-
-/* Back link (iOS) */
+/* Back link */
 .back-btn-round {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   margin-bottom: 18px;
 }
 @media (hover: hover) {
   .back-btn-round:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.18);
+    background: var(--card-2);
+    border-color: var(--border-strong);
     color: #ffffff;
     transform: scale(1.06);
   }
@@ -545,9 +457,8 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 
 .confirmed-inline {
   min-height: 0;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 9px;
   font-size: 1rem;
   font-weight: 600;
@@ -564,14 +475,6 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   transform: translateY(0);
 }
 .confirmed-inline > svg { color: var(--yes); flex-shrink: 0; }
-.confirmed-tag {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
-  color: var(--yes);
-  background: rgba(31, 201, 142, 0.14);
-  border: 1px solid rgba(31, 201, 142, 0.3);
-  padding: 3px 8px 3px 6px; border-radius: 999px;
-}
 
 /* Input terminu: Od / Do / Godzina */
 .slot-range-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -605,32 +508,60 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
 .slot-range input::-webkit-date-and-time-value { text-align: center; }
 .slot-range input::-webkit-calendar-picker-indicator { display: none; }
 
-/* Przełącznik „Dłuższy wypad" — toggle w stylu iOS (na górze, przy etykiecie) */
+/* Przełącznik „Dłuższy wypad" — kontrolka Lobby jak .switch (oranż = włączone) */
 .toggle-row {
-  display: inline-flex; align-items: center; gap: 12px;
-  margin-bottom: 14px; cursor: pointer;
-  font-size: 0.95rem; color: var(--text); user-select: none;
+  display: inline-flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; cursor: pointer; user-select: none;
+  font-family: var(--mono); font-size: 0.64rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
 }
 .toggle-input { position: absolute; opacity: 0; width: 0; height: 0; }
 .toggle-track {
   position: relative; flex-shrink: 0;
-  width: 46px; height: 28px; border-radius: 999px;
-  background: var(--card-2); border: 1px solid var(--border);
+  width: 44px; height: 26px; border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22); border: 1px solid var(--border-strong);
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 .toggle-knob {
   position: absolute; top: 3px; left: 3px;
-  width: 20px; height: 20px; border-radius: 50%;
+  width: 18px; height: 18px; border-radius: 5px;
   background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.toggle-input:checked + .toggle-track { background: var(--primary); border-color: var(--primary); }
+.toggle-input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
 .toggle-input:checked + .toggle-track .toggle-knob { transform: translateX(18px); }
 .toggle-input:focus-visible + .toggle-track { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15); }
 
-/* Data w nagłówku jest klikalna — tapnięcie eksportuje termin do kalendarza (.ics) */
-.confirmed-inline.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.confirmed-inline.tappable:active { transform: scale(0.98); }
+/* Termin w nagłówku: jawny przycisk eksportu do kalendarza (.ics) — mono-data
+   z mikro-etykietą „DODAJ DO KALENDARZA", żeby było wiadomo, że to klikalne. */
+.cal-chip {
+  flex: 1;
+  min-width: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  background: var(--card-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  text-align: left;
+  font-weight: 400;
+}
+.cal-chip > svg { color: var(--accent); flex-shrink: 0; }
+.cal-chip-main b {
+  display: block;
+  font-family: var(--mono); font-size: 0.9rem; font-weight: 700;
+  letter-spacing: 0.02em; line-height: 1.3; font-variant-numeric: tabular-nums;
+}
+.cal-chip-main span {
+  display: block;
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); line-height: 1.5;
+}
+@media (hover: hover) {
+  .cal-chip:hover { background: var(--accent-dim); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+}
 
 /* Spójny blok statusu głosowania: awatary + pasek postępu + kto się obija */
 .vote-status {
@@ -638,31 +569,11 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   margin-bottom: 22px;
   display: flex; flex-direction: column; gap: 10px;
 }
-.vote-status-row { display: flex; align-items: center; gap: 10px; }
-.vote-status-count { font-size: 0.92rem; color: var(--muted); }
-.vote-status-count strong { color: var(--text); font-weight: 600; }
-.vote-progress {
-  height: 6px; border-radius: 999px;
-  /* Trochę mocniejszy tor, żeby pasek był widoczny nawet przy 0% (samo wypełnienie
-     wtedy nie istnieje — bez tego widać praktycznie nic). */
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-}
-.vote-progress-bar {
-  height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, var(--yes), #5be584);
-  transition: width 0.45s cubic-bezier(0.25, 1, 0.5, 1);
-}
-/* Kto jeszcze nie dał znać — awatary zamiast gołego tekstu, łatwiej ogarnąć jednym rzutem oka. */
-.vote-missing-row { display: flex; align-items: center; gap: 8px; }
-.vote-missing-label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
 
-.slot.confirmed { border-color: rgba(31, 201, 142, 0.5); box-shadow: 0 0 0 1px rgba(31, 201, 142, 0.5) inset; }
+.slot.confirmed { border-color: rgba(61, 220, 139, 0.5); box-shadow: 0 0 0 1px rgba(61, 220, 139, 0.5) inset; }
 
 /* ===== Hybryda: nagłówek, awatary, karty wypadów, postęp ===== */
 
-.dash-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.app-icon { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; box-shadow: var(--shadow); }
 
 /* Awatary */
 .avatar {
@@ -670,70 +581,48 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   border-radius: 50%; color: #fff; font-weight: 600; line-height: 1;
   border: 2px solid var(--card); flex-shrink: 0; overflow: hidden; user-select: none;
 }
-.avatar-stack { display: inline-flex; }
-.avatar-stack > * + * { margin-left: -9px; }
-.avatar-more { background: var(--card-2); color: var(--muted); }
 
 /* Wybór awatara (setup) */
 .avatar-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 8px; }
 .avatar-option {
   aspect-ratio: 1 / 1;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
   font-size: 1.55rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.06s ease;
   padding: 0;
   min-height: 0;
   color: inherit;
   font-weight: 400;
 }
 @media (hover: hover) {
-  .avatar-option:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.18);
-    transform: translateY(-2px) scale(1.06);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  }
+  .avatar-option:hover:not(:disabled) { border-color: var(--border-strong); }
 }
-.avatar-option:active:not(:disabled) {
-  transform: translateY(0) scale(0.95);
-}
+.avatar-option:active:not(:disabled) { transform: scale(0.94); }
 .avatar-option.selected {
-  border-color: #bf5af2;
-  background: rgba(191, 90, 242, 0.16);
-  transform: translateY(-2px) scale(1.15);
-  box-shadow: 0 0 14px rgba(191, 90, 242, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  z-index: 2;
-}
-@media (hover: hover) {
-  .avatar-option.selected:hover:not(:disabled) {
-    transform: translateY(-3px) scale(1.18);
-    box-shadow: 0 0 18px rgba(191, 90, 242, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  }
+  border-color: var(--accent);
+  background: var(--accent-dim);
 }
 
-/* Główny CTA — kolorowy akcent (ten sam niebieski co .hero-badge-blue), żeby się
-   realnie odróżniał od szarych kart wokół, zamiast wtapiać się w tło. */
+/* Główny CTA — pełny sygnałowy oranż z ciemnym tekstem; jedyny mocny punkt strony. */
 .cta-gradient {
   width: 100%;
-  background: rgba(10, 132, 255, 0.22);
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px rgba(10, 132, 255, 0.12);
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 18%, transparent);
   padding: 15px 18px;
   font-size: 1.02rem;
-  border-radius: var(--radius-sm);
-  color: #fff;
+  font-weight: 700;
+  border-radius: var(--radius);
+  color: var(--accent-ink);
 }
 @media (hover: hover) {
-  .cta-gradient:hover { background: rgba(10, 132, 255, 0.3); }
+  .cta-gradient:hover { background: color-mix(in srgb, var(--accent) 82%, #fff); }
 }
 
 /* Karta wypadu (bogata) */
@@ -741,7 +630,7 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   display: block;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 13px 14px;
   margin-bottom: 10px;
   text-decoration: none;
@@ -762,21 +651,9 @@ button.chip { min-height: 40px; padding: 9px 14px; font-size: 0.85rem; font-weig
   .event-rich:hover { background: var(--card-2); border-color: var(--border-strong); text-decoration: none; }
 }
 .event-rich:active { transform: scale(0.992); }
-.event-rich-head { display: flex; align-items: center; gap: 10px; }
-.event-rich-title { font-weight: 600; font-size: 0.98rem; letter-spacing: -0.01em; flex: 1; min-width: 0; }
 
 .event-meta { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.84rem; }
 .event-meta svg { flex-shrink: 0; opacity: 0.85; }
-.event-meta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 5px; }
-.event-rich-foot { display: flex; align-items: center; gap: 12px; margin-top: 9px; min-height: 22px; }
-.event-rich-foot .spacer { flex: 1; }
-
-/* Pasek postępu głosowania */
-.progress-wrap { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
-.progress-inline-wrap { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 8px; }
-.progress { flex: 1; height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
-.progress-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
-.progress-label { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
 
 img.avatar { display: inline-block; }
 
@@ -799,32 +676,36 @@ img.avatar { display: inline-block; }
   flex-shrink: 0;
 }
 @media (hover: hover) {
-  .settings-trigger:hover { background: #262833; color: var(--text); border-color: var(--border-strong); }
+  .settings-trigger:hover { background: #232830; color: var(--text); border-color: var(--border-strong); }
 }
 .settings-trigger:active { transform: scale(0.94); }
 
 /* Modal profilu (wyśrodkowany, rozmyte tło) */
+/* Wejście modala: choreografia trzech warstw zamiast jednego „puf".
+   Tło rozmywa się i gaśnie; karta wjeżdża minimalnie z dołu na długiej
+   apple'owskiej krzywej sprężyny (tej samej co bottom sheet) i JEDNOCZEŚNIE
+   wyostrza się z lekkiego bluru (efekt „focus-in" jak w visionOS). Fade kończy
+   się wcześnie, ruch trwa dłużej — to rozwarstwienie robi wrażenie premium.
+   Blury to krótkie one-shoty przy otwarciu (dozwolony wyjątek). */
 .profile-overlay {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
   background: rgba(0, 0, 0, 0.45);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  animation: overlayFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  animation: overlayFadeIn 0.3s ease both;
 }
 .profile-modal {
   position: relative;
   width: 100%; max-width: 360px;
-  background: rgba(22, 18, 30, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 24px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  -webkit-backdrop-filter: blur(35px) saturate(220%);
-  backdrop-filter: blur(35px) saturate(220%);
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   padding: 28px 20px 20px;
   text-align: center;
-  animation: modalSpringIn 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: modalFocusIn 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @keyframes overlayFadeIn {
@@ -832,22 +713,30 @@ img.avatar { display: inline-block; }
   to { opacity: 1; }
 }
 
-@keyframes modalSpringIn {
+@keyframes modalFocusIn {
   from {
     opacity: 0;
-    transform: scale(0.92) translateY(10px);
+    transform: scale(0.94) translateY(16px);
+    filter: blur(12px);
+  }
+  40% {
+    opacity: 1;
+  }
+  65% {
+    filter: blur(0);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: none;
+    filter: blur(0);
   }
 }
 .modal-close {
   position: absolute; top: 12px; right: 12px;
   width: 32px; height: 32px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--muted);
-  border-radius: 50%; font-size: 0.8rem; font-weight: 500;
+  background: var(--card-2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;
   transition: all 0.2s ease;
 }
 @media (hover: hover) {
@@ -868,13 +757,11 @@ img.avatar { display: inline-block; }
   width: 34px; height: 34px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%; font-size: 0.95rem;
-  background: rgba(255, 255, 255, 0.12);
-  border: 2px solid rgba(22, 18, 30, 0.85);
-  color: #fff;
+  background: var(--accent);
+  border: 2px solid var(--card);
+  color: var(--accent-ink);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
 }
 @media (hover: hover) {
   .avatar-camera:hover {
@@ -895,109 +782,52 @@ img.avatar { display: inline-block; }
   text-align: left; margin-bottom: 18px;
 }
 .setting-text { flex: 1; min-width: 0; }
-.setting-title { display: block; font-weight: 500; color: rgba(255, 255, 255, 0.9); }
+.setting-title { display: block; font-weight: 600; color: var(--text); }
 .setting-sub { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
 
-/* Przełącznik w stylu iOS */
+/* Wybór koloru akcentu (Ustawienia) */
+.accent-row { display: flex; gap: 8px; margin: 8px 0 18px; }
+.accent-swatch {
+  width: 34px; height: 34px; padding: 0; min-height: 0; flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.06s ease;
+}
+.accent-swatch:active { transform: scale(0.92); }
+.accent-swatch.selected { border-color: #fff; }
+
+/* Przełącznik: kontrolka w skórce Lobby (8px, oranż = włączone; zieleń tylko dla głosów) */
 .switch {
   flex-shrink: 0;
   width: 50px; height: 30px; padding: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-strong);
   position: relative;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
-.switch.on { background: var(--yes); border-color: transparent; }
+.switch.on { background: var(--accent); border-color: var(--accent); }
 .switch-knob {
-  position: absolute; top: 50%; left: 3px;
-  width: 24px; height: 24px; border-radius: 50%;
+  position: absolute; top: 50%; left: 4px;
+  width: 22px; height: 22px; border-radius: 5px;
   background: #fff;
   transform: translateY(-50%);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   transition: left 0.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
-.switch.on .switch-knob { left: 23px; }
+.switch.on .switch-knob { left: 24px; }
 
-.profile-modal label {
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
-}
-
-/* Custom stylings for inputs and buttons inside .profile-modal for maximum legibility */
-.profile-modal input[type="text"] {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  transition: all 0.2s ease;
+/* Nagłówek modala — mono-etykieta jak na scoreboardzie */
+.modal-label {
+  font-family: var(--mono);
+  font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+  margin: 0 0 18px;
 }
 
-.profile-modal input[type="text"]:focus {
-  background: rgba(0, 0, 0, 0.35);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-}
-
-.profile-modal button.ghost {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-@media (hover: hover) {
-  .profile-modal button.ghost:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.22);
-  }
-}
-
-.profile-modal button.ghost:disabled {
-  opacity: 0.35;
-}
-
-.profile-modal button.ghost.danger {
-  background: rgba(240, 69, 95, 0.15);
-  border: 1px solid rgba(240, 69, 95, 0.3);
-  color: #f0455f;
-}
-
-@media (hover: hover) {
-  .profile-modal button.ghost.danger:hover {
-    background: rgba(240, 69, 95, 0.25);
-    border-color: #f0455f;
-  }
-}
-
-/* Baner z poradą */
-.tip-banner {
-  display: flex; align-items: center; gap: 12px;
-  margin-top: 24px; padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  color: var(--muted); font-size: 0.88rem;
-}
-.tip-banner .tip-icon { color: var(--primary-hover); flex-shrink: 0; }
-
-.tip-banner {
-  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-@media (hover: hover) {
-  .tip-banner:hover {
-    transform: translateY(-1px);
-  }
-}
-.tip-banner:active {
-  transform: translateY(0) scale(0.99);
-}
-@media (hover: hover) {
-  .glass-page .tip-banner:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-}
 .quote-text {
   transition: opacity 0.15s ease-in-out;
 }
@@ -1021,16 +851,6 @@ img.avatar { display: inline-block; }
 }
 .auth-screen .card { margin-bottom: 16px; position: relative; z-index: 1; }
 
-/* Tło wideo wyłącznie na ekranie logowania (komponent LoginBackground). Ciemna,
-   nieprzezroczysta baza zakrywa to, co pod spodem; wideo rozmyte/wyciszone jak
-   dawne globalne tło. Karta logowania frostuje je przez backdrop-filter. */
-.login-bg {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background: #050505;
-}
-/* Na ekranie logowania chowamy globalną aurorę — zostaje lokalna w .login-bg. */
-body.login-active .glass-bg { display: none; }
-
 .glass-bg {
   /* Globalne tło na z-index:0 (nad nieprzezroczystym tłem body); cała treść siedzi
      w .container z z-index:1, więc jest nad aurorą.
@@ -1043,172 +863,135 @@ body.login-active .glass-bg { display: none; }
   position: fixed; top: 0; left: 0; z-index: 0; pointer-events: none; overflow: hidden;
   width: 100vw; height: 100vh;
   width: 100dvw; height: 100lvh;
-  /* Aurora „wypalona" w statyczne gradienty zamiast żywych warstw blur + mix-blend-mode.
-     Blur i blend zmuszały iOS do rekompozycji całego ekranu przy KAŻDYM przerysowaniu
-     (animacja :active karty, scroll) → freeze na słabszym/oszczędnym telefonie. Miękkie
-     radial-gradienty dają ten sam blask, ale są malowane raz i cache'owane jako jedna
-     bitmapa. Na czerni biały „screen" ≈ zwykłe dodanie bieli, więc wygląd zostaje.
-     (Jasności to pokrętło kalibracyjne — podbij/zbij alfy, jeśli za mocne/za słabe.) */
-  background:
-    radial-gradient(42vw 42vh at 30% 20%, rgba(255, 255, 255, 0.22), transparent 70%),
-    radial-gradient(46vw 46vh at 70% 50%, rgba(200, 200, 200, 0.15), transparent 70%),
-    radial-gradient(44vw 44vh at 40% 80%, rgba(255, 255, 255, 0.26), transparent 70%),
-    radial-gradient(38vw 38vh at 80% 15%, rgba(170, 170, 170, 0.15), transparent 70%),
-    radial-gradient(50vw 50vh at 20% 60%, rgba(225, 225, 225, 0.22), transparent 70%),
-    radial-gradient(70vw 46vh at 50% 100%, rgba(255, 255, 255, 0.18), transparent 70%),
-    #050505;
+  /* Skórka „Lobby": płaska, chłodna czerń zamiast aurory. Zero gradientów,
+     zero blur = zero rekompozycji na iOS; element zostaje, bo layout na nim polega. */
+  background: var(--bg);
 }
 
-/* Recepta szkła Apple (Apple Glassmorphism): bg-white/[0.03] + blur(30px) + saturate(200%).
-   Działa bez przeskoku, bo strona NIE animuje już opacity na <main> (patrz page-in niżej) —
-   animowany opacity przodka wyłączał backdrop-filter i powodował „doskok" koloru. */
+/* Solidne panele zamiast szkła: czytelnie, tanio dla GPU, zero „doskoków" koloru. */
 .glass-page .card,
-.glass-page .empty-state,
-.glass-page .tip-banner {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(30px) saturate(200%);
-  backdrop-filter: blur(30px) saturate(200%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 20px 40px rgba(0, 0, 0, 0.4);
-}
-@media (hover: hover) {
-  .glass-page .card:hover { background: rgba(255, 255, 255, 0.05); }
+.glass-page .empty-state {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
 }
 
-/* Szklane karty wydarzeń */
+/* Karty wydarzeń: płaskie panele */
 .glass-page .event-rich {
-  /* Bez backdrop-filter: karty listy powtarzają się N razy, a rozmycie nad
-     odtwarzanym wideo przelicza się co klatkę dla każdej z nich. Zamiast frostowania
-     ciemne półprzezroczyste tło — czyta się jak panel, wygląd zbliżony, koszt ~zerowy. */
-     
-  background: rgba(13, 13, 17, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 20px 40px rgba(0, 0, 0, 0.4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
 }
 @media (hover: hover) {
   .glass-page .event-rich:hover {
-    background: rgba(26, 26, 32, 0.6);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: var(--card-2);
+    border-color: var(--border-strong);
   }
 }
 
-/* Hero: najbliższy wypad — bogata karta (układ z mockupu). Większa i bardziej zaokrąglona.
-   Frosted glass: półprzezroczyste tło + rozmycie tego, co za kartą — zamiast solidnego tła
-   i gradientów w środku. (Nadpisuje też opaque #0c0c14 z .has-image.) */
+/* Hero: najbliższe lobby — jedyna karta z „radarowym" rastrem kropek w tle. */
 .glass-page .event-rich.hero {
-  padding: 20px;
-  border-radius: 26px;
+  padding: 20px 18px;
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  /* Bez backdrop-filter: hero to karta scrollowana NAD nieruchomą aurorą, więc rozmycie
-     musiałoby się przeliczać co klatkę scrolla, a przy :active (scale) co klatkę gestu —
-     stąd zacinanie przy przytrzymaniu i szarpanie przy przewijaniu. Listowe karty już
-     dawno zrezygnowały z rozmycia z tego powodu (zob. .glass-page .event-rich wyżej);
-     hero dostaje to samo tanie, nieprzezroczyste tło panelu. */
-  background: rgba(20, 20, 26, 0.6);
+  background:
+    radial-gradient(rgba(232, 237, 240, 0.045) 1px, transparent 1px) 0 0 / 14px 14px,
+    var(--card);
 }
+/* Hero czekające na TWÓJ głos — sygnałowa ramka. */
+.glass-page .event-rich.hero.needs-you { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 
-/* Niebieski szklany przycisk główny (CTA) — kolor zamiast bieli, żeby był realnym
-   punktem kontrastu na stronie, nie kolejną szarą kartą. */
+/* Główny CTA: pełny sygnałowy oranż, ciemny tekst — jedyny mocny punkt na stronie. */
 .glass-page .cta-gradient {
-  background: rgba(10, 132, 255, 0.2);
-  border: 1px solid rgba(10, 132, 255, 0.38);
-  -webkit-backdrop-filter: blur(30px) saturate(200%);
-  backdrop-filter: blur(30px) saturate(200%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 6px 16px rgba(10, 132, 255, 0.12);
-  color: #fff;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.06s ease;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-ink);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.06s ease;
 }
 @media (hover: hover) {
-  .glass-page .cta-gradient:hover {
-    background: rgba(10, 132, 255, 0.28);
-    border-color: rgba(10, 132, 255, 0.5);
-  }
+  .glass-page .cta-gradient:hover { background: color-mix(in srgb, var(--accent) 82%, #fff); }
 }
 
-.glass-page .section-label { color: rgba(255, 255, 255, 0.5); letter-spacing: 0.12em; }
+.glass-page .section-label { color: var(--muted); }
 
-/* Karta terminu w wersji szklanej */
+/* Karta terminu: ta sama miękka materia co sloty na dashboardzie — fill +
+   top-highlight zamiast szarego konturu; stan niesie łuna koloru (radial z rogu
+   liścia daty) i ledwie widoczna kolorowa kreska, nie twarda obwódka. */
 .glass-page .slot {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  background: var(--card-2);
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 .glass-page .slot.winner {
-  background: linear-gradient(135deg, rgba(31, 201, 142, 0.06), rgba(255, 255, 255, 0.02));
-  border-color: rgba(31, 201, 142, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(31, 201, 142, 0.04);
+  background:
+    radial-gradient(120% 170% at 12% 0%, rgba(61, 220, 139, 0.1), transparent 58%),
+    var(--card-2);
+  border-color: rgba(61, 220, 139, 0.18);
 }
 .glass-page .slot.tie {
-  background: linear-gradient(135deg, rgba(244, 183, 64, 0.04), rgba(255, 255, 255, 0.02));
-  border-color: rgba(244, 183, 64, 0.25);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(244, 183, 64, 0.02);
+  background:
+    radial-gradient(120% 170% at 12% 0%, rgba(244, 183, 64, 0.09), transparent 58%),
+    var(--card-2);
+  border-color: rgba(244, 183, 64, 0.15);
 }
 .glass-page .slot.confirmed {
-  background: linear-gradient(135deg, rgba(31, 201, 142, 0.12), rgba(255, 255, 255, 0.03));
-  border-color: rgba(31, 201, 142, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 32px rgba(31, 201, 142, 0.08);
+  background:
+    radial-gradient(120% 170% at 12% 0%, rgba(61, 220, 139, 0.13), transparent 58%),
+    var(--card-2);
+  border-color: rgba(61, 220, 139, 0.24);
 }
+/* Po klepnięciu terminu pozostałe propozycje są nieaktualne — wyciszone w całości
+   (razem z przyciskami głosu), żeby ustalony slot był jedynym głośnym elementem. */
+.glass-page .slot.stale { opacity: 0.6; }
 
-/* Szklany, ciemny tor paska postępu */
-.glass-page .progress {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-/* Biały świecący pasek postępu */
-.glass-page .progress-bar {
-  background: rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
-}
-
-/* Mokry połysk na górnej krawędzi — jaśniejszy w środku, zanikający po bokach. */
-.glass-page .event-rich,
-.glass-page .card,
-.glass-page .empty-state,
-.glass-page .tip-banner,
-.glass-page .cta-gradient { position: relative; }
-
-.glass-page .event-rich::before,
-.glass-page .card::before,
-.glass-page .empty-state::before,
-.glass-page .tip-banner::before,
-.glass-page .cta-gradient::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 14%; right: 14%;
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.25), transparent);
-  pointer-events: none;
-}
-
-/* Opis wypadu na stronie wydarzenia */
+/* Opis wypadu na stronie wydarzenia — płaski tekst, bez ramki (jak w mockupie) */
 .event-description {
-  margin: 0 0 18px;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: rgba(255, 255, 255, 0.78);
+  margin: 0 4px 18px;
+  padding-left: 12px;
+  /* Cienka akcentowa kreska kotwiczy opis — bez niej krótki tekst („Koks")
+     wyglądał na zgubiony między chipem kalendarza a ready checkiem. */
+  border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  color: #9aa6ae; /* jaśniej niż --muted: opis to treść do czytania, nie metadane */
   font-size: 0.92rem;
-  line-height: 1.5;
+  line-height: 1.55;
+  max-width: 52ch;
 }
 /* Render markdownu w opisie */
-.event-description p { margin: 0 0 8px; }
-.event-description p:last-child { margin-bottom: 0; }
+.event-description p { margin: 0 0 10px; }
+.event-description p:last-child,
+.event-description ul:last-child,
+.event-description ol:last-child { margin-bottom: 0; }
 .event-description ul,
-.event-description ol { margin: 6px 0; padding-left: 22px; }
-.event-description li { margin: 3px 0; }
+.event-description ol { margin: 8px 0 10px; padding-left: 20px; }
+.event-description li { margin: 4px 0; }
+.event-description li::marker { color: var(--accent); }
+.event-description ol li::marker { font-family: var(--mono); font-size: 0.8em; font-weight: 700; }
 .event-description strong { color: var(--text); font-weight: 700; }
-.event-description a { color: var(--primary-hover); text-decoration: underline; overflow-wrap: anywhere; }
+.event-description em { color: var(--text); }
+.event-description a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+/* „# Nagłówek" → mono-etykieta sekcji jak na scoreboardzie */
+.event-description h4 {
+  margin: 14px 0 6px;
+  font-family: var(--mono);
+  font-size: 0.64rem; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text);
+}
+.event-description h4:first-child { margin-top: 0; }
+/* „---" → cienka linia rozdzielająca */
+.event-description hr {
+  border: 0; border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
 
 /* Pole opisu z paskiem formatowania */
 .desc-input { display: flex; flex-direction: column; gap: 7px; }
@@ -1219,7 +1002,7 @@ body.login-active .glass-bg { display: none; }
   border: 1px solid var(--border); border-radius: 8px;
 }
 @media (hover: hover) {
-  .desc-tool:hover { background: #262833; border-color: var(--border-strong); }
+  .desc-tool:hover { background: #232830; border-color: var(--border-strong); }
 }
 .desc-tool b { font-weight: 800; }
 
@@ -1242,6 +1025,16 @@ body.login-active .glass-bg { display: none; }
 .comment-head { display: flex; align-items: center; gap: 8px; }
 .comment-author { font-weight: 600; font-size: 0.9rem; }
 .comment-time { font-size: 0.75rem; color: var(--muted); }
+/* Ołówek edycji — zaraz przy godzinie dodania; ✕ zostaje przy prawej krawędzi. */
+.comment-edit-btn {
+  display: inline-flex; align-items: center;
+  background: none; border: none;
+  color: var(--muted); padding: 2px 4px;
+  cursor: pointer; opacity: 0.55;
+}
+@media (hover: hover) {
+  .comment-edit-btn:hover { opacity: 1; }
+}
 .comment-del {
   margin-left: auto; background: none; border: none;
   color: var(--muted); font-size: 0.8rem; padding: 2px 6px;
@@ -1258,43 +1051,77 @@ body.login-active .glass-bg { display: none; }
 .comment-form { display: flex; gap: 8px; }
 .comment-form input { flex: 1; min-width: 0; }
 .comment-form button { flex-shrink: 0; }
+.comment-form.comment-edit { margin-top: 4px; }
+.comment-form.comment-edit input { padding: 8px 12px; font-size: 0.92rem; }
+.comment-form.comment-edit .send { width: 38px; height: 38px; font-size: 0.95rem; }
 
-/* Feed „Ostatnia aktywność": pastylka liquid glass, jeden komentarz na pionowym torze */
-.activity { margin: 16px 0 6px; display: flex; flex-direction: column; gap: 8px; }
-.activity .section-label { margin-bottom: 0; }
-.activity-pill-touch {
-  position: relative; width: 100%;
-  background: rgba(255, 255, 255, 0.06);
+/* Reakcje na komentarze (styl Messengera): przytrzymanie dymka otwiera picker
+   nad komentarzem; chipy pod komentarzem pokazują kto co dał (tap = lista). */
+.comment { position: relative; }
+.reactions {
+  position: relative;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 6px;
+}
+.reaction-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; min-height: 26px;
+  font-family: var(--mono); font-size: 0.8rem; line-height: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+}
+.reaction-chip.mine {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+@media (hover: hover) {
+  .reaction-chip:hover { border-color: rgba(255, 255, 255, 0.3); }
+}
+.reaction-picker {
+  position: absolute; left: 34px; bottom: calc(100% - 4px); z-index: 60;
+  display: flex; gap: 2px; padding: 5px 7px;
+  background: rgba(20, 23, 26, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  padding: 0 16px;
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 22px rgba(0, 0, 0, 0.22);
-  overflow: hidden; cursor: pointer;
-  touch-action: none; -webkit-tap-highlight-color: transparent;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transform-origin: left bottom;
 }
-/* Pionowy tor ze slajdami — przesuwany transformem (płynnie, na GPU). */
-.activity-track {
-  display: flex; flex-direction: column;
-  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+@media (prefers-reduced-motion: no-preference) {
+  .reaction-picker { animation: picker-pop 0.16s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
 }
-.activity-slide { display: flex; gap: 10px; align-items: center; }
-.activity-body { flex: 1; min-width: 0; }
-.activity-head { display: flex; align-items: baseline; gap: 6px; }
-.activity-author { font-weight: 600; font-size: 0.86rem; color: var(--text); flex-shrink: 0; }
-.activity-event {
-  font-size: 0.8rem; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+@keyframes picker-pop {
+  from { opacity: 0; transform: scale(0.7); }
 }
-.activity-time { font-size: 0.72rem; color: var(--muted); margin-left: auto; flex-shrink: 0; padding-left: 6px; }
-.activity-text {
-  margin: 1px 0 0; font-size: 0.86rem; line-height: 1.4;
-  color: rgba(255, 255, 255, 0.8);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden;
+.reaction-picker button {
+  background: none; border: none; padding: 6px 7px;
+  font-size: 1.15rem; line-height: 1; cursor: pointer; border-radius: 999px;
 }
+.reaction-picker button.sel {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+@media (hover: hover) {
+  .reaction-picker button:hover { background: rgba(255, 255, 255, 0.08); }
+}
+/* Lista „kto zareagował" — po tapnięciu w chipy. */
+.who-pop {
+  position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 60;
+  display: flex; flex-direction: column; gap: 5px;
+  min-width: 130px; padding: 8px 12px;
+  background: rgba(20, 23, 26, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.who-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 0.82rem;
+}
+.who-row b { font-weight: 600; }
+/* Przezroczysta warstwa łapiąca tap poza pickerem/listą. */
+.tap-catcher { position: fixed; inset: 0; z-index: 50; }
 
 /* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */
 .toast {
@@ -1308,11 +1135,9 @@ body.login-active .glass-bg { display: none; }
   align-items: center;
   gap: 6px;
   padding: 12px 18px;
-  background: rgba(13, 13, 17, 0.9);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
-  backdrop-filter: blur(14px) saturate(180%);
+  background: var(--card-2);
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: var(--radius);
   color: var(--text);
   text-decoration: none;
   font-size: 0.9rem;
@@ -1347,7 +1172,7 @@ main::before {
   z-index: 50;
   pointer-events: none;
   background: var(--bg);
-  animation: page-curtain 0.32s ease forwards;
+  animation: page-curtain 0.18s ease-out forwards;
 }
 @keyframes page-curtain {
   from { opacity: 1; }
@@ -1358,136 +1183,54 @@ main::before {
   main::before { animation: none; opacity: 0; }
 }
 
-/* Animacja rozwijania formularza nowego wypadu */
-.form-collapse {
-  display: grid;
-  grid-template-rows: 0fr;
-  /* Symetria: grid-template-rows/marginesy (właściwości LAYOUTU — zmiana reflowuje
-     formularz) nigdy nie są animowane rozciągnięte w czasie, tylko zatrzaskiwane
-     natychmiast (duration 0s). OTWIERANIE: snap na początku, treść wjeżdża przez
-     transform+opacity (kompozytor, 60fps, patrz niżej). ZAMYKANIE: treść najpierw
-     gaśnie (transform+opacity, 0.2-0.26s), a grid snapuje dopiero PO tym (delay) —
-     jeden reflow w jednej klatce zamiast rozmazany na ~8 klatek, i niewidoczny,
-     bo w tym momencie opacity jest już 0. */
-  transition: grid-template-rows 0s linear 0.26s,
-              margin-top 0s linear 0.26s,
-              margin-bottom 0s linear 0.26s,
-              opacity 0.2s ease 0.06s;
-  opacity: 0;
-  overflow: hidden;
-  /* Zaokrąglone przycięcie rodzica — inaczej prostokątny clip + szklany blur karty
-     daje kwadratowy róg wystający spod zaokrąglenia */
-  border-radius: var(--radius);
-  /* Ogranicz przeliczanie layoutu/malowania do tego poddrzewa. */
-  contain: layout paint;
-  margin-top: 0;
-  margin-bottom: 0;
+/* ===== Bottom sheet: formularz „Nowe lobby" wysuwa się znad doku ===== */
+.sheet-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: overlayFadeIn 0.2s ease both;
 }
-.form-collapse.open {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  margin-top: 16px;
-  margin-bottom: 16px;
-  /* Otwieranie bez animacji wysokości — instant, płynność niesie wsuwanie pól. */
-  transition: opacity 0.2s ease;
+.sheet {
+  width: 100%; max-width: 680px;
+  max-height: 88svh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 10px 20px calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -24px 48px rgba(0, 0, 0, 0.45);
 }
-.form-collapse > form,
-.form-collapse > div {
-  min-height: 0;
+/* Wewnętrzne scrollery (sheet, podpowiedzi lokalizacji) bez widocznego scrollbara —
+   jak globalny na html; przewijanie działa normalnie. */
+.sheet,
+.loc-suggestions {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.form-collapse .card,
-.form-collapse .empty-state {
-  margin-bottom: 0;
-  /* Wyłączamy backdrop-filter w zamkniętym stanie. Snap w tym samym momencie co
-     grid-template-rows (0.26s) — treść jest już niewidoczna, więc przeskok koloru
-     się nie zobaczy, a nie trzeba już rozciągać tego w osobnym, płynnym transition. */
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  transition: backdrop-filter 0s linear 0.26s, -webkit-backdrop-filter 0s linear 0.26s;
-}
-.form-collapse.open .card,
-.form-collapse.open .empty-state {
-  /* Włączamy backdrop-filter z opóźnieniem — dopiero po zakończeniu rozwijania grida */
-  -webkit-backdrop-filter: blur(30px) saturate(200%);
-  backdrop-filter: blur(30px) saturate(200%);
-}
+.sheet::-webkit-scrollbar,
+.loc-suggestions::-webkit-scrollbar { display: none; }
 
-/* Animacja zawartości (wygładzenie pojawiania się) */
-.form-collapse form > *,
-.form-collapse .empty-state > * {
-  opacity: 0;
-  transform: translateY(-8px);
-  /* Szybkie wygaszanie bez opóźnienia przy zamykaniu */
-  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+.sheet-grip {
+  width: 40px; height: 4px; border-radius: 2px;
+  background: var(--border-strong);
+  margin: 2px auto 14px;
 }
-.form-collapse.open form > *,
-.form-collapse.open .empty-state > * {
-  opacity: 1;
-  transform: translateY(0);
-  /* Płynne wejście z lekkim opóźnieniem przy otwieraniu */
-  transition: opacity 0.3s ease-out 0.08s, transform 0.35s cubic-bezier(0.25, 1, 0.5, 1) 0.08s;
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: sheet-in 0.34s cubic-bezier(0.32, 0.72, 0, 1); }
 }
-
-/* Kaskada pól po kolei — jak w stanie pustym przy pierwszym wypadzie */
-.form-collapse.open form > *:nth-child(1) { transition-delay: 0.12s; }
-.form-collapse.open form > *:nth-child(2) { transition-delay: 0.19s; }
-.form-collapse.open form > *:nth-child(3) { transition-delay: 0.26s; }
-.form-collapse.open form > *:nth-child(4) { transition-delay: 0.33s; }
-.form-collapse.open form > *:nth-child(5) { transition-delay: 0.40s; }
-.form-collapse.open form > *:nth-child(6) { transition-delay: 0.47s; }
-.form-collapse.open form > *:nth-child(7) { transition-delay: 0.54s; }
-
-/* Logo i branding w nagłówku (bezpieczne klasy przed AdBlockami) */
-.app-title-group {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  user-select: none;
-  opacity: 1 !important;
-  visibility: visible !important;
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
 }
-
-.app-title-icon {
-  width: 36px !important;
-  height: 36px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 11px !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  opacity: 1 !important;
-  visibility: visible !important;
+/* Zamykanie: sheet zjeżdża, scrim gaśnie; overlay trwa odrobinę dłużej, żeby
+   odmontowanie (animationend overlaya) nie ucięło końcówki zjazdu sheeta. */
+.sheet-overlay.closing { animation: overlay-fade-out 0.3s ease both; }
+.sheet-overlay.closing .sheet { animation: sheet-out 0.26s cubic-bezier(0.32, 0.72, 0, 1) both; }
+@keyframes overlay-fade-out {
+  to { opacity: 0; }
 }
-
-.app-title-icon svg {
-  display: block !important;
-  color: #ffffff !important;
-}
-
-@media (hover: hover) {
-  .app-title-group:hover .app-title-icon {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(255, 255, 255, 0.18) !important;
-    transform: scale(1.05) !important;
-  }
-}
-
-.app-title-text {
-  font-size: 1.25rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.022em !important;
-  color: #ffffff !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: inline-block !important;
-}
-
-.welcome-section h1 {
-  letter-spacing: -0.025em !important;
+@keyframes sheet-out {
+  to { transform: translateY(100%); }
 }
 
 .add-slot-wrapper {
@@ -1586,7 +1329,7 @@ main::before {
 .danger-link {
   background: transparent;
   border: none;
-  color: rgba(240, 69, 95, 0.6);
+  color: rgba(255, 93, 93, 0.6);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -1597,8 +1340,8 @@ main::before {
 
 @media (hover: hover) {
   .danger-link:hover {
-    color: rgba(240, 69, 95, 0.95);
-    text-shadow: 0 0 10px rgba(240, 69, 95, 0.25);
+    color: rgba(255, 93, 93, 0.95);
+    text-shadow: 0 0 10px rgba(255, 93, 93, 0.25);
   }
 }
 
@@ -1612,13 +1355,10 @@ main::before {
   margin: 6px 0 0;
   padding: 6px;
   list-style: none;
-  /* Ten sam glassowy materiał co karty/popover emoji (zamiast płaskiego #14141b). */
-  background: rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-sm);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.5);
+  background: var(--card-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   max-height: 260px;
   overflow-y: auto;
 }
@@ -1638,66 +1378,96 @@ main::before {
   font-weight: 500;
 }
 @media (hover: hover) {
-  .loc-suggestions button:hover { background: var(--card-2); }
+  .loc-suggestions button:hover { background: #232830; }
 }
 .loc-name { font-size: 0.95rem; }
 .loc-region { font-size: 0.78rem; color: var(--muted); }
 
-/* Chip pogody w karcie hero (dziedziczy układ z .event-meta) */
-.hero-weather { gap: 5px; }
-.hero-weather-emoji { font-size: 1rem; line-height: 1; }
-.hero-weather strong { color: var(--text); font-weight: 700; }
-
 /* ===== Bogata karta hero (układ z mockupu) ===== */
 .hero-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.hero-emoji {
-  width: 46px; height: 46px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
-  color: rgba(255, 255, 255, 0.9); /* stroke ikony (currentColor) */
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-.hero-head-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.hero-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
-.hero-badge {
-  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap;
-}
-.hero-badge-blue { color: #6cb6ff; background: rgba(10, 132, 255, 0.12); border-color: rgba(10, 132, 255, 0.3); }
-.hero-badge-green { color: var(--yes); background: rgba(31, 201, 142, 0.12); border-color: rgba(31, 201, 142, 0.3); }
+.hero-title { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.12; }
 
 .hero-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 
-/* Szklany pod-panel: avatary + „X z Y" + pasek postępu */
-.hero-panel {
-  background: rgba(10, 10, 16, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 16px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); /* górny highlight → wyraźna wnęka */
+/* Grid: Pogoda + Zbiórka (1 kafelek = pełna szerokość, 2 = podział).
+   Płaskie wiersze bez własnych ramek — mniej kart w kartach. */
+/* Kafelki pogody/godziny w obramowanym boxie (jak na mockupie hero);
+   półprzezroczyste tło + blur siada i na płaskiej karcie, i na fotce. */
+/* Ta sama szklana tafla co sloty graczy (fill + top-highlight) — kafelki nie mogą
+   być płaskie obok wypukłych slotów, cała dolna część karty gra jednym materiałem. */
+.hero-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--card-2) 80%, transparent);
+  backdrop-filter: blur(5px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  margin-top: 14px;
 }
-.hero-panel-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-
-/* Grid: Pogoda + Zbiórka (1 kafelek = pełna szerokość, 2 = podział) */
-.hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 10px; }
 .hero-tile {
-  display: flex; align-items: center; gap: 10px;
-  background: rgba(10, 10, 16, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 14px;
-  padding: 10px 12px;
+  display: flex; align-items: center; gap: 11px;
+  padding: 15px 16px;
   min-width: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); /* górny highlight → wyraźna wnęka */
 }
-.hero-tile-icon { color: rgba(255, 255, 255, 0.82); flex-shrink: 0; }
-.hero-tile-main { font-size: 0.9rem; font-weight: 700; color: var(--text); }
-.hero-tile-sub { font-size: 0.72rem; color: rgba(255, 255, 255, 0.62); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Etykieta „X z Y dało znać" w hero — odrobinę czytelniejsza niż globalny .muted. */
-.hero-panel-top .muted { color: rgba(255, 255, 255, 0.62); }
+/* Blok tekstu kafelka musi móc się kurczyć, inaczej długi opis pogody
+   („Częściowe zachmurzenie") rozpycha kafelek i nachodzi na sąsiedni. */
+.hero-tile > div { min-width: 0; }
+
+/* Kafelek pogody jako przycisk (otwiera modal prognozy) — reset wyglądu buttona,
+   żeby był nie do odróżnienia od zwykłego kafelka. */
+.hero-tile-btn {
+  appearance: none; background: none; border: 0;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.hero-tile-btn:active { opacity: 0.75; }
+
+/* ===== Modal szczegółowej prognozy (WeatherModal) ===== */
+.wx-modal { max-width: 340px; }
+.wx-sub { margin: 2px 0 12px; }
+.wx-sub::first-letter { text-transform: uppercase; }
+.wx-summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; margin-bottom: 12px;
+  background: var(--card-2); border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.wx-summary b { font-family: var(--mono); font-size: 1.3rem; }
+.wx-summary span { font-size: 0.82rem; color: var(--muted); }
+.wx-rows {
+  max-height: 46vh; overflow-y: auto; text-align: left;
+  /* Bez widocznego scrollbara (jak sheet) i bez łańcuchowania scrolla na stronę
+     pod modalem, gdy lista dobije do końca. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: contain;
+}
+.wx-rows::-webkit-scrollbar { display: none; }
+.wx-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.wx-row:last-child { border-bottom: 0; }
+.wx-row .wx-h { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); width: 44px; }
+.wx-row .wx-i { color: var(--muted); flex-shrink: 0; }
+.wx-row .wx-t { font-family: var(--mono); font-weight: 700; width: 40px; }
+.wx-row .wx-p { font-size: 0.75rem; color: var(--muted); flex: 1; }
+.wx-row .wx-tag {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700; letter-spacing: 0.12em;
+  color: var(--accent); background: var(--accent-dim);
+  padding: 3px 7px; border-radius: 6px;
+}
+.wx-row.hot {
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
+  border-bottom-color: transparent;
+}
+.wx-row.hot .wx-h, .wx-row.hot .wx-i { color: var(--text); }
+.hero-tile + .hero-tile { border-left: 1px solid var(--border); }
+.hero-tile-icon { color: var(--muted); flex-shrink: 0; }
+.hero-tile-main { font-family: var(--mono); font-size: 1.15rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.hero-tile-sub { font-size: 0.78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
 .emoji-picker { position: relative; }
@@ -1722,15 +1492,11 @@ main::before {
    absolutny popover pod kolejnym polem. W przepływie po prostu rozpycha pola pod sobą. */
 .emoji-popover {
   margin-top: 8px;
-  /* Ten sam glassowy materiał co karty (zamiast płaskiego, niebieskawego #14141a) —
-     spójne z resztą apki. */
-  background: rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
+  background: var(--card-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   padding: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .emoji-chip {
@@ -1745,3 +1511,603 @@ main::before {
 }
 .emoji-chip.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.13); }
 .emoji-clear { margin-top: 10px; width: 100%; }
+
+/* ===== Skórka „Lobby": wordmark, skład, segmenty gotowości, MOTD, dok CTA ===== */
+
+/* Wordmark WYPAD.EXE z migającym kursorem */
+.wordmark {
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.wordmark span { color: var(--accent); }
+.cursor::after { content: '_'; color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .cursor::after { animation: cursor-blink 1.1s steps(2, start) infinite; }
+  @keyframes cursor-blink { to { visibility: hidden; } }
+}
+
+/* Skład = sloty graczy (2 kolumny). Pusty slot MA być widoczny —
+   apka powstała, bo ktoś został w domu. */
+.squad {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 14px; padding-top: 13px;
+}
+/* Sloty graczy bez szarych obrysów: głębię robi „glass" (przezroczysty fill +
+   top-highlight), a stan niesie halo w kolorze głosu, które miękko rozchodzi się
+   zza awatara w tło slotu (radial zakotwiczony w środku awatara — światło jest
+   symetryczne, bez „zabrudzonego rogu") + kolorowa labelka. Bez ringów na
+   awatarach — zero twardych elementów. Ramka zostaje TYLKO tam, gdzie coś znaczy:
+   przerywana na AFK (puste miejsce w składzie), akcentowa na twoim pustym slocie. */
+.slot-p {
+  display: flex; align-items: center; gap: 9px;
+  background: color-mix(in srgb, var(--card-2) 80%, transparent);
+  backdrop-filter: blur(5px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  min-width: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.slot-p.s-yes   { --state: var(--yes); }
+.slot-p.s-maybe { --state: var(--maybe); }
+.slot-p.s-no    { --state: var(--no); }
+/* Łuna i ring przyciszone tak, by slot z głosem był z TEJ SAMEJ materii co reszta
+   (bez efektu „jeden kafelek 3D wśród płaskich") — kolor to informacja, nie relief. */
+.slot-p.s-yes, .slot-p.s-maybe, .slot-p.s-no {
+  background:
+    radial-gradient(90% 160% at 24px 50%, color-mix(in srgb, var(--state) 13%, transparent), transparent 58%),
+    color-mix(in srgb, var(--card-2) 80%, transparent);
+}
+.slot-p .who { min-width: 0; flex: 1; }
+.slot-p .who b {
+  display: block; font-size: 0.8rem; font-weight: 600; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.slot-p .who span {
+  display: block; font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; line-height: 1.5; color: var(--muted);
+}
+.slot-p.s-yes .who span { color: var(--yes); }
+.slot-p.s-no .who span { color: var(--no); }
+/* „może" w bursztynie — labelka jest źródłem poświaty, więc musi mieć jej kolor */
+.slot-p.s-maybe .who span { color: var(--maybe); }
+/* AFK z tej samej szklanej tafli co reszta (tylko lżejszy fill) — różni go kreska,
+   nie materiał; przezroczysta dziura obok wypełnionych slotów robiła dysonans. */
+.slot-p.s-none {
+  border-style: dashed; border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--card-2) 55%, transparent);
+}
+.slot-p.s-none .who b { color: var(--muted); }
+.slot-p.s-none .who span { color: var(--accent); }
+/* AFK = szara morda (jak offline na Discordzie) */
+.slot-p.s-none .avatar { filter: grayscale(1); opacity: 0.75; }
+/* TWÓJ pusty slot — sygnałowa dziura w składzie */
+.slot-p.is-you { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-dim); }
+.slot-p.is-you .avatar { filter: none; opacity: 1; }
+.slot-p.is-you .who b { color: var(--text); }
+
+/* Segmenty gotowości: N osób = N segmentów, nie procenty */
+.readybar { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.segs { display: flex; gap: 4px; flex: 1; }
+.segs i { height: 5px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
+.segs i.on-yes { background: var(--yes); border-color: var(--yes); }
+.segs i.on-maybe { background: var(--maybe); border-color: var(--maybe); }
+.segs i.on-no { background: var(--no); border-color: var(--no); }
+.readybar b {
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.1em; color: var(--text); font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.readybar b span { color: var(--muted); font-weight: 600; }
+
+/* Miniatura segmentów w kartach listy */
+.mini-segs { display: flex; gap: 3px; flex: 1; max-width: 96px; }
+.mini-segs i { height: 4px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
+.mini-segs i.on-yes { background: var(--yes); border-color: var(--yes); }
+.mini-segs i.on-maybe { background: var(--maybe); border-color: var(--maybe); }
+.mini-segs i.on-no { background: var(--no); border-color: var(--no); }
+
+/* Przełącznik archiwum — cichy mono-wiersz pod „Bylim już" */
+.archive-toggle {
+  display: block;
+  margin: 22px auto 0;
+  padding: 8px 16px;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 0.64rem; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: #5c656d;
+}
+@media (hover: hover) {
+  .archive-toggle:hover { color: var(--muted); border-color: var(--border-strong); background: none; }
+}
+
+/* MOTD — cytat dnia jak message of the day serwera (klik losuje kolejny) */
+.motd {
+  margin: 26px 4px 0;
+  display: flex; gap: 10px; align-items: baseline;
+  cursor: pointer; user-select: none;
+}
+.motd-label {
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.16em; color: var(--accent); flex-shrink: 0;
+}
+.motd .quote-text { font-size: 0.85rem; color: var(--muted); font-style: italic; }
+
+/* Blokada orientacji: manifest (orientation: portrait) łapie Android; iOS go
+   ignoruje, więc telefon w poziomie dostaje planszę. Warunki wykluczają desktop
+   (hover/pointer) i iPady w poziomie (max-width). */
+.rotate-guard { display: none; }
+@media (orientation: landscape) and (hover: none) and (pointer: coarse) and (max-width: 1023px) {
+  .rotate-guard {
+    position: fixed; inset: 0; z-index: 300;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px;
+    background: var(--bg);
+  }
+  .rotate-guard .phone { font-size: 2.2rem; transform: rotate(90deg); }
+  .rotate-guard b {
+    font-family: var(--mono); font-size: 0.8rem; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--text);
+  }
+  .rotate-guard span { font-size: 0.85rem; color: var(--muted); }
+}
+
+/* Dok CTA na dole ekranu — pod kciukiem, nad safe area */
+.cta-dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  padding: 26px 20px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 55%, transparent);
+  display: flex; justify-content: center;
+  pointer-events: none;
+}
+.cta-dock > * { pointer-events: auto; width: 100%; max-width: 640px; }
+/* Miejsce na dok, żeby ostatnia karta nie chowała się pod CTA */
+main.has-dock { padding-bottom: 24px; }
+
+/* Ready check w hero — głosujesz prosto z dashboardu */
+.hero-vote { border-top: 1px solid var(--border); margin-top: 13px; padding-top: 12px; }
+.hero-vote-label {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--muted); margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.hero-vote-label b { color: var(--text); font-variant-numeric: tabular-nums; }
+.hero-vote-label .more { color: var(--muted); font-weight: 600; letter-spacing: 0.1em; white-space: nowrap; }
+.seg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.seg3 button {
+  font-family: var(--mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+  padding: 12px 6px; border-radius: var(--radius-sm); cursor: pointer;
+  background: color-mix(in srgb, #fff 4%, var(--card-2));
+  color: var(--muted); border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.seg3 button.on-yes { background: var(--yes); border-color: var(--yes); color: #062b18; }
+.seg3 button.on-maybe { background: var(--maybe); border-color: var(--maybe); color: #2a1e00; }
+.seg3 button.on-no { background: var(--no); border-color: var(--no); color: #fff; }
+
+/* Zajawka ostatniej wiadomości z czatu w karcie misji (jeden aktywny wypad) */
+.peek {
+  display: flex; gap: 9px; align-items: flex-start;
+  border-top: 1px solid var(--border);
+  margin-top: 13px; padding-top: 12px;
+}
+.peek-body { min-width: 0; flex: 1; }
+.peek-head { display: flex; align-items: baseline; gap: 7px; }
+.peek-head b { font-size: 0.8rem; font-weight: 700; }
+.peek-head time { font-family: var(--mono); font-size: 0.64rem; color: var(--muted); }
+.peek-body p { margin: 0; font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* AFK + „Pinguj kurwę" (strona wypadu): kto się opierdala, z przyciskiem pinga */
+.afk {
+  display: flex; align-items: center; gap: 11px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.afk + .afk { margin-top: 8px; }
+.afk .avatar { filter: grayscale(1); opacity: 0.8; }
+.afk-text { flex: 1; min-width: 0; }
+.afk-text b { display: block; font-size: 0.82rem; font-weight: 600; }
+.afk-text span {
+  display: block; font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--accent);
+}
+.nudge {
+  flex-shrink: 0;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  padding: 9px 12px; border-radius: var(--radius-sm);
+}
+@media (hover: hover) {
+  .nudge:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+}
+.nudge:disabled { opacity: 0.55; cursor: default; }
+
+/* Sekcje strony wypadu — płasko, bez zewnętrznych kart (karta w karcie = szum) */
+.ev-section { margin: 24px 0; }
+.ev-section > .section-label { margin-left: 4px; }
+
+/* Liść daty: jednodniowy termin jak kartka z rozkładu (zakres zostaje mono-linią) */
+.slot-when-wrap { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+.leaf {
+  font-family: var(--mono);
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 40px; line-height: 1.15; flex-shrink: 0;
+}
+.leaf .dow { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); }
+.leaf .day { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.leaf .mon { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); }
+.slot-when { min-width: 0; }
+.slot-when b { display: block; font-size: 0.95rem; font-weight: 600; line-height: 1.25; white-space: nowrap; }
+.slot-when span {
+  display: block; font-family: var(--mono); font-size: 0.68rem;
+  color: var(--muted); letter-spacing: 0.04em; white-space: nowrap;
+}
+
+/* ===== Zgodność 1:1 z mockupem „Lobby" v2 ===== */
+
+/* Rail: etykieta sekcji + chip statusu w jednej linii */
+.rail { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 20px 4px 10px; }
+/* Pierwsza sekcja tuż pod nagłówkiem — bez podwójnej przerwy logo → treść */
+.glass-page > section:first-of-type > .rail,
+.glass-page > section:first-of-type > .section-label { margin-top: 6px; }
+.rail .section-label { margin: 0; }
+.chip {
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.12em; padding: 3px 10px; border-radius: 6px; white-space: nowrap;
+}
+.chip.hot { color: var(--accent); background: var(--accent-dim); border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); }
+/* Komplet głosów = sukces, nie alarm — chip zielenieje. */
+.chip.ok { color: var(--yes); background: rgba(61, 220, 139, 0.12); border: 1px solid rgba(61, 220, 139, 0.3); }
+
+/* Rozkład: płaskie wiersze list zamiast kart */
+.board { border-top: 1px solid var(--border); }
+.trow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none; color: var(--text);
+  transition: background 0.15s ease, transform 0.06s ease;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none;
+}
+@media (hover: hover) {
+  .trow:hover { background: var(--card); text-decoration: none; }
+}
+.trow:active { transform: scale(0.995); }
+.trow-main { flex: 1; min-width: 0; }
+.trow-main b {
+  display: block; font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trow-main > span {
+  display: block; font-family: var(--mono); font-size: 0.68rem; color: var(--muted);
+  letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trow .mini-segs { flex: none; width: 44px; }
+
+/* Nagłówek hero: tytuł + meta (miejsce · mono-data), bez boxa emoji i plakietki */
+.hero-title-block { flex: 1; min-width: 0; }
+.hero-title-block .hero-title { display: block; }
+/* Baseline, nie center: mono-data i tekst systemowy mają różne metryki pionowe —
+   środkowanie boxów podnosiło datę względem miejsca. */
+.hero-title-block .hero-meta { margin: 5px 0 0; gap: 8px; align-items: baseline; }
+/* Scale pass: meta hero większa niż na innych kartach (miejsce · data) */
+.hero-title-block .hero-meta .event-meta { font-size: 0.95rem; }
+.hero-title-block .hero-meta .mono-date { font-size: 0.92rem; }
+/* Miejsce (pin + tekst) jako zwykły inline, nie inline-flex: baseline inline-flexa
+   liczy się z PIERWSZEGO dziecka, czyli SVG (baseline = dół ikony), a Blink i WebKit
+   syntetyzują ją odrobinę inaczej — na telefonie „Warszawa" siadała wyżej. W zwykłym
+   inline baseline bierze się z tekstu i wszędzie wypada tak samo. */
+.hero-title-block .hero-meta .event-meta { display: inline; }
+.hero-title-block .hero-meta .event-meta svg { vertical-align: -2px; margin-right: 4px; }
+.hero-meta .sep { opacity: 0.45; color: var(--muted); }
+.mono-date {
+  font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--text);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+
+/* Karta misji: skład jako pionowy roster + etykiety TY/HOST + mały Pinguj */
+.squad.roster { grid-template-columns: 1fr; gap: 6px; }
+.squad.roster .slot-p { padding: 9px 10px; }
+.squad.roster .who b { font-size: 0.86rem; }
+.slot-p .side {
+  flex-shrink: 0; font-family: var(--mono); font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--muted);
+}
+.nudge-sm {
+  flex-shrink: 0; cursor: pointer;
+  font-size: 0.72rem; font-weight: 600;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  padding: 7px 10px; border-radius: 6px;
+}
+
+/* Strona wypadu: nav „LOBBY" obok wstecz */
+.nav-row { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.nav-row .back-btn-round { margin-bottom: 0; }
+.nav-label {
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
+}
+
+/* Chipy głosów przy terminie: morda + mono-status (READY/MOŻE/DODGE) */
+.voter-chip {
+  font-family: var(--mono); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Głosowanie w slocie + LOCK IN pod terminami */
+.slot-seg3 { margin-top: 12px; }
+.lockin-btn { width: 100%; margin: 2px 0 12px; }
+
+/* Ikonkowy przycisk wysyłki w czacie */
+.comment-form .send {
+  flex-shrink: 0; width: 46px; height: 46px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--accent-ink);
+  border-radius: var(--radius-sm);
+}
+
+/* ===== Animacje skórki „Lobby" =====
+   Zasady (nauczka z iOS): wyłącznie transform/opacity na kompozytorze albo krótkie
+   one-shoty; żadnych blurów, blend-mode'ów ani nieskończonych animacji malowania.
+   Wszystko pod @media (prefers-reduced-motion: no-preference). */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Wejście: sekcje wjeżdżają kaskadą spod kurtyny (dashboard i strona wypadu).
+     Kierunek niesie ZMIENNA --enter-from (ustawiana przez <html data-nav>), a nie
+     podmiana animation-name: zmiana nazwy animacji RESTARTUJE ją — klik „wstecz"
+     ustawiał data-nav zanim router podmienił stronę i jeszcze widoczna strona
+     odgrywała od zera wejście w przeciwnym kierunku (skok w lewo + fade = jitter).
+     Zmiana zmiennej nie restartuje niczego, a skończone animacje są na nią głuche. */
+  .glass-page > section,
+  .glass-page > .motd,
+  .glass-page > .nav-row,
+  .glass-page > .app-header,
+  .glass-page > .event-description,
+  .glass-page > .vote-status,
+  .glass-page > .readonly-note {
+    animation: enter-in 0.52s cubic-bezier(0.22, 0.9, 0.3, 1) 0.06s backwards;
+  }
+  .glass-page > section:nth-of-type(2) { animation-delay: 0.15s; }
+  .glass-page > section:nth-of-type(3) { animation-delay: 0.24s; }
+  .glass-page > .motd { animation-delay: 0.3s; }
+
+  /* Kierunek: wejście w wypad z prawej, powrót z lewej, pierwsze malowanie z dołu. */
+  html[data-nav='forward'] { --enter-from: translateX(44px); }
+  html[data-nav='back'] { --enter-from: translateX(-44px); }
+
+  /* Scoreboard buduje się wiersz po wierszu: karty terminów wchodzą kaskadą.
+     nth-of-type liczy divy w sekcji — pierwszy jest rail, sloty od 2. */
+  .ev-section .slot { animation: rise-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+  .ev-section .slot:nth-of-type(2) { animation-delay: 0.08s; }
+  .ev-section .slot:nth-of-type(3) { animation-delay: 0.15s; }
+  .ev-section .slot:nth-of-type(4) { animation-delay: 0.22s; }
+  .ev-section .slot:nth-of-type(5) { animation-delay: 0.29s; }
+  .ev-section .slot:nth-of-type(6) { animation-delay: 0.36s; }
+  .ev-section .slot:nth-of-type(n + 7) { animation-delay: 0.43s; }
+
+  /* Dok CTA wsuwa się od dołu po wejściu treści */
+  .cta-dock { animation: dock-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s backwards; }
+
+  /* Hero czekające na TWÓJ głos: pulsująca sygnałowa obwódka (ready check woła) */
+  .event-rich.hero.needs-you::after {
+    content: '';
+    position: absolute; inset: -1px;
+    border: 1px solid var(--accent);
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    animation: ring-pulse 2.4s ease-in-out infinite;
+  }
+
+  /* Kropka „live" przy chipie odliczania */
+  .chip.hot::before {
+    content: '';
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
+    margin-right: 7px; vertical-align: 1px;
+    animation: blink-dot 1.6s ease-in-out infinite;
+  }
+
+  /* Segment gotowości strzela w górę, gdy ktoś da znać */
+  .segs i.on-yes, .segs i.on-maybe, .segs i.on-no,
+  .mini-segs i.on-yes, .mini-segs i.on-maybe, .mini-segs i.on-no { animation: seg-pop 0.35s ease; }
+
+  /* Zaznaczony głos lekko „doskakuje" */
+  .seg3 button.on-yes, .seg3 button.on-maybe, .seg3 button.on-no {
+    animation: vote-pop 0.22s ease;
+  }
+
+  /* Klepnięcie terminu (LOCK IN / objęcie prowadzenia): zielony błysk karty.
+     rise-in ZOSTAJE w liście — podmiana całej animacji na sam błysk restartowała
+     wejście przy każdej zmianie stanu (utrata „prowadzi" po zmianie głosu =
+     karta znikała i odgrywała wjazd od zera). Ta sama nazwa w obu stanach nie
+     restartuje niczego; błysk tylko dochodzi i schodzi z listy. */
+  .ev-section .slot.confirmed {
+    animation:
+      rise-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards,
+      lockin-flash 0.7s ease;
+  }
+
+  /* Wjeżdżają tylko NOWE wiadomości czatu (realtime/własne) — historia z fetchu
+     montuje się już po wejściu strony i odgrywałaby animację z poślizgiem. */
+  .comment.comment-fresh { animation: rise-in 0.3s ease backwards; }
+
+  /* AFK oddycha — status obija się o wzrok, nie krzyczy */
+  .afk-text span, .slot-p.s-none .who span { animation: afk-pulse 2.8s ease-in-out infinite; }
+}
+
+@keyframes dock-in {
+  from { opacity: 0; transform: translateY(16px); }
+}
+@keyframes enter-in {
+  from { opacity: 0; transform: var(--enter-from, translateY(14px)); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ring-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.55; }
+}
+@keyframes blink-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@keyframes seg-pop {
+  50% { transform: scaleY(1.9); }
+}
+@keyframes vote-pop {
+  50% { transform: scale(1.05); }
+}
+@keyframes lockin-flash {
+  0% { background-color: rgba(61, 220, 139, 0.22); }
+}
+@keyframes afk-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Płynne przejścia stanów (poza reduced-motion — to feedback, nie dekoracja) */
+.event-rich.hero { position: relative; }
+.segs i, .mini-segs i { transition: background-color 0.35s ease, border-color 0.35s ease; }
+.seg3 button { transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.06s ease; }
+
+/* Dialog potwierdzenia/alertu (appConfirm/appAlert) — mały modal w skórce */
+.profile-modal.dialog { max-width: 320px; text-align: left; padding: 22px 20px 20px; }
+.dialog-msg { margin: -6px 0 18px; font-size: 0.92rem; line-height: 1.45; color: var(--text); }
+.dialog-actions { display: flex; gap: 8px; }
+.dialog-actions > button { flex: 1; }
+/* Destrukcyjne potwierdzenie — pełna czerwień, jednoznacznie */
+button.solid-danger { background: var(--no); color: #fff; }
+@media (hover: hover) {
+  button.solid-danger:hover { background: #ff7373; }
+}
+
+/* ===== Hero ze zdjęciem (fotka-nastrój) =====
+   Kadr, zoom, filtry i tekstury dostrojone przez właściciela w placu zabaw
+   (na pełnych, nieprzyciętych zdjęciach). Warstwa .hp-img to background-image
+   (background-size = zoom, background-position = kadr). Bez zdjęcia (brak
+   .hero-photo) karta wygląda jak dotąd — fallback pierwszej klasy. */
+.hero-photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* Gradacja „głęboka czerń + jeden żywy akcent": zamiast tłumić całe zdjęcie szarością,
+   podbijamy kontrast i nasycenie (światła mają świecić), a czerń robi scrim niżej.
+   Lekki blur zostaje — maskuje kompresję mocno ściśniętych JPEG-ów. */
+.hero-photo .hp-img {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: 163%;
+  background-position: 77% 10%;
+  /* Jasność per kategoria (suwak w edytorze) przez zmienną; reszta filtrów stała. */
+  filter: saturate(1.25) contrast(1.18) brightness(var(--hp-bright, 0.92)) blur(1.5px);
+}
+.hero-photo i { position: absolute; inset: 0; }
+.hero-photo .hp-tint { background: var(--accent); mix-blend-mode: color; opacity: 0; }
+.hero-photo .hp-half {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.5) 1px, transparent 1.4px);
+  background-size: 3px 3px;
+  opacity: 0.06;
+}
+.hero-photo .hp-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  opacity: 0.35;
+}
+.hero-photo .hp-vig {
+  background: radial-gradient(ellipse at 62% 32%, transparent 52%, rgba(0, 0, 0, 0.5) 100%);
+}
+/* Scrim do CZYSTEJ czerni, układany pod treścią: pion (dół = roster/kafelki) +
+   skos od lewej (tytuł/meta). Prawa-górna strefa kadru zostaje żywa — tam mieszka
+   światło zdjęcia (kadry celują tematem w górną-prawą, zob. heroImage.ts). */
+.hero-photo .hp-scrim {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0.18) 30%,
+      rgba(0, 0, 0, 0.62) 62%,
+      #000 100%
+    ),
+    linear-gradient(100deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.38) 42%, transparent 70%);
+}
+/* Treść hero nad fotką */
+.event-rich.hero > *:not(.hero-photo) { position: relative; z-index: 1; }
+
+/* Emoji wypadu duże nad tytułem (jak na mockupie) */
+.hero-emoji-top { font-size: 44px; line-height: 1; margin-bottom: 10px; }
+
+/* Rząd hosta pod tytułem: awatar + nick + HOST (mockup „Lobby") */
+.hero-host { display: flex; align-items: center; gap: 9px; margin-top: 8px; }
+.hero-host b { font-size: 0.94rem; font-weight: 650; }
+.hero-host .host-tag {
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--accent);
+}
+.hero-host .host-tag::before { content: "· "; color: var(--muted); }
+
+/* Hero oddycha spacingiem, nie liniami — separator składu zostaje na innych kartach */
+.event-rich.hero .squad { border-top: 0; padding-top: 0; }
+
+
+
+/* ===== Edytor kadru hero (admin: HeroCropEditor) ===== */
+.crop-modal { max-width: 400px; }
+.crop-cats {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+}
+.crop-cat {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--card-2);
+  font-size: 20px; line-height: 1; cursor: pointer;
+  display: grid; place-items: center;
+}
+.crop-cat.on { border-color: var(--accent); background: var(--accent-dim); }
+/* Wierny podgląd karty hero */
+.crop-card {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background:
+    radial-gradient(rgba(232, 237, 240, 0.045) 1px, transparent 1px) 0 0 / 14px 14px,
+    var(--card);
+  padding: 18px 16px; margin-bottom: 16px;
+}
+.crop-card-content { position: relative; z-index: 1; }
+.crop-card .hero-host .host-tag,
+.crop-card .host-tag { font-family: var(--mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.14em; color: var(--accent); }
+.crop-card .host-tag::before { content: "· "; color: var(--muted); }
+.crop-ava {
+  width: 24px; height: 24px; border-radius: 50%; background: #262b31;
+  display: grid; place-items: center; font-size: 13px; flex: none;
+}
+.crop-ctl {
+  display: grid; grid-template-columns: 96px 1fr 46px; align-items: center;
+  gap: 10px; margin-bottom: 8px;
+}
+.crop-ctl label { font-size: 0.82rem; }
+.crop-ctl input[type="range"] { width: 100%; accent-color: var(--accent); }
+.crop-ctl output {
+  font-family: var(--mono); font-size: 0.74rem; color: var(--muted);
+  text-align: right; font-variant-numeric: tabular-nums;
+}

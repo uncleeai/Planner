@@ -7,7 +7,6 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
 import { Avatar } from '@/components/Avatar';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
-import { useBackground } from '@/lib/background';
 import { resyncPushSubscription } from '@/lib/push';
 import { isAdminEmail } from '@/lib/admin';
 import type { EventRow } from '@/lib/types';
@@ -141,56 +140,37 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-// Tło wideo tylko na ekranie logowania (świadoma decyzja: krótka chwila, jedna
-// karta). Globalną aurorę chowamy klasą na <body>, żeby nie liczyć dwóch teł naraz.
-// Szanuje przełącznik tła (gdy wyłączone — czyste ciemne tło, bez dekodowania wideo).
-function LoginBackground() {
-  const { enabled } = useBackground();
-
-  useEffect(() => {
-    document.body.classList.add('login-active');
-    return () => document.body.classList.remove('login-active');
-  }, []);
-
-  if (!enabled) return null;
-
-  return (
-    <div className="login-bg" aria-hidden="true">
-      <div className="glass-aurora">
-        <i className="aurora-blob b1" />
-        <i className="aurora-blob b2" />
-        <i className="aurora-blob b3" />
-        <i className="aurora-blob b4" />
-        <i className="aurora-blob b5" />
-        <i className="aurora-blob b6" />
-      </div>
-    </div>
-  );
-}
-
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [isPreview, setIsPreview] = useState(false);
-
-  // Guzik „gość" pokazujemy na preview i lokalnie (każdy adres *.vercel.app oraz localhost).
-  // Na własnej domenie produkcyjnej się nie pokaże.
-  useEffect(() => {
-    const h = window.location.hostname;
-    setIsPreview(h.endsWith('.vercel.app') || h.includes('localhost') || h.startsWith('127.'));
-  }, []);
 
   async function sendCode(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || busy) return;
     setBusy(true);
     setError('');
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
+    // Zamknięta paczka: nie tworzymy nowych kont z apki. Dostęp mają tylko adresy
+    // zaproszone w panelu Supabase (Authentication → Users → Invite) — reszta
+    // odbija się tutaj. To „allowlista" trzymana przez samo Supabase, bez listy
+    // maili w kodzie. Zob. README → „Logowanie".
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: false },
+    });
     if (error) {
-      setError(error.message);
+      // Adres spoza składu (konto nie istnieje) → przyjazny komunikat zamiast
+      // technicznego „Signups not allowed for otp".
+      const notInvited =
+        (error as { code?: string }).code === 'otp_disabled' ||
+        /signups? not allowed|otp_disabled/i.test(error.message);
+      setError(
+        notInvited
+          ? 'Ten adres nie jest na liście paczki. Odezwij się do organizatora, żeby Cię dodał.'
+          : error.message,
+      );
       setBusy(false);
       return;
     }
@@ -216,30 +196,14 @@ function LoginForm() {
     // onAuthStateChange ustawi sesję i przełączy widok — w TEJ przeglądarce.
   }
 
-  async function guestLogin() {
-    if (busy) return;
-    setBusy(true);
-    setError('');
-    const { error } = await supabase.auth.signInAnonymously({
-      options: {
-        data: {
-          display_name: `Gość ${Math.floor(Math.random() * 900 + 100)}`,
-          avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
-        },
-      },
-    });
-    if (error) {
-      setError(error.message);
-      setBusy(false);
-    }
-  }
-
   return (
     <main className="glass-page auth-screen">
-      <LoginBackground />
+      <div className="wordmark cursor" style={{ textAlign: 'center', marginBottom: 18 }}>
+        WYPAD<span>.EXE</span>
+      </div>
       {!sent ? (
         <form className="card" onSubmit={sendCode}>
-          <h2>Logowanie</h2>
+          <div className="modal-label">Logowanie</div>
           <div className="field">
             <label htmlFor="email">E-mail</label>
             <input
@@ -254,7 +218,7 @@ function LoginForm() {
             />
           </div>
           {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-          <button type="submit" disabled={!email.trim() || busy}>
+          <button type="submit" className="cta-gradient" disabled={!email.trim() || busy}>
             {busy ? 'Wysyłam…' : 'Wyślij kod'}
           </button>
           <p className="small muted mt">
@@ -264,7 +228,7 @@ function LoginForm() {
         </form>
       ) : (
         <form className="card" onSubmit={verify}>
-          <h2>Wpisz kod</h2>
+          <div className="modal-label">Wpisz kod</div>
           <p className="small muted">Wysłaliśmy 6-cyfrowy kod na <strong>{email}</strong>.</p>
           <div className="field">
             <label htmlFor="code">Kod z maila</label>
@@ -280,7 +244,7 @@ function LoginForm() {
             />
           </div>
           {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-          <button type="submit" disabled={!code.trim() || busy}>
+          <button type="submit" className="cta-gradient" disabled={!code.trim() || busy}>
             {busy ? 'Sprawdzam…' : 'Zaloguj'}
           </button>
           <button
@@ -291,19 +255,6 @@ function LoginForm() {
             Zmień e-mail / wyślij ponownie
           </button>
         </form>
-      )}
-
-      {/* Guzik gościa tymczasowo wyłączony */}
-      {false && isPreview && (
-        <button
-          type="button"
-          className="ghost mt"
-          style={{ width: '100%' }}
-          disabled={busy}
-          onClick={guestLogin}
-        >
-          Wejdź bez logowania (gość)
-        </button>
       )}
     </main>
   );
@@ -358,8 +309,11 @@ function SetupForm({
 
   return (
     <main className="glass-page auth-screen">
+      <div className="wordmark cursor" style={{ textAlign: 'center', marginBottom: 18 }}>
+        WYPAD<span>.EXE</span>
+      </div>
       <form className="card" onSubmit={save}>
-        <h2>Twój profil</h2>
+        <div className="modal-label">Twój profil</div>
         <p className="small muted">Tę nazwę i awatar zobaczą inni przy Twoich głosach.</p>
         <div className="field">
           <label htmlFor="name">Imię</label>
@@ -376,7 +330,7 @@ function SetupForm({
           <label>Awatar</label>
           <div className="row" style={{ alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <Avatar name={name || 'Ty'} avatar={avatar} size={56} />
-            <button type="button" className="ghost chip" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            <button type="button" className="ghost" disabled={uploading} onClick={() => fileRef.current?.click()}>
               {uploading ? 'Wgrywam…' : '📷 Wgraj zdjęcie'}
             </button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
@@ -396,7 +350,7 @@ function SetupForm({
           </div>
         </div>
         {error && <p className="small" style={{ color: 'var(--no)' }}>{error}</p>}
-        <button type="submit" disabled={!name.trim() || busy}>
+        <button type="submit" className="cta-gradient" disabled={!name.trim() || busy}>
           {busy ? 'Zapisuję…' : 'Gotowe'}
         </button>
       </form>

@@ -2,7 +2,8 @@ import React from 'react';
 
 // Lekki renderer markdownu → elementy React (bez surowego HTML = bez ryzyka XSS,
 // bez zależności). Obsługuje: **pogrubienie**, *kursywę*/_kursywę_, listy „- "/„* "
-// i numerowane „1. ", linki [tekst](url) oraz gołe URL-e. Reszta to zwykły tekst.
+// i numerowane „1. ", nagłówki „# " (mono-etykieta sekcji), separator „---",
+// linki [tekst](url) oraz gołe URL-e. Reszta to zwykły tekst.
 
 const INLINE =
   /\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)|[_*](.+?)[_*]/g;
@@ -38,6 +39,8 @@ function renderInline(text: string, kp: string): React.ReactNode[] {
 const isBlank = (l: string) => /^\s*$/.test(l);
 const isBullet = (l: string) => /^\s*[-*]\s+/.test(l);
 const isNumbered = (l: string) => /^\s*\d+\.\s+/.test(l);
+const isHeading = (l: string) => /^\s*#{1,3}\s+/.test(l);
+const isRule = (l: string) => /^\s*-{3,}\s*$/.test(l);
 
 export function Markdown({ text }: { text: string }) {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
@@ -47,6 +50,18 @@ export function Markdown({ text }: { text: string }) {
 
   while (i < lines.length) {
     if (isBlank(lines[i])) {
+      i++;
+      continue;
+    }
+    if (isRule(lines[i])) {
+      blocks.push(<hr key={key++} />);
+      i++;
+      continue;
+    }
+    if (isHeading(lines[i])) {
+      blocks.push(
+        <h4 key={key++}>{renderInline(lines[i].replace(/^\s*#{1,3}\s+/, ''), `h${key}`)}</h4>,
+      );
       i++;
       continue;
     }
@@ -71,7 +86,11 @@ export function Markdown({ text }: { text: string }) {
     // Akapit: ciąg niepustych, nie-listowych linii (pojedynczy newline → <br>).
     const para: React.ReactNode[] = [];
     let first = true;
-    while (i < lines.length && !isBlank(lines[i]) && !isBullet(lines[i]) && !isNumbered(lines[i])) {
+    while (
+      i < lines.length &&
+      !isBlank(lines[i]) && !isBullet(lines[i]) && !isNumbered(lines[i]) &&
+      !isHeading(lines[i]) && !isRule(lines[i])
+    ) {
       if (!first) para.push(<br key={key++} />);
       para.push(...renderInline(lines[i], `p${key++}`));
       first = false;

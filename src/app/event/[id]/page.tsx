@@ -4,27 +4,74 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotRange, slotEndMs } from '@/lib/types';
-import type { Availability, Comment, EventRow, Profile, Slot, Vote } from '@/lib/types';
-import { Avatar, AvatarStack, type Person } from '@/components/Avatar';
-import { IconPin, IconCalendarPlus, IconCheck, IconChevronLeft, IconPencil } from '@/components/icons';
+import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
+import type { Availability, Comment, EventRow, Profile, Reaction, Slot, Vote } from '@/lib/types';
+import { Avatar, type Person } from '@/components/Avatar';
+import { IconPin, IconCalendarPlus, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import EventEmojiInput from '@/components/EventEmojiInput';
 import { Markdown } from '@/lib/markdown';
-import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
+import { buildSlotTimes, slotToRange, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, mergeEventData } from '@/lib/dataCache';
 import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
+import { pingUser } from '@/lib/ping';
+import { notifyConfirmed } from '@/lib/notifyConfirmed';
+import { markChatSeen } from '@/lib/chatSeen';
+import { haptic } from '@/lib/haptics';
+import { appAlert, appConfirm } from '@/components/Dialogs';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
-  { value: 'yes', label: 'Wchodzę', cls: 'active-yes' },
-  { value: 'maybe', label: 'Może', cls: 'active-maybe' },
-  { value: 'no', label: 'Pas', cls: 'active-no' },
+  { value: 'yes', label: 'READY', cls: 'on-yes' },
+  { value: 'maybe', label: 'MOŻE', cls: 'on-maybe' },
+  { value: 'no', label: 'PAS', cls: 'on-no' },
 ];
+
+// Zestaw reakcji na komentarze (stały — picker ma być jednym tapnięciem, nie klawiaturą
+// emoji). Kolejność: aprobata → serce → beka → szok → luz → wołanie → śmierć.
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😎', '🤙', '💀'];
+
+// Przytrzymanie (long-press) komentarza otwiera picker reakcji — jak w iMessage/
+// Messengerze. Ruch palca > 12px (scroll) anuluje; prawy klik na desktopie też otwiera.
+const LONG_PRESS_MS = 450;
+function longPressHandlers(fire: () => void) {
+  let timer = 0;
+  let sx = 0;
+  let sy = 0;
+  const cancel = () => {
+    if (timer) window.clearTimeout(timer);
+    timer = 0;
+  };
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      sx = e.clientX;
+      sy = e.clientY;
+      cancel();
+      timer = window.setTimeout(() => {
+        timer = 0;
+        // Gdyby przeglądarka mimo wszystko zaczęła zaznaczać (np. start poza czatem) —
+        // zdejmij zaznaczenie, zanim pokaże się picker.
+        window.getSelection?.()?.removeAllRanges();
+        haptic();
+        fire();
+      }, LONG_PRESS_MS);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) cancel();
+    },
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onPointerLeave: cancel,
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      fire();
+    },
+  };
+}
 
 function formatCommentTime(iso: string): string {
   return new Date(iso).toLocaleString('pl-PL', {
@@ -33,6 +80,32 @@ function formatCommentTime(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+// Termin w nagłówku slotu: jednodniowy dostaje „liść daty" (liść niesie dzień
+// tygodnia + datę), a obok odliczanie („Za 6 dni") i godzinę — bez powtarzania
+// dnia tygodnia. Zakres („dłuższy wypad") — mono-linię, bo liść by go nie pomieścił.
+function SlotWhen({ slot }: { slot: Slot }) {
+  if (slot.ends_at) return <span className="slot-date">{formatSlotRange(slot)}</span>;
+  const d = new Date(slot.starts_at);
+  const up = (s: string) => s.replace('.', '').toUpperCase();
+  return (
+    <span className="slot-when-wrap" aria-label={formatSlotRange(slot)}>
+      <span className="leaf" aria-hidden="true">
+        <span className="dow">{up(d.toLocaleDateString('pl-PL', { weekday: 'short' }))}</span>
+        <span className="day">{d.getDate()}</span>
+        <span className="mon">{up(d.toLocaleDateString('pl-PL', { month: 'short' }))}</span>
+      </span>
+      <span className="slot-when" aria-hidden="true">
+        <b>{relativeDay(slot.starts_at)}</b>
+        <span>
+          {slot.all_day
+            ? 'cały dzień'
+            : `od ${d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`}
+        </span>
+      </span>
+    </span>
+  );
 }
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,9 +126,22 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [reactions, setReactions] = useState<Reaction[]>([]);
 
   const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Edycja terminu (autor terminu lub organizator/admin) — inline w kaflu slotu.
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [editSlotDraft, setEditSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
+
+  // Edycja własnego komentarza — inline w wierszu czatu.
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
+
+  // Komentarz z otwartym pickerem reakcji (long-press) / z listą „kto zareagował" (tap w chipy).
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [whoFor, setWhoFor] = useState<string | null>(null);
 
   // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
   const [editing, setEditing] = useState(false);
@@ -67,12 +153,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // Wiadomości nowsze niż moment wejścia na stronę dostają animację wjazdu
+  // (comment-fresh w CSS); historia z pierwszego fetchu wchodzi bez animacji.
+  const mountTsRef = useRef(Date.now());
+
+  // Najświeższe głosy do odczytu w handlerach (domknięcia mają stan sprzed setVotes).
+  const votesLatestRef = useRef<Vote[]>([]);
+  votesLatestRef.current = votes;
+
   // Ostatni zamierzony głos użytkownika per slot — utrzymywany aż baza go potwierdzi.
   // Chroni przed „mruganiem" przy szybkim, naprzemiennym klikaniu (wyścig realtime).
   const pendingVotesRef = useRef<Map<string, Availability>>(new Map());
 
   const load = useCallback(async () => {
-    const { event: ev, slots: sl, votes: vo, profiles: pr, comments: cm, notFound: nf } =
+    const { event: ev, slots: sl, votes: vo, profiles: pr, comments: cm, reactions: re, notFound: nf } =
       await loadEventBundle(eventId);
 
     if (nf || !ev) {
@@ -82,6 +176,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setSlots(sl);
       setMembers(pr);
       setComments(cm);
+      setReactions(re);
 
       // Nałóż oczekujące głosy bieżącego użytkownika na świeży stan z bazy:
       // jego ostatni wybór wygrywa, dopóki baza go nie potwierdzi (wtedy czyścimy pending).
@@ -124,6 +219,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setLoading(false);
   }, [eventId, userId, displayName]);
 
+  // Widzisz czat = przeczytane: znacznik przy każdej zmianie listy komentarzy
+  // (mount + dosypka z realtime przy otwartej stronie).
+  useEffect(() => {
+    markChatSeen(eventId);
+  }, [eventId, comments]);
+
   // Seria zmian z realtime (własny głos + cudze + reconnect) sklejana w jeden load()
   // zamiast osobnego 5-zapytaniowego pobrania na każdy wiersz — inaczej burst zapychał
   // główny wątek i UI się zacinało. Trailing debounce.
@@ -161,11 +262,27 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         { event: '*', schema: 'public', table: 'comments', filter: `event_id=eq.${eventId}` },
         scheduleReload,
       )
+      // Bez filtra: Realtime filtruje tylko INSERT/UPDATE, a zdjęcie reakcji to DELETE —
+      // z filtrem nie doszłoby do innych. Ruch znikomy (paczka znajomych), reload i tak
+      // jest sklejany debouncem.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comment_reactions' },
+        scheduleReload,
+      )
       .subscribe();
+
+    // Wybudzenie: odśwież od razu, zamiast czekać aż reconnect realtime odpali
+    // przeładowanie w trakcie pierwszej interakcji po wake (jankowało wyjście).
+    const onWake = () => {
+      if (document.visibilityState === 'visible') scheduleReload();
+    };
+    document.addEventListener('visibilitychange', onWake);
 
     return () => {
       if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
       supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', onWake);
     };
   }, [eventId, load, scheduleReload]);
 
@@ -175,7 +292,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (!times) return;
     // Termin nie może być z przeszłości (cały dzień „dziś" jest OK — liczymy koniec dnia).
     if (slotEndMs(times) < Date.now() - 60000) {
-      alert('Nie można dodać terminu z przeszłości.');
+      appAlert('Zły termin', 'Nie można dodać terminu z przeszłości.');
       return;
     }
     await supabase.from('slots').insert({
@@ -189,8 +306,55 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setSlotDraft(EMPTY_SLOT_RANGE);
   }
 
+  function startSlotEdit(slot: Slot) {
+    setEditSlotDraft(slotToRange(slot));
+    setEditingSlotId(slot.id);
+  }
+
+  async function saveSlotEdit(e: React.FormEvent, slot: Slot) {
+    e.preventDefault();
+    const times = buildSlotTimes(editSlotDraft);
+    if (!times) return;
+    if (slotEndMs(times) < Date.now() - 60000) {
+      appAlert('Zły termin', 'Termin nie może być z przeszłości.');
+      return;
+    }
+    // Porównanie po czasie, nie po stringu — baza zwraca ISO w innym formacie niż toISOString().
+    const ms = (v: string | null) => (v ? new Date(v).getTime() : null);
+    const changed =
+      ms(times.starts_at) !== ms(slot.starts_at) ||
+      ms(times.ends_at) !== ms(slot.ends_at) ||
+      times.all_day !== slot.all_day;
+    if (!changed) {
+      setEditingSlotId(null);
+      return;
+    }
+    // Zmiana terminu zeruje oddane na niego głosy (trigger w bazie) — stary głos
+    // na nową datę byłby mylący. Uprzedź, jeśli ktoś już głosował.
+    const hasVotes = votesLatestRef.current.some((v) => v.slot_id === slot.id);
+    if (hasVotes) {
+      const ok = await appConfirm('Zmienić termin?', {
+        message: 'Oddane na niego głosy zostaną wyzerowane — paczka klika od nowa.',
+        confirmLabel: 'Zmień termin',
+      });
+      if (!ok) return;
+    }
+    const { error } = await supabase.from('slots').update(times).eq('id', slot.id);
+    if (error) {
+      appAlert('Błąd', 'Nie udało się zmienić terminu.');
+      return;
+    }
+    setEditingSlotId(null);
+    load();
+  }
+
   async function deleteSlot(slotId: string) {
-    if (!window.confirm('Usunąć ten termin? Zniknie razem z oddanymi na niego głosami.')) return;
+    const ok = await appConfirm('Usunąć termin?', {
+      message: 'Zniknie razem z oddanymi na niego głosami.',
+      confirmLabel: 'Usuń',
+      danger: true,
+    });
+    if (!ok) return;
     // Optymistycznie usuń lokalnie; przy błędzie stan wróci z bazy.
     setSlots((prev) => prev.filter((s) => s.id !== slotId));
     const { error } = await supabase.from('slots').delete().eq('id', slotId);
@@ -198,6 +362,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function vote(slotId: string, availability: Availability) {
+    haptic();
     // Zapamiętaj zamiar — przeładowania z bazy będą go respektować aż do potwierdzenia.
     pendingVotesRef.current.set(slotId, availability);
     // Optymistyczna aktualizacja: pokaż wybór od razu, zanim baza odpowie —
@@ -227,19 +392,31 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (error) {
       pendingVotesRef.current.delete(slotId);
       load();
+      return;
     }
+    // Jeśli TEN głos skompletował ready check (automat: wszyscy dali znać + jest
+    // prowadzący) — pushnij „✓ GRAMY" do paczki. Serwer wysyła tylko raz na wypad.
+    const st = getEventStatus(
+      event ?? { confirmed_slot_id: null, confirmed_at: null },
+      slots,
+      votesLatestRef.current,
+      memberIds,
+    );
+    if (st.settled && st.source === 'auto') notifyConfirmed(eventId, st.slotId);
   }
 
   // Ręczne ustalenie terminu przez organizatora (ma pierwszeństwo nad automatem).
   async function confirmSlot(slot: Slot) {
+    haptic();
     const { error } = await supabase
       .from('events')
       .update({ confirmed_slot_id: slot.id, confirmed_at: slot.starts_at })
       .eq('id', eventId);
     if (error) {
-      window.alert('Nie udało się ustalić terminu.');
+      appAlert('Błąd', 'Nie udało się ustalić terminu.');
       return;
     }
+    notifyConfirmed(eventId, slot.id);
     load();
   }
   async function unconfirmSlot() {
@@ -248,7 +425,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .update({ confirmed_slot_id: null, confirmed_at: null })
       .eq('id', eventId);
     if (error) {
-      window.alert('Nie udało się odznaczyć terminu.');
+      appAlert('Błąd', 'Nie udało się odznaczyć terminu.');
       return;
     }
     load();
@@ -279,10 +456,59 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function deleteComment(id: string) {
-    if (!window.confirm('Usunąć komentarz?')) return;
+    if (!(await appConfirm('Usunąć komentarz?', { confirmLabel: 'Usuń', danger: true }))) return;
     setComments((prev) => prev.filter((c) => c.id !== id));
     const { error } = await supabase.from('comments').delete().eq('id', id);
     if (error) load();
+  }
+
+  function startCommentEdit(c: Comment) {
+    setEditCommentText(c.body);
+    setEditingCommentId(c.id);
+  }
+
+  async function saveCommentEdit(e: React.FormEvent, id: string) {
+    e.preventDefault();
+    const body = editCommentText.trim();
+    if (!body) return;
+    setEditingCommentId(null);
+    // Optymistycznie podmień treść; przy błędzie load() przywróci prawdę z bazy.
+    setComments((prev) => prev.map((c) => (c.id === id ? { ...c, body } : c)));
+    const { error } = await supabase.from('comments').update({ body }).eq('id', id);
+    if (error) load();
+  }
+
+  // Reakcja jak w Messengerze: jedna na osobę per komentarz. Wybór innej emoji
+  // podmienia poprzednią (upsert), tap w tę samą — zdejmuje. Optymistycznie.
+  async function toggleReaction(commentId: string, emoji: string) {
+    setPickerFor(null);
+    const mine = reactions.find((r) => r.comment_id === commentId && r.user_id === userId);
+    if (mine && mine.emoji === emoji) {
+      setReactions((prev) => prev.filter((r) => r !== mine));
+      const { error } = await supabase
+        .from('comment_reactions')
+        .delete()
+        .eq('comment_id', commentId)
+        .eq('user_id', userId);
+      if (error) load();
+    } else {
+      const optimistic: Reaction = {
+        comment_id: commentId,
+        event_id: eventId,
+        user_id: userId,
+        emoji,
+        created_at: new Date().toISOString(),
+      };
+      setReactions((prev) => [
+        ...prev.filter((r) => !(r.comment_id === commentId && r.user_id === userId)),
+        optimistic,
+      ]);
+      const { error } = await supabase.from('comment_reactions').upsert(
+        { comment_id: commentId, event_id: eventId, user_id: userId, emoji },
+        { onConflict: 'comment_id,user_id' },
+      );
+      if (error) load();
+    }
   }
 
   function startEdit() {
@@ -326,10 +552,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function deleteEvent() {
-    if (!window.confirm('Usunąć cały wypad? Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.')) return;
+    const ok = await appConfirm('Usunąć cały wypad?', {
+      message: 'Znikną wszystkie terminy i głosy. Tego nie da się cofnąć.',
+      confirmLabel: 'Usuń wypad',
+      danger: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from('events').delete().eq('id', eventId);
     if (error) {
-      window.alert('Nie udało się usunąć wypadu.');
+      appAlert('Błąd', 'Nie udało się usunąć wypadu.');
       return;
     }
     navigate('/', 'back');
@@ -391,6 +622,30 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const profileById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
+  // Reakcje pogrupowane per komentarz: emoji + liczba + czy moja (podświetlenie).
+  // Kolejność emoji stała (wg REACTION_EMOJIS). Kto dał którą — lista po tapnięciu w chipy.
+  const reactionsByComment = useMemo(() => {
+    type Group = { emoji: string; count: number; mine: boolean };
+    const m = new Map<string, Group[]>();
+    for (const r of reactions) {
+      const arr = m.get(r.comment_id) ?? [];
+      let g = arr.find((x) => x.emoji === r.emoji);
+      if (!g) {
+        g = { emoji: r.emoji, count: 0, mine: false };
+        arr.push(g);
+      }
+      g.count++;
+      if (r.user_id === userId) g.mine = true;
+      m.set(r.comment_id, arr);
+    }
+    const order = (e: string) => {
+      const i = REACTION_EMOJIS.indexOf(e);
+      return i === -1 ? REACTION_EMOJIS.length : i;
+    };
+    for (const arr of m.values()) arr.sort((a, b) => order(a.emoji) - order(b.emoji));
+    return m;
+  }, [reactions, userId]);
+
   // Uczestnicy, którzy oddali jakikolwiek głos — z awatarami (do stosu na górze).
   const participantsPeople = useMemo<Person[]>(() => {
     const seen = new Map<string, Person>();
@@ -404,11 +659,30 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }, [votes, profileById]);
 
 
-  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
-  const missingVoters = useMemo<Person[]>(() => {
+  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie (= AFK).
+  const missingMembers = useMemo<Profile[]>(() => {
     const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
-    return members.filter((m) => !voted.has(m.id)).map((m) => ({ name: m.display_name, avatar: m.avatar }));
+    return members.filter((m) => !voted.has(m.id));
   }, [members, votes]);
+
+  // „Pinguj kurwę": push do jednej osoby z losowym cytatem (wspólna logika w lib/ping).
+  const [pinged, setPinged] = useState<Set<string>>(new Set());
+  async function doPing(m: Profile) {
+    haptic();
+    const err = await pingUser(eventId, m.id, m.display_name);
+    if (err) {
+      appAlert('Ping nie poszedł', err);
+      return;
+    }
+    setPinged((prev) => new Set(prev).add(m.id));
+  }
+
+  // Ile dni wisi lobby bez odpowiedzi — liczone od założenia wypadu.
+  const afkLabel = useMemo(() => {
+    if (!event?.created_at) return 'AFK';
+    const d = Math.floor((Date.now() - new Date(event.created_at).getTime()) / (24 * 3600 * 1000));
+    return d <= 0 ? 'AFK OD DZIŚ' : d === 1 ? 'AFK OD WCZORAJ' : `AFK OD ${d} DNI`;
+  }, [event?.created_at]);
 
   if (loading) return <main className="glass-page"><p className="muted">Wczytuję…</p></main>;
 
@@ -432,26 +706,28 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const memberCount = members.length;
   const votedCount = participantsPeople.length;
-  const votedPct = memberCount > 0 ? Math.min(100, Math.round((votedCount / memberCount) * 100)) : 0;
 
   return (
     <main className="glass-page">
-      <Link
-        href="/"
-        className="back-btn-round"
-        onClick={(e) => {
-          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-          e.preventDefault();
-          navigate('/', 'back');
-        }}
-        aria-label="Wróć"
-      >
-        <IconChevronLeft size={20} />
-      </Link>
+      <div className="nav-row">
+        <Link
+          href="/"
+          className="back-btn-round"
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            navigate('/', 'back');
+          }}
+          aria-label="Wróć"
+        >
+          <IconChevronLeft size={20} />
+        </Link>
+        <span className="nav-label">Lobby</span>
+      </div>
 
       {editing && (
         <form className="card" onSubmit={saveEdit}>
-          <h2>Edytuj wypad</h2>
+          <div className="modal-label">Edytuj wypad</div>
           <div className="field">
             <label htmlFor="edit-title">Nazwa</label>
             <input
@@ -483,14 +759,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             />
           </div>
           {editError && <p className="small" style={{ color: 'var(--no)' }}>{editError}</p>}
-          <div className="row" style={{ gap: 8 }}>
-            <button type="submit" disabled={!editTitle.trim() || editBusy}>
-              {editBusy ? 'Zapisuję…' : 'Zapisz zmiany'}
-            </button>
-            <button type="button" className="ghost" onClick={() => setEditing(false)}>
-              Anuluj
-            </button>
-          </div>
+          <button type="submit" className="cta-gradient" disabled={!editTitle.trim() || editBusy}>
+            {editBusy ? 'Zapisuję…' : 'Zapisz zmiany'}
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            style={{ width: '100%', marginTop: 8 }}
+            onClick={() => setEditing(false)}
+          >
+            Anuluj
+          </button>
         </form>
       )}
 
@@ -515,35 +794,29 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <span><IconPin size={13} /> {event.location}</span>
             )}
             {event?.location && event?.created_by && <span className="sep">·</span>}
-            {event?.created_by && <span>Organizuje {event.created_by}</span>}
+            {event?.created_by && <span>host: {event.created_by}</span>}
           </div>
         )}
         <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
-          <div
-            className={`confirmed-inline tappable${status.settled ? ' settled' : ''}`}
-            role="button"
-            tabIndex={lastHeaderSlot ? 0 : -1}
-            aria-label="Dodaj termin do kalendarza"
-            onClick={() => lastHeaderSlot && exportToCalendar(lastHeaderSlot)}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ' ') && lastHeaderSlot) {
-                e.preventDefault();
-                exportToCalendar(lastHeaderSlot);
-              }
-            }}
-          >
+          <div className="confirmed-inline">
             {lastHeaderSlot && (
               <>
-                <IconCalendarPlus size={15} />
-                <span className="confirmed-date">{formatSlotRange(lastHeaderSlot)}</span>
-                <span className="confirmed-tag">
-                  <IconCheck size={12} />{' '}
-                  {status.settled
-                    ? status.source === 'auto'
-                      ? 'Ustalone · wszyscy dali znać'
-                      : 'Ustalone'
-                    : 'Na czele'}
-                </span>
+                <button
+                  type="button"
+                  className="cal-chip"
+                  onClick={() => exportToCalendar(lastHeaderSlot)}
+                >
+                  <IconCalendarPlus size={19} />
+                  <span className="cal-chip-main">
+                    <b>
+                      {formatSlotShort(lastHeaderSlot)}
+                      {!lastHeaderSlot.all_day && !lastHeaderSlot.ends_at
+                        ? ` · ${new Date(lastHeaderSlot.starts_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
+                        : ''}
+                    </b>
+                    <span>Dodaj do kalendarza</span>
+                  </span>
+                </button>
               </>
             )}
           </div>
@@ -559,43 +832,44 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <p className="readonly-note">Ten wypad już się odbył — to tylko podgląd.</p>
       )}
 
-      {!isPast && slots.length > 0 && missingVoters.length > 0 && (
+      {!isPast && slots.length > 0 && memberCount > 0 && missingMembers.length > 0 && (
         <div className="vote-status">
-          <div className="vote-status-row">
-            {votedCount > 0 && <AvatarStack people={participantsPeople} size={26} />}
-            <span className="vote-status-count">
-              {votedCount > 0 ? (
-                <>
-                  <strong>{votedCount}{memberCount > 0 ? ` / ${memberCount}` : ''}</strong> dało znać
-                </>
-              ) : (
-                'Jeszcze nikt nie dał znać'
+          {missingMembers.map((m) => (
+            <div key={m.id} className="afk">
+              <Avatar name={m.display_name} avatar={m.avatar} size={28} />
+              <span className="afk-text">
+                <b>{m.id === userId ? 'Ty się opierdalasz…' : `${m.display_name} się opierdala…`}</b>
+                <span>{afkLabel}</span>
+              </span>
+              {isOrganizer && m.id !== userId && (
+                <button
+                  type="button"
+                  className="nudge"
+                  disabled={pinged.has(m.id)}
+                  onClick={() => doPing(m)}
+                >
+                  {pinged.has(m.id) ? 'Spingowano ✓' : 'Pinguj kurwę'}
+                </button>
               )}
-            </span>
-          </div>
-
-          {memberCount > 0 && (
-            <div className="vote-progress">
-              <div className="vote-progress-bar" style={{ width: `${votedPct}%` }} />
             </div>
-          )}
-
-          {memberCount > 0 && (
-            <div className="vote-missing-row">
-              <span className="vote-missing-label">Cweluchy:</span>
-              <AvatarStack people={missingVoters} size={22} />
-            </div>
-          )}
+          ))}
         </div>
       )}
 
-      <div className="card">
-        <h2>Proponowane terminy</h2>
+      <section className="ev-section">
+        <div className="rail">
+          <div className="section-label">Ready check</div>
+          {memberCount > 0 && !isPast && slots.length > 0 && (
+            <span className={`chip ${votedCount >= memberCount ? 'ok' : 'hot'}`}>
+              {votedCount}/{memberCount} DAŁO ZNAĆ
+            </span>
+          )}
+        </div>
         {stats.length === 0 && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
 
-        {stats.map(({ slot, yes, maybe, no, mine, votes: slotVotes }) => {
+        {stats.map(({ slot, yes, mine, votes: slotVotes }) => {
           const isBest = yes > 0 && yes === maxYes;
           const isSettledSlot = status.settled && status.slotId === slot.id;
           const showBestBadge = !isSettledSlot && isBest && !isTie;
@@ -604,16 +878,27 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           return (
           <div
             key={slot.id}
-            className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}`}
+            className={`slot${isSettledSlot || showBestBadge ? ' confirmed' : showTieBadge ? ' tie' : ''}${
+              // Termin klepnięty → pozostałe propozycje są nieaktualne: wyciszone,
+              // ale wciąż klikalne (zmiana głosu może przestawić automat).
+              status.settled && !isSettledSlot ? ' stale' : ''
+            }`}
           >
             <div className="slot-head">
-              <span className="slot-date">{formatSlotRange(slot)}</span>
-              {isSettledSlot && <span className="badge">✓ Ustalony</span>}
-              {showBestBadge && <span className="badge">na czele</span>}
-              {showTieBadge && <span className="badge badge-open">remis</span>}
+              <SlotWhen slot={slot} />
+              {isSettledSlot && <span className="badge">✓ USTALONY</span>}
+              {showBestBadge && <span className="badge">Prowadzi</span>}
+              {showTieBadge && <span className="badge badge-open">Remis</span>}
               {canDelete && !isPast && (
-                <>
-                  <span className="spacer" />
+                <span className="slot-actions">
+                  <button
+                    type="button"
+                    className="ghost slot-del"
+                    aria-label="Zmień termin"
+                    onClick={() => (editingSlotId === slot.id ? setEditingSlotId(null) : startSlotEdit(slot))}
+                  >
+                    <IconPencil size={14} />
+                  </button>
                   <button
                     type="button"
                     className="ghost slot-del"
@@ -622,66 +907,85 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   >
                     ✕
                   </button>
-                </>
+                </span>
               )}
             </div>
 
-            <div className="tally">
-              <span className="yes">✓ {yes}</span>
-              <span className="maybe">~ {maybe}</span>
-              <span className="no">✗ {no}</span>
-            </div>
-
-            {!isPast && (() => {
-              const selectedIndex = CHOICES.findIndex((c) => c.value === mine);
-              return (
-                <div className={`choices ${selectedIndex !== -1 ? `active-index-${selectedIndex}` : 'no-active'}`}>
-                  <div className="choices-slider" />
-                  {CHOICES.map((c) => (
-                    <button
-                      key={c.value}
-                      className={mine === c.value ? `${c.cls} active` : ''}
-                      onClick={() => vote(slot.id, c.value)}
-                      style={{ position: 'relative', zIndex: 1 }}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+            {editingSlotId === slot.id ? (
+              <form className="add-slot-form" onSubmit={(e) => saveSlotEdit(e, slot)}>
+                <SlotRangeInput value={editSlotDraft} onChange={setEditSlotDraft} idPrefix={`edit-${slot.id}`} />
+                <div className="add-slot-actions">
+                  <button type="submit" disabled={!editSlotDraft.od}>Zapisz</button>
+                  <button type="button" className="ghost" onClick={() => setEditingSlotId(null)}>
+                    Anuluj
+                  </button>
                 </div>
-              );
-            })()}
-
-            {slotVotes.length > 0 && (
-              <div className="voters">
-                {slotVotes.map((v) => {
-                  const prof = v.user_id ? profileById.get(v.user_id) : undefined;
-                  const name = prof?.display_name ?? v.participant_name;
-                  return (
-                    <span key={v.id} className={`voter-chip ${v.availability}`}>
-                      <Avatar name={name} avatar={prof?.avatar ?? null} size={16} />
-                      <span className="name">{name}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-
-            {isOrganizer && !isPast && (
-              <div className="slot-confirm-row">
-                {event?.confirmed_slot_id === slot.id ? (
-                  <button type="button" className="ghost slot-confirm-btn" onClick={unconfirmSlot}>
-                    Odznacz termin
-                  </button>
-                ) : (
-                  <button type="button" className="slot-confirm-btn primary" onClick={() => confirmSlot(slot)}>
-                    Ustal ten termin
-                  </button>
+              </form>
+            ) : (
+              <>
+                {slotVotes.length > 0 && (
+                  <div className="voters">
+                    {slotVotes.map((v) => {
+                      const prof = v.user_id ? profileById.get(v.user_id) : undefined;
+                      const name = prof?.display_name ?? v.participant_name;
+                      // Imię zamiast READY/MOŻE/PAS — stan niesie już kolor chipa,
+                      // a KTO głosował to informacja, której wcześniej brakowało.
+                      return (
+                        <span key={v.id} className={`voter-chip ${v.availability}`} title={name}>
+                          <Avatar name={name} avatar={prof?.avatar ?? null} size={18} />
+                          {name}
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
+
+                {!isPast && (
+                  <div className="seg3 slot-seg3" role="group" aria-label="Twój głos">
+                    {CHOICES.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        className={mine === c.value ? c.cls : ''}
+                        onClick={() => vote(slot.id, c.value)}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
           );
         })}
+
+        {/* LOCK IN — jeden przycisk pod terminami (prowadzący; przy remisie po jednym
+            na każdy remisujący termin). Odklepanie tylko przy ręcznym ustaleniu. */}
+        {isOrganizer && !isPast && stats.length > 0 && (
+          status.settled ? (
+            status.source === 'manual' && (
+              <button type="button" className="ghost lockin-btn" onClick={unconfirmSlot}>
+                Odklep termin
+              </button>
+            )
+          ) : (
+            stats
+              .filter(({ slot, yes }) =>
+                isTie ? yes > 0 && yes === maxYes : slot.id === status.leadingSlotId,
+              )
+              .map(({ slot }) => (
+                <button
+                  key={slot.id}
+                  type="button"
+                  className="slot-confirm-btn primary lockin-btn"
+                  onClick={() => confirmSlot(slot)}
+                >
+                  LOCK IN: {formatSlotShort(slot)}
+                </button>
+              ))
+          )
+        )}
 
 
 
@@ -717,25 +1021,51 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
         )}
-      </div>
+      </section>
 
-      <div className="card comments-card">
-        <h2>Komentarze</h2>
+      <section className="ev-section">
+        <div className="section-label">Czat</div>
         {comments.length === 0 ? (
-          <p className="small muted">Brak komentarzy. Napisz pierwszy.</p>
+          <p className="small muted">Cisza. Napisz coś pierwszy.</p>
         ) : (
           <div className="comment-list">
             {comments.map((c) => {
               const prof = c.user_id ? profileById.get(c.user_id) : undefined;
               const name = prof?.display_name ?? c.author_name;
+              const saved = !c.id.startsWith('optimistic'); // optymistyczny nie ma jeszcze id z bazy
               const canDel = c.user_id === userId || isOrganizer;
+              const canEdit = saved && c.user_id === userId;
+              const groups = saved ? reactionsByComment.get(c.id) ?? [] : [];
+              const myEmoji = saved
+                ? reactions.find((r) => r.comment_id === c.id && r.user_id === userId)?.emoji ?? null
+                : null;
+              const pressable = saved && editingCommentId !== c.id;
               return (
-                <div key={c.id} className="comment">
+                <div
+                  key={c.id}
+                  className={`comment${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}${pressable ? ' pressable' : ''}`}
+                  {...(pressable
+                    ? longPressHandlers(() => {
+                        setWhoFor(null);
+                        setPickerFor(c.id);
+                      })
+                    : {})}
+                >
                   <Avatar name={name} avatar={prof?.avatar ?? null} size={30} />
                   <div className="comment-body">
                     <div className="comment-head">
                       <span className="comment-author">{name}</span>
                       <span className="comment-time">{formatCommentTime(c.created_at)}</span>
+                      {canEdit && editingCommentId !== c.id && (
+                        <button
+                          type="button"
+                          className="comment-edit-btn"
+                          aria-label="Edytuj komentarz"
+                          onClick={() => startCommentEdit(c)}
+                        >
+                          <IconPencil size={12} />
+                        </button>
+                      )}
                       {canDel && (
                         <button
                           type="button"
@@ -747,7 +1077,68 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         </button>
                       )}
                     </div>
-                    <p className="comment-text">{c.body}</p>
+                    {editingCommentId === c.id ? (
+                      <form className="comment-form comment-edit" onSubmit={(e) => saveCommentEdit(e, c.id)}>
+                        <input
+                          type="text"
+                          value={editCommentText}
+                          onChange={(e) => setEditCommentText(e.target.value)}
+                          maxLength={500}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') setEditingCommentId(null);
+                          }}
+                        />
+                        <button type="submit" className="send" disabled={!editCommentText.trim()} aria-label="Zapisz">
+                          ✓
+                        </button>
+                      </form>
+                    ) : (
+                      <p className="comment-text">{c.body}</p>
+                    )}
+                    {pickerFor === c.id && (
+                      <span className="reaction-picker" onPointerDown={(e) => e.stopPropagation()}>
+                        {REACTION_EMOJIS.map((e) => (
+                          <button
+                            key={e}
+                            type="button"
+                            className={myEmoji === e ? 'sel' : ''}
+                            onClick={() => toggleReaction(c.id, e)}
+                          >
+                            {e}
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                    {groups.length > 0 && editingCommentId !== c.id && (
+                      <div className="reactions">
+                        {groups.map((g) => (
+                          <button
+                            key={g.emoji}
+                            type="button"
+                            className={`reaction-chip${g.mine ? ' mine' : ''}`}
+                            onClick={() => {
+                              setPickerFor(null);
+                              setWhoFor(whoFor === c.id ? null : c.id);
+                            }}
+                          >
+                            {g.emoji}{g.count > 1 ? ` ${g.count}` : ''}
+                          </button>
+                        ))}
+                        {whoFor === c.id && (
+                          <span className="who-pop" onPointerDown={(e) => e.stopPropagation()}>
+                            {reactions
+                              .filter((r) => r.comment_id === c.id)
+                              .map((r) => (
+                                <span key={r.user_id} className="who-row">
+                                  <b>{r.user_id === userId ? 'Ty' : profileById.get(r.user_id)?.display_name ?? '?'}</b>
+                                  <span>{r.emoji}</span>
+                                </span>
+                              ))}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -757,14 +1148,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <form className="comment-form" onSubmit={addComment}>
           <input
             type="text"
-            placeholder="Napisz komentarz…"
+            placeholder="Napisz coś…"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             maxLength={500}
           />
-          <button type="submit" disabled={!newComment.trim()}>Wyślij</button>
+          <button type="submit" className="send" disabled={!newComment.trim()} aria-label="Wyślij">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+          </button>
         </form>
-      </div>
+      </section>
 
       {isOrganizer && !editing && (
         <div className="event-danger-zone">
@@ -772,6 +1165,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             Usuń ten wypad
           </button>
         </div>
+      )}
+
+      {/* Tap poza pickerem/listą reakcji zamyka je (przezroczysta warstwa pod spodem). */}
+      {(pickerFor || whoFor) && (
+        <div
+          className="tap-catcher"
+          onClick={() => {
+            setPickerFor(null);
+            setWhoFor(null);
+          }}
+        />
       )}
     </main>
   );

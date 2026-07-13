@@ -18,6 +18,16 @@ Guidance for AI assistants (and humans) working in this repository.
   przeglądarkę z kluczem `anon`.
 - **Logowanie** e-mailem (kod OTP) przez Supabase Auth; trwała sesja (zaloguj raz na
   urządzeniu). Cała apka jest za bramką logowania — zob. `src/lib/auth.tsx`.
+- **Zamknięta paczka (invite-only).** Apka nie zakłada kont sama
+  (`signInWithOtp` z `shouldCreateUser: false`); dostęp mają tylko adresy zaproszone
+  w panelu Supabase (Authentication → Users → Invite) przy wyłączonym „Allow new users
+  to sign up". Allowlista żyje w Supabase, nie w kodzie — nowego znajomego dodaje się
+  jednym zaproszeniem. Zob. README → „Logowanie".
+- **Admin dodaje z apki.** Admin (właściciel) może dodać nowy adres bez wchodzenia do
+  panelu — pole „Dodaj osobę" w menu ustawień (`SettingsMenu.tsx`) woła Edge Function
+  `invite-user`, która przez Admin API (`service_role`, tylko serwer) tworzy konto
+  z potwierdzonym mailem. Listę adminów w `invite-user/index.ts` trzymaj w synchronie
+  z `is_admin()` i `src/lib/admin.ts`.
 - **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
 - Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka).
 - Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
@@ -41,36 +51,63 @@ Guidance for AI assistants (and humans) working in this repository.
 │   ├── schema.sql                # Schemat bazy + RLS + publikacja Realtime
 │   └── functions/
 │       ├── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
-│       └── notify-reminders/     # Edge Function: cykliczny push „nie dałeś znać" (pg_cron)
+│       ├── notify-reminders/     # Edge Function: cykl. push „nie dałeś znać" + „Jutro gramy!" (pg_cron)
+│       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
+│       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
+│       └── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
+├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
 │   ├── sw.js                     # Service worker (Web Push: push + notificationclick)
-│   └── icon.svg                  # Ikona aplikacji
+│   ├── icon.svg                  # Ikona aplikacji (+ icon-180/192/512.png dla PWA/iOS)
+│   └── hero/                     # Kuratorowane zdjęcia tła kart hero per kategoria (emoji)
 └── src/
     ├── app/
     │   ├── layout.tsx            # Root layout + AuthProvider (bramka logowania), metadata, analityka
     │   ├── globals.css           # Wszystkie style
-    │   ├── page.tsx              # Strona główna = dashboard: oś czasu wypadów + „Nowy wypad"
-    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, wynik na żywo, ustalanie terminu
+    │   ├── page.tsx              # Strona główna = dashboard: hero + rozkład wypadów + „Nowe lobby"
+    │   ├── error.tsx             # Granica błędów stron (komunikat w skórce apki + retry)
+    │   ├── global-error.tsx      # Awaryjny ekran, gdy wysypie się sam root layout
+    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, czat, ustalanie terminu
+    │   ├── event/[id]/loading.tsx # Skeleton przejścia do wypadu
     │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
+    │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
     │   ├── SlotRangeInput.tsx    # Wspólny input terminu: Od / Do / Godzina
+    │   ├── DateTimeInput.tsx     # Pojedyncze pole daty/godziny (część SlotRangeInput)
     │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
-    │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin…)
+    │   ├── EventEmojiInput.tsx   # Wybór emoji/kategorii wypadu (spójny z heroImage.ts)
+    │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
+    │   ├── WeatherModal.tsx      # Prognoza godzinowa na dzień wypadu (tap w kafelek pogody w hero)
+    │   ├── Dialogs.tsx           # appAlert/appConfirm + DialogHost (zamiast natywnych alertów)
+    │   ├── GlassBackground.tsx   # Tło „frosted glass" pod całą apką
+    │   ├── HeroCropEditor.tsx    # Admin: kadrowanie zdjęć hero per kategoria (zoom+pozycja)
+    │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin, pogoda…)
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── admin.ts              # E-maile adminów (właściciel) + isAdminEmail; trzymaj w synchronie z is_admin() w schema.sql
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
-        ├── slotPresets.ts        # Szybkie presety terminów (chipy)
-        ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina
+        ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina (+ testy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
+        ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)
+        ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
+        ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
+        ├── notifyConfirmed.ts    # Fire-and-forget push „✓ GRAMY" (Edge Function notify-confirmed)
+        ├── heroImage.ts          # Mapa emoji → zdjęcie tła karty hero (public/hero/*.jpg) + kategorie
+        ├── heroCrops.ts          # Odczyt/zapis kadru hero per kategoria (tabela hero_crops)
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
+        ├── weather.ts            # Prognoza Open-Meteo na dzień wypadu + geokodowanie (cache w pamięci)
         ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
         ├── markdown.tsx          # Mini-renderer markdownu opisu → elementy React (bez surowego HTML)
-        └── types.ts              # Typy: EventRow, Slot, Vote, Profile, Availability
+        ├── transition.tsx        # Animowane przejścia stron (forward/back) + useTransitionNavigate
+        ├── dataCache.ts          # Cache danych w pamięci: dashboard ↔ strona wypadu bez „Wczytuję…"
+        ├── eventPrefetch.ts      # Prefetch danych wypadu na pointerdown (przed nawigacją)
+        ├── chatSeen.ts           # Lokalny znacznik „przeczytane" czatu (kropki nieprzeczytanych)
+        ├── haptics.ts            # Haptic tick przy gestach (vibrate; iOS: trik z <input switch>)
+        └── types.ts              # Typy + logika statusu wypadu (EventRow, Slot, Vote, Profile…) (+ testy)
 ```
 
 **Punkty wejścia:** `src/app/page.tsx` (`/`, dashboard wszystkich wypadów) oraz
@@ -90,10 +127,16 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (nazwa, migawka) + `created_by_user_id` (konto). Ustalony termin: `confirmed_slot_id`
   + `confirmed_at` (data zwycięskiego slotu). `reminded_at` — znacznik wysłanego
   przypomnienia „nie dałeś znać" (Edge Function `notify-reminders` + pg_cron).
+  `confirmed_notified_at` — atomowy stempel pusha „✓ GRAMY" (Edge Function
+  `notify-confirmed`, wołana z klienta po LOCK IN / kompletującym głosie).
 - **slots** — proponowany termin powiązany z wypadem: `starts_at` + opcjonalnie `ends_at`
   (zakres dni) i `all_day` (cały dzień, bez godziny). Warianty: moment, cały dzień,
-  zakres dni, zakres z godziną wyjazdu. Budowanie z pól Od/Do/Godzina: `src/lib/slotInput.ts`;
-  formatowanie i logika końca terminu: `formatSlotRange` / `slotEndMs` w `src/lib/types.ts`.
+  zakres dni, zakres z godziną wyjazdu. Budowanie z pól Od/Do/Godzina: `src/lib/slotInput.ts`
+  (`buildSlotTimes` ↔ `slotToRange` do edycji); formatowanie i logika końca terminu:
+  `formatSlotRange` / `slotEndMs` w `src/lib/types.ts`. Edytować/usunąć termin może jego
+  autor lub organizator. **Zmiana czasu terminu zeruje oddane na niego głosy** — pilnuje
+  tego trigger `slots_reset_votes` w bazie (security definer), który przy okazji
+  synchronizuje `events.confirmed_at`, jeśli edytowany slot był klepnięty.
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
 - **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name` + `avatar` (emoji
@@ -108,12 +151,24 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   na iOS tylko w PWA dodanym do ekranu głównego (16.4+). Toast „na żywo" przy otwartej apce
   jest w `auth.tsx` (Realtime na INSERT `events`).
 - **comments** — komentarze pod wypadem (koordynacja): `event_id` + `user_id` (konto)
-  + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; usuwa
-  autor, organizator albo admin. Realtime + wątek pod terminami na stronie wypadu.
+  + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; edytuje
+  tylko autor; usuwa autor, organizator albo admin. Realtime + wątek pod terminami na
+  stronie wypadu.
+- **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
+  `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
+  tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
+  UX: long-press komentarza otwiera picker; tap w chipy pokazuje kto co dał.
+  RLS: czytają wszyscy zalogowani, każdy zarządza tylko swoimi. Uwaga na Realtime:
+  subskrypcja BEZ filtra (filtry działają tylko na INSERT/UPDATE, a zdjęcie reakcji to
+  DELETE). Zestaw emoji: `REACTION_EMOJIS` na stronie wypadu.
+- **hero_crops** — kadr zdjęcia hero per kategoria (emoji): `zoom` + `pos_x`/`pos_y`.
+  Zdjęcia są stałe (`public/hero/<slug>.jpg`), admin ustawia kadr w apce
+  (`HeroCropEditor`). Wszyscy czytają, zapisuje tylko admin (`is_admin()`).
 - Nazwy wyświetlane trzymamy w `user_metadata` Supabase Auth oraz w `profiles`;
   przy głosach/wypadach/komentarzach zapisujemy dodatkowo migawkę nazwy.
 
-Realtime włączony dla `events`, `slots`, `votes`, `profiles`, `comments` (publikacja `supabase_realtime`).
+Realtime włączony dla `events`, `slots`, `votes`, `profiles`, `comments`,
+`comment_reactions` (publikacja `supabase_realtime`).
 **RLS:** dostęp tylko dla zalogowanych (`authenticated`); każdy edytuje wyłącznie swoje
 rekordy (głos po `user_id`, ustalanie terminu tylko twórca wypadu). To realna ochrona
 przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodności.
@@ -150,9 +205,13 @@ i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql
 - **Konfiguracja:** skopiuj `.env.example` do `.env.local` i uzupełnij
   `NEXT_PUBLIC_SUPABASE_URL` oraz `NEXT_PUBLIC_SUPABASE_ANON_KEY`; uruchom
   `supabase/schema.sql` w panelu Supabase. Pełna instrukcja w `README.md`.
-- **Testy/lint:** brak zautomatyzowanych testów i konfiguracji lintera w tym
-  szkielecie. `next build` weryfikuje typy TypeScript. Po zmianach uruchom
-  `npm run build` jako minimalny sanity check.
+- **Testy:** `npm test` (vitest) — unit-testy czystej logiki w `src/lib`
+  (`types.test.ts`: reguły klepania terminu/prowadzącego, końce zakresów,
+  formaty dat; `slotInput.test.ts`: budowanie slotu z pól Od/Do/Godzina).
+  Odpalane z `TZ=Europe/Warsaw` dla powtarzalności dat. Brak testów UI/E2E —
+  zachowanie sprawdzamy na preview. Lint: brak konfiguracji.
+- **Sanity check:** `next build` weryfikuje typy TypeScript (strict). Po
+  zmianach uruchom `npm run build` + `npm test`.
 
 ## Conventions
 

@@ -6,6 +6,7 @@ export type EventRow = {
   location: string | null;
   description: string | null;
   image_url: string | null;
+  image_focus: string | null;
   latitude: number | null;
   longitude: number | null;
   emoji: string | null;
@@ -55,6 +56,37 @@ function fmtTimeOnly(iso: string): string {
   return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Krótki, mono-przyjazny zapis terminu (rozkładowy): „SOB 12.07",
+// zakres „1-2.08" albo „30.07-2.08". Do wierszy list i chipów.
+const DOW_SHORT = ['NIE', 'PON', 'WT', 'ŚR', 'CZW', 'PT', 'SOB'];
+export function formatSlotShort(slot: Pick<Slot, 'starts_at' | 'ends_at'>): string {
+  const s = new Date(slot.starts_at);
+  const mm = (d: Date) => String(d.getMonth() + 1).padStart(2, '0');
+  if (slot.ends_at) {
+    const e = new Date(slot.ends_at);
+    return s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()
+      ? `${s.getDate()}-${e.getDate()}.${mm(s)}`
+      : `${s.getDate()}.${mm(s)}-${e.getDate()}.${mm(e)}`;
+  }
+  return `${DOW_SHORT[s.getDay()]} ${s.getDate()}.${mm(s)}`;
+}
+
+// Relatywny dzień STARTU: „Dziś" / „Jutro" / „Za N dni" / „Minął" (N dni temu).
+// Liczone po granicy dnia, więc „jutro rano" to zawsze „Jutro", nie „za 14h".
+export function relativeDay(iso: string): string {
+  const mid = (t: number) => {
+    const d = new Date(t);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  };
+  const days = Math.round((mid(new Date(iso).getTime()) - mid(Date.now())) / (24 * 3600 * 1000));
+  if (days === 0) return 'Dziś';
+  if (days === 1) return 'Jutro';
+  if (days === -1) return 'Wczoraj';
+  if (days > 1) return `Za ${days} dni`;
+  return `${-days} dni temu`;
+}
+
 // Ludzki opis terminu wg modelu (moment / cały dzień / zakres / zakres z godziną).
 export function formatSlotRange(slot: Pick<Slot, 'starts_at' | 'ends_at' | 'all_day'>): string {
   if (slot.ends_at) {
@@ -89,6 +121,15 @@ export type Comment = {
   user_id: string | null;
   author_name: string;
   body: string;
+  created_at: string;
+};
+
+// Reakcja emoji na komentarz — klucz (comment_id, user_id, emoji).
+export type Reaction = {
+  comment_id: string;
+  event_id: string;
+  user_id: string;
+  emoji: string;
   created_at: string;
 };
 
