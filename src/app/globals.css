@@ -6,7 +6,9 @@
   --card: #14171b;
   --card-2: #1a1e23;
   --text: #e8edf0;
-  --muted: #7f8b94;
+  /* Jaśniejszy stopień szarości (7,6:1 na tle, AAA) — poprzedni #7f8b94 dawał
+     ~5:1 i cała druga warstwa tekstu ginęła w słońcu. Hierarchia zostaje. */
+  --muted: #98a4ae;
   --border: rgba(232, 237, 240, 0.08);
   --border-strong: rgba(232, 237, 240, 0.17);
   --primary: rgba(232, 237, 240, 0.12);
@@ -24,6 +26,16 @@
   --mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* Ciemny motyw również dla kontrolek natywnych (picker daty, scrollbary) na iOS. */
   color-scheme: dark;
+}
+
+/* iOS „Zwiększ kontrast" (Dostępność) — kto włączył, dostaje jaśniejszą warstwę
+   muted i wyraźniejsze bordery. Reszta apki bez zmian. */
+@media (prefers-contrast: more) {
+  :root {
+    --muted: #b9c2cb;
+    --border: rgba(232, 237, 240, 0.16);
+    --border-strong: rgba(232, 237, 240, 0.3);
+  }
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -1581,7 +1593,9 @@ main::before {
   border-style: dashed; border-color: var(--border-strong);
   background: color-mix(in srgb, var(--card-2) 55%, transparent);
 }
-.slot-p.s-none .who b { color: var(--muted); }
+/* Nazwa w normalnej bieli — stan (AFK) niosą kreska, szara morda i labelka;
+   przygaszona nazwa znikała w słońcu, a to informacja „kto zalega". */
+.slot-p.s-none .who b { color: var(--text); }
 .slot-p.s-none .who span { color: var(--accent); }
 /* AFK = szara morda (jak offline na Discordzie) */
 .slot-p.s-none .avatar { filter: grayscale(1); opacity: 0.75; }
@@ -1593,7 +1607,9 @@ main::before {
 /* Segmenty gotowości: N osób = N segmentów, nie procenty */
 .readybar { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .segs { display: flex; gap: 4px; flex: 1; }
-.segs i { height: 5px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
+/* Pusty segment na translucentnej bieli (nie --card-2) — na karcie i na fotce
+   hero track ma być widoczny jako „miejsce do wypełnienia", nie zgadywanka. */
+.segs i { height: 5px; flex: 1; border-radius: 2px; background: var(--primary); border: 1px solid var(--border-strong); }
 .segs i.on-yes { background: var(--yes); border-color: var(--yes); }
 .segs i.on-maybe { background: var(--maybe); border-color: var(--maybe); }
 .segs i.on-no { background: var(--no); border-color: var(--no); }
@@ -1606,7 +1622,7 @@ main::before {
 
 /* Miniatura segmentów w kartach listy */
 .mini-segs { display: flex; gap: 3px; flex: 1; max-width: 96px; }
-.mini-segs i { height: 4px; flex: 1; border-radius: 2px; background: var(--card-2); border: 1px solid var(--border); }
+.mini-segs i { height: 4px; flex: 1; border-radius: 2px; background: var(--primary); border: 1px solid var(--border-strong); }
 .mini-segs i.on-yes { background: var(--yes); border-color: var(--yes); }
 .mini-segs i.on-maybe { background: var(--maybe); border-color: var(--maybe); }
 .mini-segs i.on-no { background: var(--no); border-color: var(--no); }
