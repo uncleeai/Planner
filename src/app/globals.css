@@ -2201,16 +2201,16 @@ button.solid-danger { background: var(--no); color: #fff; }
 /* „z z z" ulatujące znad głowy: trzy litery na tej samej ścieżce (w górę,
    lekko w prawo, fade), przesunięte w fazie — klasyczny dymek snu. Pętla jest
    celowa: to jedyny żywy element wygaszonej karty (reduced-motion ją wyłącza). */
-.el-zzz { position: absolute; top: 2px; right: -8px; }
+.el-zzz { position: absolute; top: 8px; right: 0; }
 .el-zzz i {
   position: absolute; right: 0; bottom: 0;
   font-family: var(--mono); font-style: normal; font-weight: 700;
   color: var(--muted); line-height: 1; opacity: 0;
   animation: elZzz 3.6s ease-in-out infinite;
 }
-.el-zzz i:nth-child(1) { font-size: 0.66rem; }
-.el-zzz i:nth-child(2) { font-size: 0.8rem; animation-delay: 1.2s; }
-.el-zzz i:nth-child(3) { font-size: 0.95rem; animation-delay: 2.4s; }
+.el-zzz i:nth-child(1) { font-size: 0.82rem; }
+.el-zzz i:nth-child(2) { font-size: 1rem; animation-delay: 1.2s; }
+.el-zzz i:nth-child(3) { font-size: 1.2rem; animation-delay: 2.4s; }
 @keyframes elZzz {
   0%   { opacity: 0; transform: translate(0, 0) scale(0.7) rotate(-6deg); }
   18%  { opacity: 0.85; }
