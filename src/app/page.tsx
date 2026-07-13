@@ -280,7 +280,7 @@ export default function Home() {
   // to jedna chronologiczna sekcja „Przed nami" — status niesie plakietka
   // przy wierszu, nie osobny nagłówek sekcji (4 nagłówki na kilka wypadów
   // robiły więcej szumu niż treści).
-  const { heroId, heroMode, heroVariant, ahead, past, archived } = useMemo(() => {
+  const { heroId, heroMode, heroVariant, ahead, past, archived, lastPlayedMs } = useMemo(() => {
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
     // Retencja na głównej: odbyte wiszą w „Bylim już" miesiąc, nieustalone tydzień
@@ -393,6 +393,14 @@ export default function Home() {
     pastItems.sort((a, b) => b.endMs - a.endMs);
     archivedItems.sort((a, b) => b.endMs - a.endMs);
 
+    // Koniec ostatniego odbytego wypadu (z „Bylim już" LUB archiwum) — do licznika
+    // „dni bez wypadu" na pustym lobby. 0 = nigdy nic się nie odbyło.
+    const lastPlayedMs = Math.max(
+      0,
+      ...pastItems.map((p) => p.endMs),
+      ...archivedItems.filter((a) => a.variant === 'past').map((a) => a.endMs),
+    );
+
     return {
       heroId: heroItem?.ev.id ?? null,
       heroMode,
@@ -400,6 +408,7 @@ export default function Home() {
       ahead,
       past: pastItems.map((p) => p.ev),
       archived: archivedItems,
+      lastPlayedMs,
     };
   }, [events, slots, votes, profiles, userId]);
 
@@ -740,6 +749,27 @@ export default function Home() {
           />
         </section>
       )}
+      {/* Puste lobby: są wypady, ale nic przed nami — w miejscu karty misji staje
+          „pusty slot" (przerywana ramka jak AFK w składzie) z licznikiem dni bez
+          wypadu à la tablica BHP. Tap = to samo co dok „+ Nowe lobby". */}
+      {!loading && !heroEvent && events.length > 0 && (
+        <section>
+          <button type="button" className="empty-lobby" onClick={() => setShowForm(true)}>
+            <span className="el-emoji" aria-hidden="true">🦗</span>
+            <span className="el-title">Lobby puste</span>
+            <span className="el-sub">Nikt nic nie hostuje. Będziesz tym kimś?</span>
+            {lastPlayedMs > 0 && (() => {
+              const days = Math.max(0, Math.floor((Date.now() - lastPlayedMs) / 86400000));
+              return (
+                <span className="el-days">
+                  <b>{days}</b> {days === 1 ? 'dzień bez wypadu' : 'dni bez wypadu'}
+                </span>
+              );
+            })()}
+          </button>
+        </section>
+      )}
+
       <Board title="Przed nami" items={ahead} agg={aggByEvent} unread={unreadByEvent} />
       <Board
         title="Bylim już"
