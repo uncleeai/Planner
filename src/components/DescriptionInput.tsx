@@ -75,19 +75,24 @@ export default function DescriptionInput({
     });
   }
 
+  // Pasek pojawia się dopiero przy fokusie / niepustym polu (CSS :focus-within +
+  // .has-text) — na stałe robił szum przy pustym opisie. preventDefault na
+  // mousedown: klik w narzędzie nie może zabrać fokusu textarea (i zwinąć paska).
+  const keepFocus = (e: React.MouseEvent) => e.preventDefault();
+
   return (
-    <div className="desc-input">
+    <div className={`desc-input${value ? ' has-text' : ''}`}>
       <div className="desc-toolbar">
-        <button type="button" className="desc-tool" onClick={() => surround('**', '**', 'pogrubienie')} aria-label="Pogrubienie">
+        <button type="button" className="desc-tool" onMouseDown={keepFocus} onClick={() => surround('**', '**', 'pogrubienie')} aria-label="Pogrubienie">
           <b>B</b>
         </button>
-        <button type="button" className="desc-tool" onClick={toggleHeading} aria-label="Nagłówek sekcji">
+        <button type="button" className="desc-tool" onMouseDown={keepFocus} onClick={toggleHeading} aria-label="Nagłówek sekcji">
           # Sekcja
         </button>
-        <button type="button" className="desc-tool" onClick={toggleList} aria-label="Lista">
+        <button type="button" className="desc-tool" onMouseDown={keepFocus} onClick={toggleList} aria-label="Lista">
           • Lista
         </button>
-        <button type="button" className="desc-tool" onClick={() => surround('[', '](https://)', 'tekst')} aria-label="Link">
+        <button type="button" className="desc-tool" onMouseDown={keepFocus} onClick={() => surround('[', '](https://)', 'tekst')} aria-label="Link">
           🔗 Link
         </button>
       </div>

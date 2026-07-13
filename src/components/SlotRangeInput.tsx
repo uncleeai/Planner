@@ -28,22 +28,6 @@ export default function SlotRangeInput({
 
   return (
     <div className="slot-range">
-      <label className="toggle-row">
-        <span className="toggle-label">Dłuższy wypad</span>
-        <input
-          type="checkbox"
-          className="toggle-input"
-          checked={longer}
-          onChange={(e) => {
-            const on = e.target.checked;
-            setLonger(on);
-            // Wracając do pojedynczego terminu — wyczyść „Do".
-            if (!on) onChange({ ...value, doDate: '' });
-          }}
-        />
-        <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
-      </label>
-
       {!longer ? (
         <DateTimeInput
           value={value.od ? `${value.od}T${value.time || '00:00'}` : ''}
@@ -98,6 +82,24 @@ export default function SlotRangeInput({
           </span>
         </div>
       )}
+
+      {/* Przełącznik POD datą — steruje polem wyżej, więc mieszka przy nim.
+          „Kilka dni" mówi wprost, co robi (dawne „Dłuższy wypad" było zagadką). */}
+      <label className="toggle-row range-toggle">
+        <span className="toggle-label">Kilka dni (Od–Do)</span>
+        <input
+          type="checkbox"
+          className="toggle-input"
+          checked={longer}
+          onChange={(e) => {
+            const on = e.target.checked;
+            setLonger(on);
+            // Wracając do pojedynczego terminu — wyczyść „Do".
+            if (!on) onChange({ ...value, doDate: '' });
+          }}
+        />
+        <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
+      </label>
     </div>
   );
 }

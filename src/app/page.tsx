@@ -129,7 +129,11 @@ export default function Home() {
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [emoji, setEmoji] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [slotDraft, setSlotDraft] = useState<SlotRange>(EMPTY_SLOT_RANGE);
+  // Kilka propozycji terminu od razu przy tworzeniu (sedno produktu) — pierwsza
+  // wymagana, kolejne opcjonalne (puste są ignorowane przy wysyłce).
+  const [slotDrafts, setSlotDrafts] = useState<SlotRange[]>([EMPTY_SLOT_RANGE]);
+  // Miejsce/opis/ikona zwinięte za „Więcej opcji" — typowe lobby to nazwa + termin.
+  const [showMore, setShowMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -230,10 +234,12 @@ export default function Home() {
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
-    const times = buildSlotTimes(slotDraft);
-    if (!title.trim() || !times || busy) return;
+    // Puste dodatkowe propozycje ignorujemy; wypełnione muszą być poprawne.
+    const filled = slotDrafts.filter((d) => d.od);
+    const times = filled.map(buildSlotTimes);
+    if (!title.trim() || times.length === 0 || times.some((t) => !t) || busy) return;
 
-    if (slotEndMs(times) < Date.now() - 60000) {
+    if (times.some((t) => slotEndMs(t!) < Date.now() - 60000)) {
       setError('Termin nie może być z przeszłości.');
       return;
     }
@@ -262,14 +268,16 @@ export default function Home() {
       return;
     }
 
-    await supabase.from('slots').insert({
-      event_id: data.id,
-      starts_at: times.starts_at,
-      ends_at: times.ends_at,
-      all_day: times.all_day,
-      created_by: displayName,
-      created_by_user_id: userId,
-    });
+    await supabase.from('slots').insert(
+      times.map((t) => ({
+        event_id: data.id,
+        starts_at: t!.starts_at,
+        ends_at: t!.ends_at,
+        all_day: t!.all_day,
+        created_by: displayName,
+        created_by_user_id: userId,
+      })),
+    );
 
     navigate(`/event/${data.id}`, 'forward');
   }
@@ -542,6 +550,8 @@ export default function Home() {
 
   // Pola formularza „Nowe lobby" — jedna lista dla obu wariantów (rozwijany nad
   // rozkładem i wewnątrz pustego stanu), żeby treść nie rozjeżdżała się między nimi.
+  // Kolejność: nazwa → termin(y) (sedno) → reszta zwinięta za „Więcej opcji".
+  const moreFilled = !!(location.trim() || description.trim() || emoji);
   const lobbyFields = [
     <div key="head" className="modal-label" style={{ marginBottom: 14 }}>Nowe lobby</div>,
     <div className="field" key="title">
@@ -555,35 +565,79 @@ export default function Home() {
         ref={titleInputRef}
       />
     </div>,
-    <div className="field" key="loc">
-      <label htmlFor="location">Miejsce (opcjonalnie)</label>
-      <LocationAutocomplete
-        id="location"
-        value={location}
-        onChange={setLocation}
-        onCoords={setLocationCoords}
-        placeholder="np. Zakopane, Łabiszyn…"
-      />
-    </div>,
-    <div className="field" key="desc">
-      <label htmlFor="description">Opis (opcjonalnie)</label>
-      <DescriptionInput
-        id="description"
-        value={description}
-        onChange={setDescription}
-        placeholder="np. co bierzemy, plan, szczegóły…"
-      />
-    </div>,
-    <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
     <div className="field" key="date">
-      <SlotRangeInput value={slotDraft} onChange={setSlotDraft} idPrefix="create" />
+      <label>Termin — możesz dać kilka propozycji</label>
+      {slotDrafts.map((d, i) => (
+        <div className="slot-draft" key={i}>
+          {i > 0 && (
+            <div className="slot-draft-head">
+              <span>Propozycja {i + 1}</span>
+              <button
+                type="button"
+                className="slot-draft-remove"
+                aria-label={`Usuń propozycję ${i + 1}`}
+                onClick={() => setSlotDrafts((ds) => ds.filter((_, j) => j !== i))}
+              >
+                Usuń
+              </button>
+            </div>
+          )}
+          <SlotRangeInput
+            value={d}
+            onChange={(v) => setSlotDrafts((ds) => ds.map((x, j) => (j === i ? v : x)))}
+            idPrefix={`create-${i}`}
+          />
+        </div>
+      ))}
+      {slotDrafts.length < 4 && (
+        <button
+          type="button"
+          className="add-slot"
+          onClick={() => setSlotDrafts((ds) => [...ds, EMPTY_SLOT_RANGE])}
+        >
+          + Dodaj propozycję
+        </button>
+      )}
     </div>,
+    <button
+      key="more"
+      type="button"
+      className="more-toggle"
+      aria-expanded={showMore}
+      onClick={() => setShowMore((v) => !v)}
+    >
+      Więcej opcji · miejsce, opis, ikona{moreFilled && !showMore ? ' ●' : ''} {showMore ? '▴' : '▾'}
+    </button>,
+    ...(showMore
+      ? [
+          <div className="field" key="loc">
+            <label htmlFor="location">Miejsce (opcjonalnie)</label>
+            <LocationAutocomplete
+              id="location"
+              value={location}
+              onChange={setLocation}
+              onCoords={setLocationCoords}
+              placeholder="np. Zakopane, Łabiszyn…"
+            />
+          </div>,
+          <div className="field" key="desc">
+            <label htmlFor="description">Opis (opcjonalnie)</label>
+            <DescriptionInput
+              id="description"
+              value={description}
+              onChange={setDescription}
+              placeholder="np. co bierzemy, plan, szczegóły…"
+            />
+          </div>,
+          <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
+        ]
+      : []),
     error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
     <button
       key="submit"
       type="submit"
       className="cta-gradient"
-      disabled={!title.trim() || !slotDraft.od || busy}
+      disabled={!title.trim() || !slotDrafts[0]?.od || busy}
     >
       {busy ? 'Odpalam…' : 'Odpal lobby'}
     </button>,
