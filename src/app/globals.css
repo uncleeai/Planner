@@ -2305,3 +2305,61 @@ button.solid-danger { background: var(--no); color: #fff; }
   color: var(--muted);
   box-shadow: none;
 }
+
+/* ===== Podgląd lobby na żywo + chipy kategorii (formularz „Nowe lobby") ===== */
+
+/* Mini-karta hero nad polami: te same warstwy fotki (hero-photo/hp-*) co na
+   dashboardzie, tylko ciaśniejszy padding. Buduje się w miarę wpisywania. */
+.lobby-preview {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 16px 16px 14px;
+  min-height: 92px;
+}
+.lobby-preview > *:not(.hero-photo) { position: relative; z-index: 1; }
+.lp-body { display: flex; flex-direction: column; gap: 3px; }
+.lp-emoji { font-size: 30px; line-height: 1; margin-bottom: 5px; }
+.lp-title { font-size: 1.18rem; font-weight: 750; line-height: 1.2; }
+.lp-title.ph { color: var(--muted); font-weight: 600; }
+.lp-meta {
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.lp-host { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+.lp-host b { font-size: 0.82rem; font-weight: 650; }
+.lp-host .host-tag {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--accent);
+}
+
+/* Chipy kategorii: przewijany rząd emoji + mono-label, wybór podmienia fotkę
+   podglądu. Tap w zaznaczony chip odznacza (jak w starym pickerze). */
+.cat-row {
+  display: flex; gap: 8px;
+  overflow-x: auto;
+  padding: 2px; margin: 0 -2px;
+  scrollbar-width: none;
+}
+.cat-row::-webkit-scrollbar { display: none; }
+.cat-chip {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  min-width: 66px; padding: 10px 10px 8px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+.cat-chip .cat-emoji { font-size: 22px; line-height: 1; }
+.cat-chip .cat-label {
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.cat-chip.selected {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-dim);
+  color: var(--text);
+}
+.cat-chip:active { transform: scale(0.96); }

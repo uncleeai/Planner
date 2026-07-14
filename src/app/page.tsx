@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
+import { getEventStatus, formatSlotShort, formatSlotRange, slotEndMs } from '@/lib/types';
 import { pingUser } from '@/lib/ping';
 import { haptic } from '@/lib/haptics';
 import { appAlert } from '@/components/Dialogs';
@@ -15,7 +15,6 @@ import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
-import EventEmojiInput from '@/components/EventEmojiInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import WeatherModal from '@/components/WeatherModal';
 import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
@@ -25,7 +24,7 @@ import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
 import { getChatSeen } from '@/lib/chatSeen';
-import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { heroImageForEmoji, HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
@@ -85,7 +84,7 @@ const MAJOR_QUOTES = [
 export default function Home() {
   const navigate = useTransitionNavigate();
   const router = useRouter();
-  const { userId, displayName } = useAuth();
+  const { userId, displayName, avatar } = useAuth();
 
   // Seed z cache (jeśli wracamy z wypadu) — lista pojawia się od razu, bez „Wczytuję…".
   const cached = getCache();
@@ -551,9 +550,47 @@ export default function Home() {
   // Pola formularza „Nowe lobby" — jedna lista dla obu wariantów (rozwijany nad
   // rozkładem i wewnątrz pustego stanu), żeby treść nie rozjeżdżała się między nimi.
   // Kolejność: nazwa → termin(y) (sedno) → reszta zwinięta za „Więcej opcji".
-  const moreFilled = !!(location.trim() || description.trim() || emoji);
+  const moreFilled = !!(location.trim() || description.trim());
+  // Podgląd karty lobby na żywo — wpisujesz i widzisz, co dostanie paczka.
+  // Fotka/kadr jadą na tych samych warstwach co karta hero (hero-photo w CSS).
+  const previewTimes = slotDrafts[0]?.od ? buildSlotTimes(slotDrafts[0]) : null;
+  const previewPhoto = heroImageForEmoji(emoji);
+  const previewCrop = (emoji ? cropByEmoji.get(emoji) : null) ?? DEFAULT_CROP;
   const lobbyFields = [
     <div key="head" className="modal-label" style={{ marginBottom: 14 }}>Nowe lobby</div>,
+    <div key="preview" className="lobby-preview">
+      {previewPhoto && (
+        <div className="hero-photo" aria-hidden="true">
+          <div
+            className="hp-img"
+            style={{
+              backgroundImage: `url(${previewPhoto})`,
+              backgroundSize: `${previewCrop.zoom}%`,
+              backgroundPosition: `${previewCrop.pos_x}% ${previewCrop.pos_y}%`,
+              ['--hp-bright' as string]: `${previewCrop.brightness / 100}`,
+            } as React.CSSProperties}
+          />
+          <i className="hp-tint" />
+          <i className="hp-half" />
+          <i className="hp-grain" />
+          <i className="hp-vig" />
+          <i className="hp-scrim" />
+        </div>
+      )}
+      <div className="lp-body">
+        {emoji && <span className="lp-emoji" aria-hidden="true">{emoji}</span>}
+        <span className={`lp-title${title.trim() ? '' : ' ph'}`}>{title.trim() || 'Nazwa wypadu…'}</span>
+        <span className="lp-meta">
+          {location.trim() ? `${location.trim()} · ` : ''}
+          {previewTimes ? formatSlotRange(previewTimes) : 'termin do ustalenia'}
+        </span>
+        <span className="lp-host">
+          <Avatar name={displayName} avatar={avatar} size={22} />
+          <b>{displayName}</b>
+          <span className="host-tag">HOST</span>
+        </span>
+      </div>
+    </div>,
     <div className="field" key="title">
       <label htmlFor="title">Nazwa</label>
       <input
@@ -564,6 +601,23 @@ export default function Home() {
         onChange={(e) => setTitle(e.target.value)}
         ref={titleInputRef}
       />
+    </div>,
+    <div className="field" key="cat">
+      <label>Kategoria (opcjonalnie)</label>
+      <div className="cat-row">
+        {HERO_CATEGORIES.map((c) => (
+          <button
+            type="button"
+            key={c.emoji}
+            className={`cat-chip${emoji === c.emoji ? ' selected' : ''}`}
+            aria-pressed={emoji === c.emoji}
+            onClick={() => setEmoji(emoji === c.emoji ? null : c.emoji)}
+          >
+            <span className="cat-emoji" aria-hidden="true">{c.emoji}</span>
+            <span className="cat-label">{c.label}</span>
+          </button>
+        ))}
+      </div>
     </div>,
     <div className="field" key="date">
       <label>Termin</label>
@@ -606,7 +660,7 @@ export default function Home() {
       aria-expanded={showMore}
       onClick={() => setShowMore((v) => !v)}
     >
-      Więcej opcji · miejsce, opis, ikona{moreFilled && !showMore ? ' ●' : ''} {showMore ? '▴' : '▾'}
+      Więcej opcji · miejsce, opis{moreFilled && !showMore ? ' ●' : ''} {showMore ? '▴' : '▾'}
     </button>,
     ...(showMore
       ? [
@@ -629,7 +683,6 @@ export default function Home() {
               placeholder="np. co bierzemy, plan, szczegóły…"
             />
           </div>,
-          <EventEmojiInput key="emoji" value={emoji} onChange={setEmoji} />,
         ]
       : []),
     error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
