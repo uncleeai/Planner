@@ -2279,25 +2279,29 @@ button.solid-danger { background: var(--no); color: #fff; }
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
 }
 .slot-draft-remove:active { color: var(--no); border-color: var(--no); }
+/* Cichy tekstowy link w akcencie — nie konkuruje z polem daty ani „Więcej opcji"
+   (dwa przerywane pudła jedno na drugim zlewały się w szum). */
 .add-slot {
-  display: block; width: 100%;
-  margin-top: 10px; padding: 10px 12px;
-  background: none;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem; font-weight: 600; color: var(--muted);
+  display: inline-block; width: auto;
+  margin-top: 6px; padding: 4px 2px;
+  background: none; border: none;
+  font-size: 0.84rem; font-weight: 600; color: var(--accent);
 }
+.add-slot:active { opacity: 0.7; }
 @media (hover: hover) {
-  .add-slot:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: none; }
+  .add-slot:hover { color: color-mix(in srgb, var(--accent) 80%, #fff); background: none; }
 }
 
 /* Przełącznik zakresu żyje POD polem daty (część SlotRangeInput) */
 .range-toggle { margin: 10px 0 0; }
 
-/* Disabled na CTA ma czytać się jako „zablokowane", nie „brzydszy pomarańcz":
-   głębsze ściszenie + odbarwienie + zgaszony cień. */
+/* Disabled na CTA: neutralna szara pastylka zamiast przygaszonego pomarańczu —
+   ściszony akcent czytał się jako „brzydki brąz", nie jako „zablokowane".
+   Pomarańcz wraca dopiero, gdy formularz jest kompletny — sam kolor mówi „gotowe". */
 .cta-gradient:disabled {
-  opacity: 0.4;
-  filter: saturate(0.35);
+  opacity: 1;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
   box-shadow: none;
 }

@@ -86,7 +86,7 @@ export default function SlotRangeInput({
       {/* Przełącznik POD datą — steruje polem wyżej, więc mieszka przy nim.
           „Kilka dni" mówi wprost, co robi (dawne „Dłuższy wypad" było zagadką). */}
       <label className="toggle-row range-toggle">
-        <span className="toggle-label">Kilka dni (Od–Do)</span>
+        <span className="toggle-label">Kilka dni</span>
         <input
           type="checkbox"
           className="toggle-input"

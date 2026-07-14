@@ -566,7 +566,7 @@ export default function Home() {
       />
     </div>,
     <div className="field" key="date">
-      <label>Termin — możesz dać kilka propozycji</label>
+      <label>Termin</label>
       {slotDrafts.map((d, i) => (
         <div className="slot-draft" key={i}>
           {i > 0 && (
@@ -595,7 +595,7 @@ export default function Home() {
           className="add-slot"
           onClick={() => setSlotDrafts((ds) => [...ds, EMPTY_SLOT_RANGE])}
         >
-          + Dodaj propozycję
+          {slotDrafts.length === 1 ? '+ Dodaj drugą propozycję terminu' : '+ Dodaj kolejną propozycję'}
         </button>
       )}
     </div>,
