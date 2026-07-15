@@ -2312,11 +2312,12 @@ button.solid-danger { background: var(--no); color: #fff; }
 .cat-row {
   display: flex; gap: 8px;
   overflow-x: auto;
-  /* Zapas po bokach = pełne chipy przy krawędziach; maska zamiast twardego ucięcia. */
-  padding: 2px 16px; margin: 0 -16px;
+  /* Zapas po bokach = pełne chipy przy krawędziach; szeroka maska zamiast twardego
+     ucięcia (chipy przy brzegu gasną stopniowo, a nie znikają w pół). */
+  padding: 2px 22px; margin: 0 -22px;
   scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
 }
 .cat-row::-webkit-scrollbar { display: none; }
 .cat-chip {
@@ -2407,17 +2408,21 @@ button.solid-danger { background: var(--no); color: #fff; }
   background: linear-gradient(180deg, transparent, var(--bg));
   pointer-events: none;
 }
-.creator-emoji { font-size: 44px; line-height: 1; }
-.creator-title {
+.creator-emoji { font-size: 48px; line-height: 1; }
+/* Tytuł JEST tytułem, nie polem: duży, ciasny, z cieniem do czytelności na
+   fotce. Selektor .creator-hero .creator-title (0,2,0) bije bazowy
+   input[type="text"] (0,1,1), inaczej przebijał się box tła/ramki inputu. */
+.creator-hero .creator-title {
   width: 100%;
   background: none; border: none; border-radius: 0; box-shadow: none;
-  padding: 6px 0;
+  padding: 4px 0;
   text-align: center;
-  font-size: 1.8rem; font-weight: 800; line-height: 1.2;
+  font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.08;
   color: var(--text);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
 }
-.creator-title:focus { outline: none; border: none; box-shadow: none; }
-.creator-title::placeholder { color: rgba(232, 237, 240, 0.55); font-weight: 700; }
+.creator-hero .creator-title:focus { outline: none; border: none; box-shadow: none; }
+.creator-hero .creator-title::placeholder { color: rgba(232, 237, 240, 0.5); font-weight: 800; }
 
 .creator-body {
   display: flex; flex-direction: column; gap: 14px;
