@@ -2312,8 +2312,11 @@ button.solid-danger { background: var(--no); color: #fff; }
 .cat-row {
   display: flex; gap: 8px;
   overflow-x: auto;
-  padding: 2px; margin: 0 -2px;
+  /* Zapas po bokach = pełne chipy przy krawędziach; maska zamiast twardego ucięcia. */
+  padding: 2px 16px; margin: 0 -16px;
   scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
 }
 .cat-row::-webkit-scrollbar { display: none; }
 .cat-chip {
@@ -2354,7 +2357,7 @@ button.solid-danger { background: var(--no); color: #fff; }
 }
 /* Wyjazd BEZ guardu reduced-motion — animationend odpala unmount, więc animacja
    musi się wydarzyć zawsze (jak w .sheet-overlay.closing). */
-.creator.closing { animation: sheet-out 0.3s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.creator.closing { animation: sheet-out 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
 
 .creator-close {
   top: calc(env(safe-area-inset-top) + 12px);
@@ -2453,16 +2456,30 @@ button.solid-danger { background: var(--no); color: #fff; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 0 2px;
 }
-.desc-pill {
-  flex-shrink: 0;
-  padding: 9px 14px; border-radius: 999px;
-  background: var(--card-2); border: 1px solid var(--border);
-  font-size: 0.82rem; font-weight: 600; color: var(--text);
+/* Opis: pusty = pill akcji na całą szerokość; wpisany = karta z podglądem markdownu. */
+.creator-desc {
+  width: 100%; text-align: left;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: var(--card); border: 1px solid var(--border-strong);
+  font-size: 0.9rem; font-weight: 600; color: var(--accent);
 }
-.desc-pill.filled {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+.creator-desc.filled {
+  display: flex; flex-direction: column; gap: 6px;
+  color: var(--text); font-weight: 400;
 }
+button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
+.creator-desc-head { display: flex; align-items: center; justify-content: space-between; }
+.creator-desc-label {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.creator-desc-edit {
+  padding: 2px 4px; background: none; border: none;
+  font-size: 0.8rem; font-weight: 600; color: var(--accent);
+}
+.creator-desc-body { font-size: 0.9rem; line-height: 1.45; color: var(--text); }
+.creator-desc-body > :first-child { margin-top: 0; }
+.creator-desc-body > :last-child { margin-bottom: 0; }
 
 .creator-cta {
   position: sticky; bottom: 0; z-index: 2;
@@ -2473,6 +2490,11 @@ button.solid-danger { background: var(--no); color: #fff; }
 
 /* Child-sheet nad kreatorem (kreator z-90, modale profilu 100). */
 .sheet-overlay.child { z-index: 95; }
+/* Sprężysty powrót po swipe (gdy nie zamykamy); w trakcie ciągnięcia bez tranzycji. */
+.sheet-overlay.child .sheet { transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
+.sheet-overlay.child .sheet.dragging { transition: none; }
+/* Strefa chwytu do swipe (grip + nagłówek) — bez natywnego scrolla pod palcem. */
+.sheet-drag { touch-action: none; }
 .child-head {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 14px;

@@ -8,6 +8,7 @@ import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInpu
 import { formatSlotRange, slotEndMs } from '@/lib/types';
 import { heroImageForEmoji, HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { Avatar } from '@/components/Avatar';
+import { Markdown } from '@/lib/markdown';
 import ChildSheet from '@/components/ChildSheet';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
@@ -209,14 +210,27 @@ export default function CreatorSheet({
               <b>{displayName}</b>
               <span className="host-tag">HOST</span>
             </span>
-            <button
-              type="button"
-              className={`desc-pill${description.trim() ? ' filled' : ''}`}
-              onClick={() => setOpenSheet('opis')}
-            >
-              {description.trim() ? 'Edytuj opis' : 'Dodaj opis'}
-            </button>
           </div>
+
+          {/* Opis: pusty → pill „Dodaj opis"; wpisany → podgląd (markdown) na miejscu,
+              żeby nie trzeba było otwierać sheeta tylko po to, by go zobaczyć. Podgląd
+              to div (Markdown renderuje <a> — niedozwolone w <button>); edycja osobnym
+              przyciskiem, linki w podglądzie działają. */}
+          {description.trim() ? (
+            <div className="creator-desc filled">
+              <div className="creator-desc-head">
+                <span className="creator-desc-label">Opis</span>
+                <button type="button" className="creator-desc-edit" onClick={() => setOpenSheet('opis')}>
+                  Edytuj
+                </button>
+              </div>
+              <div className="creator-desc-body"><Markdown text={description} /></div>
+            </div>
+          ) : (
+            <button type="button" className="creator-desc" onClick={() => setOpenSheet('opis')}>
+              + Dodaj opis
+            </button>
+          )}
 
           {error && <p className="small" style={{ color: 'var(--no)', margin: 0 }}>{error}</p>}
         </div>
