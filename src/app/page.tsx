@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotShort, formatSlotRange, slotEndMs } from '@/lib/types';
+import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
 import { pingUser } from '@/lib/ping';
 import { haptic } from '@/lib/haptics';
 import { appAlert } from '@/components/Dialogs';
@@ -13,18 +13,15 @@ import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib
 import { Avatar, type Person } from '@/components/Avatar';
 import ProfileMenu from '@/components/ProfileMenu';
 import SettingsMenu from '@/components/SettingsMenu';
-import SlotRangeInput from '@/components/SlotRangeInput';
-import DescriptionInput from '@/components/DescriptionInput';
-import LocationAutocomplete from '@/components/LocationAutocomplete';
+import CreatorSheet from '@/components/CreatorSheet';
 import WeatherModal from '@/components/WeatherModal';
 import { fetchDayWeather, peekDayWeather, describeWeather, type DayWeather } from '@/lib/weather';
-import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useRouter } from 'next/navigation';
 import { useTransitionNavigate } from '@/lib/transition';
 import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
 import { getChatSeen } from '@/lib/chatSeen';
-import { heroImageForEmoji, HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
@@ -84,7 +81,7 @@ const MAJOR_QUOTES = [
 export default function Home() {
   const navigate = useTransitionNavigate();
   const router = useRouter();
-  const { userId, displayName, avatar } = useAuth();
+  const { userId, displayName } = useAuth();
 
   // Seed z cache (jeśli wracamy z wypadu) — lista pojawia się od razu, bez „Wczytuję…".
   const cached = getCache();
@@ -117,34 +114,10 @@ export default function Home() {
     }, 150);
   };
 
+  // Pełnoekranowy kreator „Nowe lobby" (CreatorSheet) — cały stan formularza
+  // i createEvent żyją w komponencie; unmount = porzucenie szkicu.
   const [showForm, setShowForm] = useState(false);
-  // Zamykanie sheeta: najpierw animacja wyjazdu (klasa .closing), odmontowanie
-  // dopiero po jej końcu (animationend na overlayu).
-  const [sheetClosing, setSheetClosing] = useState(false);
-  const closeSheet = () => setSheetClosing(true);
   const [showArchive, setShowArchive] = useState(false);
-  const [title, setTitle] = useState('');
-  const [location, setLocation] = useState('');
-  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [emoji, setEmoji] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
-  // Kilka propozycji terminu od razu przy tworzeniu (sedno produktu) — pierwsza
-  // wymagana, kolejne opcjonalne (puste są ignorowane przy wysyłce).
-  const [slotDrafts, setSlotDrafts] = useState<SlotRange[]>([EMPTY_SLOT_RANGE]);
-  // Miejsce/opis/ikona zwinięte za „Więcej opcji" — typowe lobby to nazwa + termin.
-  const [showMore, setShowMore] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const titleInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (showForm && titleInputRef.current) {
-      setTimeout(() => {
-        titleInputRef.current?.focus();
-      }, 100);
-    }
-  }, [showForm]);
 
   const load = useCallback(async () => {
     const [{ data: ev }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] = await Promise.all([
@@ -230,56 +203,6 @@ export default function Home() {
       document.removeEventListener('visibilitychange', onWake);
     };
   }, [load, scheduleReload, router]);
-
-  async function createEvent(e: React.FormEvent) {
-    e.preventDefault();
-    // Puste dodatkowe propozycje ignorujemy; wypełnione muszą być poprawne.
-    const filled = slotDrafts.filter((d) => d.od);
-    const times = filled.map(buildSlotTimes);
-    if (!title.trim() || times.length === 0 || times.some((t) => !t) || busy) return;
-
-    if (times.some((t) => slotEndMs(t!) < Date.now() - 60000)) {
-      setError('Termin nie może być z przeszłości.');
-      return;
-    }
-
-    setBusy(true);
-    setError('');
-
-    const { data, error } = await supabase
-      .from('events')
-      .insert({
-        title: title.trim(),
-        location: location.trim() || null,
-        latitude: locationCoords?.lat ?? null,
-        longitude: locationCoords?.lon ?? null,
-        emoji,
-        description: description.trim() || null,
-        created_by: displayName,
-        created_by_user_id: userId,
-      })
-      .select('id')
-      .single();
-
-    if (error || !data) {
-      setError(error?.message ?? 'Nie udało się utworzyć wypadu.');
-      setBusy(false);
-      return;
-    }
-
-    await supabase.from('slots').insert(
-      times.map((t) => ({
-        event_id: data.id,
-        starts_at: t!.starts_at,
-        ends_at: t!.ends_at,
-        all_day: t!.all_day,
-        created_by: displayName,
-        created_by_user_id: userId,
-      })),
-    );
-
-    navigate(`/event/${data.id}`, 'forward');
-  }
 
   // Kategoryzacja + wybór hero. Hero działa jak skrzynka odbiorcza:
   // (1) wypad czekający na TWÓJ głos, (2) czekamy na innych, (3) najbliższy
@@ -547,154 +470,6 @@ export default function Home() {
     return `START ZA ${days} DNI`;
   }, [heroSlot]);
 
-  // Pola formularza „Nowe lobby" — jedna lista dla obu wariantów (rozwijany nad
-  // rozkładem i wewnątrz pustego stanu), żeby treść nie rozjeżdżała się między nimi.
-  // Kolejność: nazwa → termin(y) (sedno) → reszta zwinięta za „Więcej opcji".
-  const moreFilled = !!(location.trim() || description.trim());
-  // Podgląd karty lobby na żywo — wpisujesz i widzisz, co dostanie paczka.
-  // Fotka/kadr jadą na tych samych warstwach co karta hero (hero-photo w CSS).
-  const previewTimes = slotDrafts[0]?.od ? buildSlotTimes(slotDrafts[0]) : null;
-  const previewPhoto = heroImageForEmoji(emoji);
-  const previewCrop = (emoji ? cropByEmoji.get(emoji) : null) ?? DEFAULT_CROP;
-  const lobbyFields = [
-    <div key="head" className="modal-label" style={{ marginBottom: 14 }}>Nowe lobby</div>,
-    <div key="preview" className="lobby-preview">
-      {previewPhoto && (
-        <div className="hero-photo" aria-hidden="true">
-          <div
-            className="hp-img"
-            style={{
-              backgroundImage: `url(${previewPhoto})`,
-              backgroundSize: `${previewCrop.zoom}%`,
-              backgroundPosition: `${previewCrop.pos_x}% ${previewCrop.pos_y}%`,
-              ['--hp-bright' as string]: `${previewCrop.brightness / 100}`,
-            } as React.CSSProperties}
-          />
-          <i className="hp-tint" />
-          <i className="hp-half" />
-          <i className="hp-grain" />
-          <i className="hp-vig" />
-          <i className="hp-scrim" />
-        </div>
-      )}
-      <div className="lp-body">
-        {emoji && <span className="lp-emoji" aria-hidden="true">{emoji}</span>}
-        <span className={`lp-title${title.trim() ? '' : ' ph'}`}>{title.trim() || 'Nazwa wypadu…'}</span>
-        <span className="lp-meta">
-          {location.trim() ? `${location.trim()} · ` : ''}
-          {previewTimes ? formatSlotRange(previewTimes) : 'termin do ustalenia'}
-        </span>
-        <span className="lp-host">
-          <Avatar name={displayName} avatar={avatar} size={22} />
-          <b>{displayName}</b>
-          <span className="host-tag">HOST</span>
-        </span>
-      </div>
-    </div>,
-    <div className="field" key="title">
-      <label htmlFor="title">Nazwa</label>
-      <input
-        id="title"
-        type="text"
-        placeholder="np. Piwo w piątek, baskecik…"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        ref={titleInputRef}
-      />
-    </div>,
-    <div className="field" key="cat">
-      <label>Kategoria (opcjonalnie)</label>
-      <div className="cat-row">
-        {HERO_CATEGORIES.map((c) => (
-          <button
-            type="button"
-            key={c.emoji}
-            className={`cat-chip${emoji === c.emoji ? ' selected' : ''}`}
-            aria-pressed={emoji === c.emoji}
-            onClick={() => setEmoji(emoji === c.emoji ? null : c.emoji)}
-          >
-            <span className="cat-emoji" aria-hidden="true">{c.emoji}</span>
-            <span className="cat-label">{c.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>,
-    <div className="field" key="date">
-      <label>Termin</label>
-      {slotDrafts.map((d, i) => (
-        <div className="slot-draft" key={i}>
-          {i > 0 && (
-            <div className="slot-draft-head">
-              <span>Propozycja {i + 1}</span>
-              <button
-                type="button"
-                className="slot-draft-remove"
-                aria-label={`Usuń propozycję ${i + 1}`}
-                onClick={() => setSlotDrafts((ds) => ds.filter((_, j) => j !== i))}
-              >
-                Usuń
-              </button>
-            </div>
-          )}
-          <SlotRangeInput
-            value={d}
-            onChange={(v) => setSlotDrafts((ds) => ds.map((x, j) => (j === i ? v : x)))}
-            idPrefix={`create-${i}`}
-          />
-        </div>
-      ))}
-      {slotDrafts.length < 4 && (
-        <button
-          type="button"
-          className="add-slot"
-          onClick={() => setSlotDrafts((ds) => [...ds, EMPTY_SLOT_RANGE])}
-        >
-          {slotDrafts.length === 1 ? '+ Dodaj drugą propozycję terminu' : '+ Dodaj kolejną propozycję'}
-        </button>
-      )}
-    </div>,
-    <button
-      key="more"
-      type="button"
-      className="more-toggle"
-      aria-expanded={showMore}
-      onClick={() => setShowMore((v) => !v)}
-    >
-      Więcej opcji · miejsce, opis{moreFilled && !showMore ? ' ●' : ''} {showMore ? '▴' : '▾'}
-    </button>,
-    ...(showMore
-      ? [
-          <div className="field" key="loc">
-            <label htmlFor="location">Miejsce (opcjonalnie)</label>
-            <LocationAutocomplete
-              id="location"
-              value={location}
-              onChange={setLocation}
-              onCoords={setLocationCoords}
-              placeholder="np. Zakopane, Łabiszyn…"
-            />
-          </div>,
-          <div className="field" key="desc">
-            <label htmlFor="description">Opis (opcjonalnie)</label>
-            <DescriptionInput
-              id="description"
-              value={description}
-              onChange={setDescription}
-              placeholder="np. co bierzemy, plan, szczegóły…"
-            />
-          </div>,
-        ]
-      : []),
-    error ? <p key="err" className="small" style={{ color: 'var(--no)' }}>{error}</p> : null,
-    <button
-      key="submit"
-      type="submit"
-      className="cta-gradient"
-      disabled={!title.trim() || !slotDrafts[0]?.od || busy}
-    >
-      {busy ? 'Odpalam…' : 'Odpal lobby'}
-    </button>,
-  ].filter(Boolean);
 
   return (
     <main className={`glass-page${events.length > 0 ? ' has-dock' : ''}`}>
@@ -707,129 +482,37 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Formularz jako bottom sheet: wysuwa się znad doku „+ Nowe lobby", który go
-          otwiera — zero teleportacji na górę strony i zero reflow listy (sam transform). */}
-      {events.length > 0 && showForm && (
-        <div
-          className={`sheet-overlay${sheetClosing ? ' closing' : ''}`}
-          onClick={closeSheet}
-          onAnimationEnd={(e) => {
-            // Tylko animacja SAMEGO overlaya (fade-out) — eventy z sheeta bąbelkują.
-            if (sheetClosing && e.target === e.currentTarget) {
-              setShowForm(false);
-              setSheetClosing(false);
-            }
-          }}
-        >
-          <div className="sheet" role="dialog" aria-label="Nowe lobby" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-grip" aria-hidden="true" />
-            <form onSubmit={createEvent}>
-              {lobbyFields}
-              <button
-                type="button"
-                className="ghost"
-                style={{ width: '100%', marginTop: 8 }}
-                onClick={closeSheet}
-              >
-                Anuluj
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Pełnoekranowy kreator „Nowe lobby" — karta jest formularzem (CreatorSheet).
+          Unmount przy zamknięciu = świeży szkic przy każdym otwarciu. */}
+      {showForm && <CreatorSheet cropByEmoji={cropByEmoji} onClose={() => setShowForm(false)} />}
 
       {loading && <p className="muted mt">Wczytuję…</p>}
 
       {!loading && events.length === 0 && (
-        <div className="empty-state mt" style={{
-          padding: showForm ? '20px' : '44px 24px',
-          textAlign: showForm ? 'left' : 'center',
-          transition: 'padding 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
-          overflow: 'hidden',
-        }}>
-          {/* Sekcja 1: Brak wypadów (Empty State) */}
+        <div className="empty-state mt" style={{ padding: '44px 24px', textAlign: 'center' }}>
           <div style={{
-            display: 'grid',
-            gridTemplateRows: showForm ? '0fr' : '1fr',
-            transition: 'grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+            width: 56, height: 56,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 16,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+            margin: '0 auto 16px',
+            color: '#ffffff',
           }}>
-            <div style={{ minHeight: 0, overflow: 'hidden' }}>
-              {[
-                <div key="icon" style={{
-                  width: 56, height: 56,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 16,
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
-                  margin: '0 auto 16px',
-                  color: '#ffffff'
-                }}>
-                  <IconCalendar size={26} />
-                </div>,
-                <h2 key="title" style={{ margin: '0 0 4px', textAlign: 'center' }}>Cisza w eterze</h2>,
-                <p key="desc" style={{ color: 'var(--muted)', margin: '0 auto 18px', maxWidth: '30ch', textAlign: 'center' }}>
-                  Załóż pierwsze lobby i wyślij składowi.
-                </p>,
-                <button
-                  key="cta"
-                  className="cta-gradient"
-                  onClick={() => setShowForm(true)}
-                  style={{ width: 'auto', padding: '12px 24px', fontSize: '0.95rem', margin: '0 auto', display: 'block' }}
-                >
-                  + Nowe lobby
-                </button>,
-              ].map((child, i) => (
-                <div
-                  key={i}
-                  style={{
-                    opacity: showForm ? 0 : 1,
-                    transition: !showForm
-                      ? `opacity 0.4s ease ${0.12 + i * 0.07}s`
-                      : 'opacity 0.2s ease',
-                  }}
-                >
-                  {child}
-                </div>
-              ))}
-            </div>
+            <IconCalendar size={26} />
           </div>
-
-          {/* Sekcja 2: Formularz — kaskadowy fade-in od lewej */}
-          <div style={{
-            display: 'grid',
-            gridTemplateRows: showForm ? '1fr' : '0fr',
-            transition: 'grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
-          }}>
-            <div style={{ minHeight: 0, overflow: 'hidden', padding: '0 4px' }}>
-              <form onSubmit={createEvent} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[
-                  ...lobbyFields,
-                  <button
-                    key="cancel"
-                    type="button"
-                    className="ghost"
-                    onClick={() => setShowForm(false)}
-                    style={{ width: '100%', marginTop: -4 }}
-                  >
-                    Anuluj
-                  </button>,
-                ].map((child, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      opacity: showForm ? 1 : 0,
-                      transition: showForm
-                        ? `opacity 0.4s ease ${0.12 + i * 0.07}s`
-                        : 'opacity 0.15s ease',
-                    }}
-                  >
-                    {child}
-                  </div>
-                ))}
-              </form>
-            </div>
-          </div>
+          <h2 style={{ margin: '0 0 4px' }}>Cisza w eterze</h2>
+          <p style={{ color: 'var(--muted)', margin: '0 auto 18px', maxWidth: '30ch' }}>
+            Załóż pierwsze lobby i wyślij składowi.
+          </p>
+          <button
+            className="cta-gradient"
+            onClick={() => setShowForm(true)}
+            style={{ width: 'auto', padding: '12px 24px', fontSize: '0.95rem', margin: '0 auto', display: 'block' }}
+          >
+            + Nowe lobby
+          </button>
         </div>
       )}
 

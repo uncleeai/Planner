@@ -2363,3 +2363,134 @@ button.solid-danger { background: var(--no); color: #fff; }
   color: var(--text);
 }
 .cat-chip:active { transform: scale(0.96); }
+
+/* ===== Pełnoekranowy kreator „Nowe lobby" (CreatorSheet, styl Invites) =====
+   Karta JEST formularzem: strefa tła (gradient z akcentu → fotka kategorii),
+   wielki tytuł na tle, szklana grupa wierszy Termin/Miejsce otwierających
+   child-sheety, host + pill opisu, sticky CTA. Wjazd od dołu na sprężynie
+   sheeta (te same keyframes sheet-in/out). */
+.creator {
+  position: fixed; inset: 0; z-index: 90;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .creator { animation: sheet-in 0.42s cubic-bezier(0.32, 0.72, 0, 1); }
+}
+/* Wyjazd BEZ guardu reduced-motion — animationend odpala unmount, więc animacja
+   musi się wydarzyć zawsze (jak w .sheet-overlay.closing). */
+.creator.closing { animation: sheet-out 0.3s cubic-bezier(0.32, 0.72, 0, 1) both; }
+
+.creator-close {
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 14px; right: auto;
+  z-index: 3;
+}
+
+.creator-scroll {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.creator-scroll::-webkit-scrollbar { display: none; }
+
+/* Strefa tła: domyślnie gradient z koloru akcentu gasnący w tło; po wyborze
+   kategorii pod spodem wjeżdżają warstwy hero-photo (jak karta na dashboardzie). */
+.creator-hero {
+  position: relative; overflow: hidden;
+  min-height: 40svh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 56px) 20px 18px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 36%, var(--bg)) 0%,
+    color-mix(in srgb, var(--accent) 12%, var(--bg)) 68%,
+    var(--bg) 100%
+  );
+}
+.creator-hero > *:not(.hero-photo) { position: relative; z-index: 1; }
+.creator-emoji { font-size: 44px; line-height: 1; }
+.creator-title {
+  width: 100%;
+  background: none; border: none; border-radius: 0; box-shadow: none;
+  padding: 6px 0;
+  text-align: center;
+  font-size: 1.8rem; font-weight: 800; line-height: 1.2;
+  color: var(--text);
+}
+.creator-title:focus { outline: none; border: none; box-shadow: none; }
+.creator-title::placeholder { color: rgba(232, 237, 240, 0.55); font-weight: 700; }
+
+.creator-body {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 14px 20px 0;
+}
+
+/* Szklana grupa wierszy (Termin / Miejsce) — wiersz otwiera child-sheet. */
+.creator-rows {
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.creator-row {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 14px;
+  background: none; border: none; border-radius: 0;
+  color: var(--text); text-align: left;
+}
+.creator-row + .creator-row { border-top: 1px solid var(--border); }
+.creator-row > svg { color: var(--muted); flex-shrink: 0; }
+.creator-row:active { background: rgba(255, 255, 255, 0.04); }
+.cr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cr-label {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.cr-text b {
+  font-size: 0.94rem; font-weight: 650;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cr-text b.ph { color: var(--muted); font-weight: 500; }
+
+.creator-host {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 2px;
+}
+.desc-pill {
+  flex-shrink: 0;
+  padding: 9px 14px; border-radius: 999px;
+  background: var(--card-2); border: 1px solid var(--border);
+  font-size: 0.82rem; font-weight: 600; color: var(--text);
+}
+.desc-pill.filled {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.creator-cta {
+  position: sticky; bottom: 0; z-index: 2;
+  margin-top: auto;
+  padding: 18px 20px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+}
+
+/* Child-sheet nad kreatorem (kreator z-90, modale profilu 100). */
+.sheet-overlay.child { z-index: 95; }
+.child-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.child-head .modal-label { margin: 0; }
+.child-ok {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink);
+  border: none; font-size: 1rem; font-weight: 800;
+}
+.child-ok:active { transform: scale(0.94); }
