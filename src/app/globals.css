@@ -2494,3 +2494,6 @@ button.solid-danger { background: var(--no); color: #fff; }
   border: none; font-size: 1rem; font-weight: 800;
 }
 .child-ok:active { transform: scale(0.94); }
+
+/* Link „dodaj/usuń datę końca" w inpucie terminu — ciaśniejszy niż .add-slot listy propozycji. */
+.slot-end-link { margin-top: 8px; font-size: 0.8rem; display: block; }
