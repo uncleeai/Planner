@@ -488,28 +488,42 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 }
 .confirmed-inline > svg { color: var(--yes); flex-shrink: 0; }
 
-/* Input terminu: Od / Do / Godzina */
-.slot-range-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.slot-range-grid > * { min-width: 0; }
-.slot-range-grid > :last-child { grid-column: 1 / -1; }
-/* Natywne pola daty/godziny ubrane w taki sam box jak zwykłe inputy
-   (bez tego iOS renderuje je jako małe ciemne „pigułki"). */
+/* Input terminu — grupa wierszy à la „Date and Time" z Apple Invites:
+   etykieta po lewej, wartość (switch / pille daty-godziny) po prawej. */
+.slot-rows {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.slot-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 52px;
+  padding: 8px 14px;
+  cursor: default; user-select: none;
+}
+.slot-row + .slot-row { border-top: 1px solid var(--border); }
+.slot-row-label { flex: 1; font-size: 0.94rem; font-weight: 500; color: var(--text); }
+.slot-row-fields { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* Pille daty/godziny — kompaktowe, wyrównane do prawej (nie box na całą szerokość). */
 .slot-range input[type="date"],
 .slot-range input[type="time"] {
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
-  min-height: 50px;
-  padding: 13px 15px;
-  background: var(--card-2);
+  min-height: 38px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 0.95rem;
   font-family: inherit;
   color-scheme: dark;
   text-align: center;
 }
+.slot-range input[type="date"] { min-width: 128px; }
+.slot-range input[type="time"] { min-width: 74px; }
 .slot-range input[type="date"]:focus,
 .slot-range input[type="time"]:focus {
   outline: none;
@@ -519,14 +533,9 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 /* Wartość wyśrodkowana, natywna ikonka pickera schowana (jak w datetime). */
 .slot-range input::-webkit-date-and-time-value { text-align: center; }
 .slot-range input::-webkit-calendar-picker-indicator { display: none; }
+.slot-range .dt-field { width: auto; }
 
-/* Przełącznik „Dłuższy wypad" — kontrolka Lobby jak .switch (oranż = włączone) */
-.toggle-row {
-  display: inline-flex; align-items: center; gap: 10px;
-  margin-bottom: 14px; cursor: pointer; user-select: none;
-  font-family: var(--mono); font-size: 0.64rem; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
-}
+/* Switch terminu (wiersz „Cały dzień") — kontrolka jak .switch (oranż = włączone) */
 .toggle-input { position: absolute; opacity: 0; width: 0; height: 0; }
 .toggle-track {
   position: relative; flex-shrink: 0;
@@ -2276,7 +2285,6 @@ button.solid-danger { background: var(--no); color: #fff; }
 }
 
 /* Przełącznik zakresu żyje POD polem daty (część SlotRangeInput) */
-.range-toggle { margin: 10px 0 0; }
 
 /* Disabled na CTA: neutralna szara pastylka zamiast przygaszonego pomarańczu —
    ściszony akcent czytał się jako „brzydki brąz", nie jako „zablokowane".
@@ -2340,7 +2348,9 @@ button.solid-danger { background: var(--no); color: #fff; }
   display: flex; flex-direction: column;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .creator { animation: sheet-in 0.42s cubic-bezier(0.32, 0.72, 0, 1); }
+  /* Wolniej niż zwykły sheet — pełny ekran potrzebuje chwili, żeby wjazd
+     czytał się jako przejście, nie mrugnięcie (szybki start, wolne dojście). */
+  .creator { animation: sheet-in 0.6s cubic-bezier(0.32, 0.72, 0, 1); }
 }
 /* Wyjazd BEZ guardu reduced-motion — animationend odpala unmount, więc animacja
    musi się wydarzyć zawsze (jak w .sheet-overlay.closing). */
@@ -2377,6 +2387,23 @@ button.solid-danger { background: var(--no); color: #fff; }
   );
 }
 .creator-hero > *:not(.hero-photo) { position: relative; z-index: 1; }
+/* Fotka kategorii wyłania się z gradientu (remount przez key={emoji}),
+   zamiast wskakiwać z bicia. Scope na kreator — hero dashboardu nietknięte. */
+.creator-hero .hero-photo { animation: heroPhotoIn 0.6s ease both; }
+@keyframes heroPhotoIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Dół strefy zlewa się z czernią strony — bez twardej krawędzi przy chipach.
+   ::after maluje się NAD warstwami fotki, a treść (emoji/tytuł) ma z-index 1. */
+.creator-hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 36%;
+  background: linear-gradient(180deg, transparent, var(--bg));
+  pointer-events: none;
+}
 .creator-emoji { font-size: 44px; line-height: 1; }
 .creator-title {
   width: 100%;

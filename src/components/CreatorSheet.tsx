@@ -139,7 +139,7 @@ export default function CreatorSheet({
             Tytuł mieszka NA tle — karta jest formularzem, bez osobnego podglądu. */}
         <div className="creator-hero">
           {photo && (
-            <div className="hero-photo" aria-hidden="true">
+            <div className="hero-photo" aria-hidden="true" key={emoji}>
               <div
                 className="hp-img"
                 style={{
