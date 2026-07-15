@@ -76,8 +76,10 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
-    │   ├── SlotRangeInput.tsx    # Wspólny input terminu: Od / Do / Godzina
-    │   ├── DateTimeInput.tsx     # Pojedyncze pole daty/godziny (część SlotRangeInput)
+    │   ├── CreatorSheet.tsx      # Pełnoekranowy kreator „Nowe lobby" (karta = formularz, child-sheety)
+    │   ├── ChildSheet.tsx        # Mały bottom sheet nad kreatorem (termin/miejsce/opis)
+    │   ├── SlotRangeInput.tsx    # Wspólny input terminu: data + „Cały dzień" + link daty końca
+    │   ├── RedesignNotice.tsx    # Jednorazowa notka po redesignie (localStorage)
     │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
     │   ├── EventEmojiInput.tsx   # Wybór emoji/kategorii wypadu (spójny z heroImage.ts)
     │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
