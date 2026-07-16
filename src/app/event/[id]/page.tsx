@@ -8,6 +8,7 @@ import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndM
 import type { Availability, Comment, EventRow, Profile, Reaction, Slot, Vote } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconChevronLeft, IconPencil } from '@/components/icons';
+import EventMap from '@/components/EventMap';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import DescriptionInput from '@/components/DescriptionInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
@@ -826,6 +827,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {!editing && event?.description && (
         <div className="event-description"><Markdown text={event.description} /></div>
+      )}
+
+      {!editing && event?.latitude != null && event?.longitude != null && (
+        <EventMap lat={event.latitude} lon={event.longitude} label={event.location ?? event.title} />
       )}
 
       {isPast && (
