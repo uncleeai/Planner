@@ -3,10 +3,13 @@
 import { IconPin } from '@/components/icons';
 
 // Statyczna mapka miejsca wypadu — bez biblioteki mapowej i bez API key:
-// liczymy kafelek OSM dla współrzędnych, układamy siatkę 3×3 wyśrodkowaną na
+// liczymy kafelek dla współrzędnych, układamy siatkę 3×3 wyśrodkowaną na
 // punkcie (transform + left/top 50%, więc responsywnie, bez mierzenia szerokości)
 // i nakładamy pinezkę. Tap → natywne Mapy z celem. Współrzędne mamy już w bazie
 // (LocationAutocomplete zapisuje je przy wyborze miejsca z podpowiedzi).
+//
+// Kafelki: CARTO „Dark Matter" (@2x, retina) — czysty ciemny styl pod nasz motyw,
+// darmowy i bez klucza. Domyślny raster OSM był jaskrawy i nie pasował do apki.
 
 const TILE = 256;
 const Z = 14; // miasto z kontekstem dzielnic
@@ -45,10 +48,11 @@ export default function EventMap({
       const ty = cy + dy;
       if (ty < 0 || ty >= max) continue;
       const wx = ((tx % max) + max) % max; // zawijanie w poziomie
+      const sub = 'abcd'[(wx + ty) % 4]; // rozłożenie na subdomeny CARTO
       tiles.push(
         <img
           key={`${dx},${dy}`}
-          src={`https://tile.openstreetmap.org/${Z}/${wx}/${ty}.png`}
+          src={`https://${sub}.basemaps.cartocdn.com/dark_all/${Z}/${wx}/${ty}@2x.png`}
           alt=""
           width={TILE}
           height={TILE}
@@ -72,8 +76,8 @@ export default function EventMap({
       >
         {tiles}
       </div>
-      <span className="event-map-pin" aria-hidden="true"><IconPin size={26} /></span>
-      <span className="event-map-attr">© OpenStreetMap</span>
+      <span className="event-map-pin" aria-hidden="true"><IconPin size={28} /></span>
+      <span className="event-map-attr">© OpenStreetMap © CARTO</span>
     </a>
   );
 }
