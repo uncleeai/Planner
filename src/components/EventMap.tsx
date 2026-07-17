@@ -8,8 +8,10 @@ import { IconPin } from '@/components/icons';
 // i nakładamy pinezkę. Tap → natywne Mapy z celem. Współrzędne mamy już w bazie
 // (LocationAutocomplete zapisuje je przy wyborze miejsca z podpowiedzi).
 //
-// Kafelki: CARTO „Dark Matter" (@2x, retina) — czysty ciemny styl pod nasz motyw,
-// darmowy i bez klucza. Domyślny raster OSM był jaskrawy i nie pasował do apki.
+// Kafelki: CARTO „Voyager" (@2x, retina) — kolorowy, czysty styl w klimacie
+// Apple/Google Maps (zieleń parków, woda, nazwy ulic), darmowy i bez klucza.
+// Dark Matter wychodził monochromatyczny jak mapa wysokościowa; domyślny raster
+// OSM był jaskrawy — Voyager trafia w żywy, jasny kafel z podglądu Apple Invites.
 
 const TILE = 256;
 const Z = 14; // miasto z kontekstem dzielnic
@@ -52,7 +54,7 @@ export default function EventMap({
       tiles.push(
         <img
           key={`${dx},${dy}`}
-          src={`https://${sub}.basemaps.cartocdn.com/dark_all/${Z}/${wx}/${ty}@2x.png`}
+          src={`https://${sub}.basemaps.cartocdn.com/rastertiles/voyager/${Z}/${wx}/${ty}@2x.png`}
           alt=""
           width={TILE}
           height={TILE}
