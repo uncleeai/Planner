@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -124,19 +124,33 @@ export default function CreatorSheet({
   // Crossfade tła przy zmianie kategorii: poprzednia fotka zostaje POD spodem na
   // czas wjazdu nowej (bez mignięcia gradientu między nimi); przy odznaczeniu
   // poprzednia miękko gaśnie do gradientu (klasa .out). Sprzątanie po animationend.
+  //
+  // Baza ustawiana SYNCHRONICZNIE w handlerze kliknięcia chipa (pickCategory) —
+  // nie w useEffect, który odpala się PO paincie: przez jedną klatkę nie było ani
+  // starej, ani nowej fotki i prześwitywał gradient (flicker). Przy szybkim
+  // klikaniu raz ustawiona baza stoi, aż jakikolwiek fade dojedzie do końca.
   type Bg = { photo: string; crop: Pick<HeroCrop, 'zoom' | 'pos_x' | 'pos_y' | 'brightness'> };
   const currBg: Bg | null = photo ? { photo, crop } : null;
   const [prevBg, setPrevBg] = useState<Bg | null>(null);
-  const lastBgRef = useRef<Bg | null>(null);
-  useEffect(() => {
-    if (lastBgRef.current && lastBgRef.current.photo !== (photo ?? '')) {
-      // Przy SZYBKIM klikaniu nie podmieniamy bazy w pół fade'u (skok krycia =
-      // flicker) — raz ustawiona stoi, aż nowa warstwa dojedzie do pełna.
-      setPrevBg((p) => p ?? lastBgRef.current);
+
+  function pickCategory(next: string | null) {
+    const curPhoto = heroImageForEmoji(emoji);
+    const nextPhoto = heroImageForEmoji(next);
+    if (curPhoto && curPhoto !== nextPhoto) {
+      const curCrop = (emoji ? cropByEmoji.get(emoji) : null) ?? DEFAULT_CROP;
+      setPrevBg((p) => p ?? { photo: curPhoto, crop: curCrop });
     }
-    lastBgRef.current = photo ? { photo, crop } : null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emoji]);
+    setEmoji(next);
+  }
+
+  // Preload wszystkich fotek kategorii przy otwarciu — bez tego pierwszy wybór
+  // fade'ował PUSTĄ warstwę, a jpg „wskakiwał" w połowie animacji po pobraniu.
+  useEffect(() => {
+    for (const c of HERO_CATEGORIES) {
+      const src = heroImageForEmoji(c.emoji);
+      if (src) new Image().src = src;
+    }
+  }, []);
 
   // Warstwy fotki dla danego tła (te same co karta hero na dashboardzie).
   const photoLayers = (bg: Bg) => (
@@ -221,7 +235,7 @@ export default function CreatorSheet({
                 key={c.emoji}
                 className={`cat-chip${emoji === c.emoji ? ' selected' : ''}`}
                 aria-pressed={emoji === c.emoji}
-                onClick={() => setEmoji(emoji === c.emoji ? null : c.emoji)}
+                onClick={() => pickCategory(emoji === c.emoji ? null : c.emoji)}
               >
                 <span className="cat-emoji" aria-hidden="true">{c.emoji}</span>
                 <span className="cat-label">{c.label}</span>
