@@ -2389,12 +2389,16 @@ button.solid-danger { background: var(--no); color: #fff; }
   z-index: 3;
 }
 
-/* „+ Tło" — pill w prawym górnym rogu strefy hero (lustro X-a po lewej). */
-.creator-bg-btn {
+/* Narzędzia tła — pille w prawym górnym rogu (lustro X-a po lewej):
+   „+ Tło" / „Kadruj" + „×" / „Gotowe" (tryb kadrowania). */
+.creator-bg-tools {
   position: absolute;
   top: calc(env(safe-area-inset-top) + 12px);
   right: 14px;
   z-index: 3;
+  display: flex; gap: 8px;
+}
+.creator-bg-btn {
   padding: 8px 13px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.35);
@@ -2403,6 +2407,11 @@ button.solid-danger { background: var(--no); color: #fff; }
   border: 1px solid var(--border-strong);
   color: var(--text);
   font-size: 0.78rem; font-weight: 600;
+}
+.creator-bg-btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
 }
 .creator-bg-btn:disabled { color: var(--muted); }
 .creator-bg-btn:active { transform: scale(0.96); }
@@ -2562,3 +2571,24 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
 
 /* Link „dodaj/usuń datę końca" w inpucie terminu — ciaśniejszy niż .add-slot listy propozycji. */
 .slot-end-link { margin-top: 8px; font-size: 0.8rem; display: block; }
+
+/* ===== Pinch-to-crop własnego tła (kreator) =====
+   Nakładka łapie gesty na całej strefie hero tylko w trybie kadrowania;
+   touch-action: none odcina scroll strony pod palcem. Selektor po nakładce
+   celowo mocniejszy niż reguła pozycjonowania dzieci hero. */
+.creator-hero .crop-surface {
+  position: absolute; inset: 0; z-index: 2;
+  touch-action: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.crop-hint {
+  padding: 9px 15px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}

@@ -22,6 +22,7 @@ import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
 import { getChatSeen } from '@/lib/chatSeen';
 import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { parseImageFocus, DEFAULT_FOCUS } from '@/lib/eventImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
@@ -723,11 +724,12 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const isOrg = isAdmin || !ev.created_by_user_id || ev.created_by_user_id === userId;
 
   // Tło hero: własne zdjęcie wypadu (events.image_url) wygrywa z fotką kategorii
-  // (public/hero/<kategoria>.jpg). Własne renderuje się cover + image_focus
-  // (fotki z telefonu nie mają kalibracji zoom/pozycji per kategoria).
+  // (public/hero/<kategoria>.jpg). Własne renderuje się cover + kadr z pinch-to-crop
+  // (image_focus, JSON {z,x,y}); brak/obcy format → domyślne wyśrodkowanie.
   const custom = !!ev.image_url;
   const heroPhoto = ev.image_url ?? heroImageForEmoji(ev.emoji);
   const c = crop ?? DEFAULT_CROP;
+  const focus = custom ? parseImageFocus(ev.image_focus) ?? DEFAULT_FOCUS : null;
 
   // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
@@ -814,8 +816,9 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
             className="hp-img"
             style={{
               backgroundImage: `url(${heroPhoto})`,
-              backgroundSize: custom ? 'cover' : `${c.zoom}%`,
-              backgroundPosition: custom ? (ev.image_focus ?? '50% 40%') : `${c.pos_x}% ${c.pos_y}%`,
+              backgroundSize: focus ? 'cover' : `${c.zoom}%`,
+              backgroundPosition: focus ? '50% 50%' : `${c.pos_x}% ${c.pos_y}%`,
+              transform: focus ? `translate(${focus.x}%, ${focus.y}%) scale(${focus.z})` : undefined,
               ['--hp-bright' as string]: custom ? '0.82' : `${c.brightness / 100}`,
             } as React.CSSProperties}
           />

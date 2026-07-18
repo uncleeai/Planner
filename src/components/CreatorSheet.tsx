@@ -7,7 +7,8 @@ import { useTransitionNavigate } from '@/lib/transition';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { formatSlotRange, slotEndMs } from '@/lib/types';
 import { heroImageForEmoji, HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
-import { uploadEventImage } from '@/lib/eventImage';
+import { uploadEventImage, clampFocus, DEFAULT_FOCUS, type ImageFocus } from '@/lib/eventImage';
+import { haptic } from '@/lib/haptics';
 import { Avatar } from '@/components/Avatar';
 import { Markdown } from '@/lib/markdown';
 import ChildSheet from '@/components/ChildSheet';
@@ -59,11 +60,72 @@ export default function CreatorSheet({
       const url = await uploadEventImage(userId, file);
       setBgUrl(url);
       setBgOn(true);
+      // Świeży kadr + od razu tryb kadrowania (jak w Invites: wgrałeś → ustawiasz).
+      setFocus(DEFAULT_FOCUS);
+      setCropMode(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się wgrać zdjęcia.');
     } finally {
       setBgBusy(false);
       if (bgInputRef.current) bgInputRef.current.value = '';
+    }
+  }
+
+  // Pinch-to-crop: jeden palec = pan, dwa = zoom. Gesty łapie nakładka
+  // .crop-surface (touch-action: none = zero walki ze scrollem strony) tylko
+  // w trybie kadrowania. Baseline przeliczany przy KAŻDEJ zmianie liczby palców
+  // (start i koniec dotyku), więc pinch→pan przechodzi płynnie bez skoku.
+  const [focus, setFocus] = useState<ImageFocus>(DEFAULT_FOCUS);
+  const [cropMode, setCropMode] = useState(false);
+  const gesture = useRef<{
+    mode: 'pan' | 'pinch';
+    startX: number;
+    startY: number;
+    startDist: number;
+    startFocus: ImageFocus;
+    w: number;
+    h: number;
+  } | null>(null);
+
+  function cropBaseline(e: React.TouchEvent) {
+    const r = e.currentTarget.getBoundingClientRect();
+    if (e.touches.length >= 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      gesture.current = {
+        mode: 'pinch',
+        startDist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+        startX: 0,
+        startY: 0,
+        startFocus: focus,
+        w: r.width,
+        h: r.height,
+      };
+    } else if (e.touches.length === 1) {
+      gesture.current = {
+        mode: 'pan',
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        startDist: 0,
+        startFocus: focus,
+        w: r.width,
+        h: r.height,
+      };
+    } else {
+      gesture.current = null;
+    }
+  }
+
+  function cropMove(e: React.TouchEvent) {
+    const g = gesture.current;
+    if (!g) return;
+    if (g.mode === 'pinch' && e.touches.length >= 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      setFocus(clampFocus({ ...g.startFocus, z: g.startFocus.z * (d / g.startDist) }));
+    } else if (g.mode === 'pan' && e.touches.length === 1) {
+      const dx = ((e.touches[0].clientX - g.startX) / g.w) * 100;
+      const dy = ((e.touches[0].clientY - g.startY) / g.h) * 100;
+      setFocus(clampFocus({ ...g.startFocus, x: g.startFocus.x + dx, y: g.startFocus.y + dy }));
     }
   }
 
@@ -96,6 +158,14 @@ export default function CreatorSheet({
       .insert({
         title: title.trim(),
         image_url: bgOn && bgUrl ? bgUrl : null,
+        image_focus:
+          bgOn && bgUrl
+            ? JSON.stringify({
+                z: Math.round(focus.z * 100) / 100,
+                x: Math.round(focus.x * 10) / 10,
+                y: Math.round(focus.y * 10) / 10,
+              })
+            : null,
         location: location.trim() || null,
         latitude: locationCoords?.lat ?? null,
         longitude: locationCoords?.lon ?? null,
@@ -183,8 +253,8 @@ export default function CreatorSheet({
         <IconX size={14} />
       </button>
 
-      {/* Własne tło: pill w prawym górnym rogu (lustro X-a). Poza strefą hero,
-          żeby nie łapał jej reguł pozycjonowania dzieci. */}
+      {/* Własne tło: pille w prawym górnym rogu (lustro X-a). Poza strefą hero,
+          żeby nie łapały jej reguł pozycjonowania dzieci. */}
       <input
         ref={bgInputRef}
         type="file"
@@ -192,14 +262,50 @@ export default function CreatorSheet({
         hidden
         onChange={(e) => pickBackground(e.target.files?.[0] ?? null)}
       />
-      <button
-        type="button"
-        className="creator-bg-btn"
-        disabled={bgBusy}
-        onClick={() => (bgOn ? setBgOn(false) : bgInputRef.current?.click())}
-      >
-        {bgBusy ? 'Wgrywam…' : bgOn ? '× Usuń tło' : '+ Tło'}
-      </button>
+      <div className="creator-bg-tools">
+        {cropMode ? (
+          <button
+            type="button"
+            className="creator-bg-btn primary"
+            onClick={() => {
+              haptic();
+              setCropMode(false);
+            }}
+          >
+            Gotowe
+          </button>
+        ) : bgOn ? (
+          <>
+            <button
+              type="button"
+              className="creator-bg-btn"
+              onClick={() => {
+                haptic();
+                setCropMode(true);
+              }}
+            >
+              Kadruj
+            </button>
+            <button
+              type="button"
+              className="creator-bg-btn"
+              aria-label="Usuń tło"
+              onClick={() => setBgOn(false)}
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="creator-bg-btn"
+            disabled={bgBusy}
+            onClick={() => bgInputRef.current?.click()}
+          >
+            {bgBusy ? 'Wgrywam…' : '+ Tło'}
+          </button>
+        )}
+      </div>
 
       <form className="creator-scroll" onSubmit={createEvent}>
         {/* Strefa tła: gradient z akcentu → fotka kategorii po wyborze chipa.
@@ -229,7 +335,8 @@ export default function CreatorSheet({
                   style={{
                     backgroundImage: `url(${bgUrl})`,
                     backgroundSize: 'cover',
-                    backgroundPosition: '50% 40%',
+                    backgroundPosition: '50% 50%',
+                    transform: `translate(${focus.x}%, ${focus.y}%) scale(${focus.z})`,
                     ['--hp-bright' as string]: '0.82',
                   } as React.CSSProperties}
                 />
@@ -242,6 +349,16 @@ export default function CreatorSheet({
             )}
           </div>
 
+          {cropMode && (
+            <div
+              className="crop-surface"
+              onTouchStart={cropBaseline}
+              onTouchMove={cropMove}
+              onTouchEnd={cropBaseline}
+            >
+              <span className="crop-hint">Przesuń · ściśnij, aby przybliżyć</span>
+            </div>
+          )}
           {emoji && <div className="creator-emoji" aria-hidden="true">{emoji}</div>}
           <input
             className="creator-title"
