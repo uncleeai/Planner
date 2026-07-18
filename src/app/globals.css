@@ -980,33 +980,6 @@ img.avatar { display: inline-block; }
   line-height: 1.55;
   max-width: 52ch;
 }
-/* Statyczna mapka miejsca (EventMap): siatka kafelków OSM + pinezka, tap → Mapy. */
-.event-map {
-  position: relative; display: block; overflow: hidden;
-  height: 160px; margin: 0 4px 18px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-strong);
-  background: var(--card-2);
-}
-.event-map-tiles { position: absolute; left: 50%; top: 50%; width: 768px; height: 768px; }
-.event-map-tiles img { display: block; }
-.event-map-pin {
-  position: absolute; left: 50%; top: 50%;
-  transform: translate(-50%, -100%);
-  color: var(--accent);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-  pointer-events: none;
-}
-.event-map-attr {
-  position: absolute; right: 0; bottom: 0;
-  padding: 2px 6px;
-  font-size: 0.58rem; color: rgba(255, 255, 255, 0.6);
-  background: rgba(0, 0, 0, 0.4);
-  border-top-left-radius: 6px;
-  pointer-events: none;
-}
-.event-map:active { opacity: 0.92; }
-
 /* Render markdownu w opisie */
 .event-description p { margin: 0 0 10px; }
 .event-description p:last-child,
