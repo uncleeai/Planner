@@ -2334,11 +2334,13 @@ button.solid-danger { background: var(--no); color: #fff; }
   font-family: var(--mono); font-size: 0.56rem; font-weight: 700;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
+/* Zaznaczony chip cichszy niż kiedyś (ramka + akcentowa labelka, bez wypełnienia) —
+   wybór i tak komunikuje hero (fotka + emoji), chip nie musi krzyczeć drugi raz. */
 .cat-chip.selected {
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  background: var(--accent-dim);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--text);
 }
+.cat-chip.selected .cat-label { color: var(--accent); }
 .cat-chip:active { transform: scale(0.96); }
 
 /* ===== Pełnoekranowy kreator „Nowe lobby" (CreatorSheet, styl Invites) =====
@@ -2378,6 +2380,9 @@ button.solid-danger { background: var(--no); color: #fff; }
    kategorii pod spodem wjeżdżają warstwy hero-photo (jak karta na dashboardzie). */
 .creator-hero {
   position: relative; overflow: hidden;
+  /* Rośnie, gdy treści jest mało — fotka wchłania luz zamiast czarnej dziury
+     między opisem a CTA; przy długiej treści zostaje na 40svh podłogi. */
+  flex: 1 0 40svh;
   min-height: 40svh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: flex-end;

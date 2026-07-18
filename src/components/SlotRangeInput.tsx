@@ -60,6 +60,10 @@ export default function SlotRangeInput({
                     od: e.target.value,
                     // „Do" przed „Od" nie ma sensu — czyścimy przy cofnięciu startu.
                     doDate: value.doDate && value.doDate < e.target.value ? '' : value.doDate,
+                    // Wybór daty seeduje okrągłe 18:00 (chyba że „cały dzień") —
+                    // puste pole godziny otwierało natywny picker na bieżącej
+                    // minucie z zegarka, co wyglądało jak przypadkowa wartość.
+                    time: !allDay && !value.time ? '18:00' : value.time,
                   })
                 }
               />
