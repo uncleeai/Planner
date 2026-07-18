@@ -809,14 +809,14 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
           (albo emoji bez pliku → tło transparentne) zostaje sam raster. Zdjęcie jako
           background-image: kadr/zoom/tekstury z placu zabaw (globals.css). */}
       {heroPhoto && (
-        <div className="hero-photo" aria-hidden="true">
+        <div className={`hero-photo${custom ? ' hp-custom' : ''}`} aria-hidden="true">
           <div
             className="hp-img"
             style={{
               backgroundImage: `url(${heroPhoto})`,
               backgroundSize: custom ? 'cover' : `${c.zoom}%`,
               backgroundPosition: custom ? (ev.image_focus ?? '50% 40%') : `${c.pos_x}% ${c.pos_y}%`,
-              ['--hp-bright' as string]: custom ? '0.92' : `${c.brightness / 100}`,
+              ['--hp-bright' as string]: custom ? '0.82' : `${c.brightness / 100}`,
             } as React.CSSProperties}
           />
           <i className="hp-tint" />

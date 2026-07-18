@@ -2081,6 +2081,23 @@ button.solid-danger { background: var(--no); color: #fff; }
     ),
     linear-gradient(100deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.38) 42%, transparent 70%);
 }
+/* Zdjęcia UŻYTKOWNIKÓW (hp-custom): kuratorowane fotki kategorii mają dobrany
+   kadr i światło, fotka z rolki to loteria — dostaje tint akcentem (hp-tint
+   istnieje w stacku od zawsze, tu go włączamy: mix-blend color = przemalowanie
+   na klimat apki z zachowaniem światła) i cięższy, równomierny scrim od dołu,
+   żeby tytuł/chipy/sloty nigdy nie walczyły z jasnym środkiem zdjęcia. */
+.hero-photo.hp-custom .hp-tint { opacity: 0.45; }
+.hero-photo.hp-custom .hp-scrim {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.34) 26%,
+      rgba(0, 0, 0, 0.78) 56%,
+      #000 100%
+    ),
+    linear-gradient(100deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.5) 45%, rgba(0, 0, 0, 0.2) 78%);
+}
 /* Treść hero nad fotką */
 .event-rich.hero > *:not(.hero-photo) { position: relative; z-index: 1; }
 

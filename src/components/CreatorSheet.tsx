@@ -221,7 +221,7 @@ export default function CreatorSheet({
           })}
           {/* Własne tło — warstwa NAD kategoriami (późniejszy sibling), ten sam
               mechanizm .on/tranzycja. Cover + centralny kadr (pinch-to-crop: etap 2). */}
-          <div className={`hero-photo hero-cat${bgOn && bgUrl ? ' on' : ''}`} aria-hidden="true">
+          <div className={`hero-photo hero-cat hp-custom${bgOn && bgUrl ? ' on' : ''}`} aria-hidden="true">
             {bgUrl && (
               <>
                 <div
@@ -230,7 +230,7 @@ export default function CreatorSheet({
                     backgroundImage: `url(${bgUrl})`,
                     backgroundSize: 'cover',
                     backgroundPosition: '50% 40%',
-                    ['--hp-bright' as string]: '0.92',
+                    ['--hp-bright' as string]: '0.82',
                   } as React.CSSProperties}
                 />
                 <i className="hp-tint" />
