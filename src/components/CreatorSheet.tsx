@@ -130,7 +130,9 @@ export default function CreatorSheet({
   const lastBgRef = useRef<Bg | null>(null);
   useEffect(() => {
     if (lastBgRef.current && lastBgRef.current.photo !== (photo ?? '')) {
-      setPrevBg(lastBgRef.current);
+      // Przy SZYBKIM klikaniu nie podmieniamy bazy w pół fade'u (skok krycia =
+      // flicker) — raz ustawiona stoi, aż nowa warstwa dojedzie do pełna.
+      setPrevBg((p) => p ?? lastBgRef.current);
     }
     lastBgRef.current = photo ? { photo, crop } : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
