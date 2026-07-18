@@ -488,28 +488,46 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 }
 .confirmed-inline > svg { color: var(--yes); flex-shrink: 0; }
 
-/* Input terminu: Od / Do / Godzina */
-.slot-range-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.slot-range-grid > * { min-width: 0; }
-.slot-range-grid > :last-child { grid-column: 1 / -1; }
-/* Natywne pola daty/godziny ubrane w taki sam box jak zwykłe inputy
-   (bez tego iOS renderuje je jako małe ciemne „pigułki"). */
+/* Input terminu — grupa wierszy à la „Date and Time" z Apple Invites:
+   etykieta po lewej, wartość (switch / pille daty-godziny) po prawej. */
+.slot-rows {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.slot-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 52px;
+  padding: 8px 14px;
+  cursor: default; user-select: none;
+  /* Wiersz przełącznika to element <label> — reset globalnego stylu etykiet
+     (mono-uppercase), żeby „Cały dzień" i „Start" mówiły jednym głosem. */
+  font-family: inherit; letter-spacing: normal; text-transform: none;
+  margin-bottom: 0; color: var(--text);
+}
+.slot-row + .slot-row { border-top: 1px solid var(--border); }
+.slot-row-label { flex: 1; font-size: 0.94rem; font-weight: 500; color: var(--text); }
+.slot-row-fields { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* Pille daty/godziny — kompaktowe, wyrównane do prawej (nie box na całą szerokość). */
 .slot-range input[type="date"],
 .slot-range input[type="time"] {
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
-  min-height: 50px;
-  padding: 13px 15px;
-  background: var(--card-2);
+  min-height: 38px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 0.95rem;
   font-family: inherit;
   color-scheme: dark;
   text-align: center;
 }
+.slot-range input[type="date"] { min-width: 128px; }
+.slot-range input[type="time"] { min-width: 74px; }
 .slot-range input[type="date"]:focus,
 .slot-range input[type="time"]:focus {
   outline: none;
@@ -519,14 +537,9 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 /* Wartość wyśrodkowana, natywna ikonka pickera schowana (jak w datetime). */
 .slot-range input::-webkit-date-and-time-value { text-align: center; }
 .slot-range input::-webkit-calendar-picker-indicator { display: none; }
+.slot-range .dt-field { width: auto; }
 
-/* Przełącznik „Dłuższy wypad" — kontrolka Lobby jak .switch (oranż = włączone) */
-.toggle-row {
-  display: inline-flex; align-items: center; gap: 10px;
-  margin-bottom: 14px; cursor: pointer; user-select: none;
-  font-family: var(--mono); font-size: 0.64rem; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
-}
+/* Switch terminu (wiersz „Cały dzień") — kontrolka jak .switch (oranż = włączone) */
 .toggle-input { position: absolute; opacity: 0; width: 0; height: 0; }
 .toggle-track {
   position: relative; flex-shrink: 0;
@@ -2237,3 +2250,280 @@ button.solid-danger { background: var(--no); color: #fff; }
   font-size: 1.35rem; letter-spacing: 0; color: var(--accent);
   font-variant-numeric: tabular-nums; line-height: 1;
 }
+
+/* ===== Formularz „Nowe lobby": porządki (terminy, więcej opcji, toolbar) ===== */
+
+/* Pasek formatowania opisu: widoczny przy fokusie albo niepustym polu.
+   Na stałe robił szum — większość opisów to dwie linijki bez formatowania. */
+.desc-input .desc-toolbar { display: none; }
+.desc-input:focus-within .desc-toolbar,
+.desc-input.has-text .desc-toolbar { display: flex; }
+
+/* Dodatkowe propozycje terminu */
+.slot-draft + .slot-draft { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.slot-draft-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.slot-draft-remove {
+  padding: 4px 10px;
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+.slot-draft-remove:active { color: var(--no); border-color: var(--no); }
+/* Cichy tekstowy link w akcencie — nie konkuruje z polem daty ani „Więcej opcji"
+   (dwa przerywane pudła jedno na drugim zlewały się w szum). */
+.add-slot {
+  display: inline-block; width: auto;
+  margin-top: 6px; padding: 4px 2px;
+  background: none; border: none;
+  font-size: 0.84rem; font-weight: 600; color: var(--accent);
+}
+.add-slot:active { opacity: 0.7; }
+@media (hover: hover) {
+  .add-slot:hover { color: color-mix(in srgb, var(--accent) 80%, #fff); background: none; }
+}
+
+/* Przełącznik zakresu żyje POD polem daty (część SlotRangeInput) */
+
+/* Disabled na CTA: neutralna szara pastylka zamiast przygaszonego pomarańczu —
+   ściszony akcent czytał się jako „brzydki brąz", nie jako „zablokowane".
+   Pomarańcz wraca dopiero, gdy formularz jest kompletny — sam kolor mówi „gotowe". */
+.cta-gradient:disabled {
+  opacity: 1;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+/* ===== Chipy kategorii + rząd hosta (kreator „Nowe lobby") ===== */
+
+/* Rząd hosta w kreatorze (Avatar + nick + HOST) */
+.lp-host { display: flex; align-items: center; gap: 8px; }
+.lp-host b { font-size: 0.82rem; font-weight: 650; }
+.lp-host .host-tag {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; color: var(--accent);
+}
+
+/* Chipy kategorii: przewijany rząd emoji + mono-label, wybór podmienia fotkę
+   podglądu. Tap w zaznaczony chip odznacza (jak w starym pickerze). */
+.cat-row {
+  display: flex; gap: 8px;
+  overflow-x: auto;
+  /* Zapas po bokach = pełne chipy przy krawędziach; szeroka maska zamiast twardego
+     ucięcia (chipy przy brzegu gasną stopniowo, a nie znikają w pół). */
+  padding: 2px 22px; margin: 0 -22px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+}
+.cat-row::-webkit-scrollbar { display: none; }
+.cat-chip {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  min-width: 66px; padding: 10px 10px 8px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+.cat-chip .cat-emoji { font-size: 22px; line-height: 1; }
+.cat-chip .cat-label {
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+/* Zaznaczony chip cichszy niż kiedyś (ramka + akcentowa labelka, bez wypełnienia) —
+   wybór i tak komunikuje hero (fotka + emoji), chip nie musi krzyczeć drugi raz. */
+.cat-chip.selected {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--text);
+}
+.cat-chip.selected .cat-label { color: var(--accent); }
+.cat-chip:active { transform: scale(0.96); }
+
+/* ===== Pełnoekranowy kreator „Nowe lobby" (CreatorSheet, styl Invites) =====
+   Karta JEST formularzem: strefa tła (gradient z akcentu → fotka kategorii),
+   wielki tytuł na tle, szklana grupa wierszy Termin/Miejsce otwierających
+   child-sheety, host + pill opisu, sticky CTA. Wjazd od dołu na sprężynie
+   sheeta (te same keyframes sheet-in/out). */
+.creator {
+  position: fixed; inset: 0; z-index: 90;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Wolniej niż zwykły sheet — pełny ekran potrzebuje chwili, żeby wjazd
+     czytał się jako przejście, nie mrugnięcie (szybki start, wolne dojście). */
+  .creator { animation: sheet-in 0.6s cubic-bezier(0.32, 0.72, 0, 1); }
+}
+/* Wyjazd BEZ guardu reduced-motion — animationend odpala unmount, więc animacja
+   musi się wydarzyć zawsze (jak w .sheet-overlay.closing). */
+.creator.closing { animation: sheet-out 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
+
+.creator-close {
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 14px; right: auto;
+  z-index: 3;
+}
+
+.creator-scroll {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.creator-scroll::-webkit-scrollbar { display: none; }
+
+/* Strefa tła: domyślnie gradient z koloru akcentu gasnący w tło; po wyborze
+   kategorii pod spodem wjeżdżają warstwy hero-photo (jak karta na dashboardzie). */
+.creator-hero {
+  position: relative; overflow: hidden;
+  /* Rośnie, gdy treści jest mało — fotka wchłania luz zamiast czarnej dziury
+     między opisem a CTA; przy długiej treści zostaje na 40svh podłogi. */
+  flex: 1 0 40svh;
+  min-height: 40svh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 56px) 20px 18px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 36%, var(--bg)) 0%,
+    color-mix(in srgb, var(--accent) 12%, var(--bg)) 68%,
+    var(--bg) 100%
+  );
+}
+.creator-hero > *:not(.hero-photo) { position: relative; z-index: 1; }
+/* Crossfade tła: warstwy WSZYSTKICH kategorii zamontowane na stałe, wybrana
+   dostaje .on — czysta tranzycja opacity. Bez montowania w trakcie animacji
+   nie ma czego flickerować, a przerwaną tranzycję przeglądarka płynnie zawraca
+   z aktualnego krycia. Scope na kreator — hero dashboardu nietknięte. */
+.creator-hero .hero-photo.hero-cat {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.creator-hero .hero-photo.hero-cat.on { opacity: 1; }
+/* Dół strefy zlewa się z czernią strony — bez twardej krawędzi przy chipach.
+   ::after maluje się NAD warstwami fotki, a treść (emoji/tytuł) ma z-index 1. */
+.creator-hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 36%;
+  background: linear-gradient(180deg, transparent, var(--bg));
+  pointer-events: none;
+}
+.creator-emoji { font-size: 48px; line-height: 1; }
+/* Tytuł JEST tytułem, nie polem: duży, ciasny, z cieniem do czytelności na
+   fotce. Selektor .creator-hero .creator-title (0,2,0) bije bazowy
+   input[type="text"] (0,1,1), inaczej przebijał się box tła/ramki inputu. */
+.creator-hero .creator-title {
+  width: 100%;
+  background: none; border: none; border-radius: 0; box-shadow: none;
+  padding: 4px 0;
+  text-align: center;
+  font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.08;
+  color: var(--text);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+.creator-hero .creator-title:focus { outline: none; border: none; box-shadow: none; }
+.creator-hero .creator-title::placeholder { color: rgba(232, 237, 240, 0.5); font-weight: 800; }
+
+.creator-body {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 14px 20px 0;
+}
+
+/* Szklana grupa wierszy (Termin / Miejsce) — wiersz otwiera child-sheet. */
+.creator-rows {
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.creator-row {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 14px;
+  background: none; border: none; border-radius: 0;
+  color: var(--text); text-align: left;
+}
+.creator-row + .creator-row { border-top: 1px solid var(--border); }
+.creator-row > svg { color: var(--muted); flex-shrink: 0; }
+.creator-row:active { background: rgba(255, 255, 255, 0.04); }
+.cr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cr-label {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.cr-text b {
+  font-size: 0.94rem; font-weight: 650;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cr-text b.ph { color: var(--muted); font-weight: 500; }
+
+.creator-host {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 2px;
+}
+/* Opis: pusty = pill akcji na całą szerokość; wpisany = karta z podglądem markdownu. */
+.creator-desc {
+  width: 100%; text-align: left;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: var(--card); border: 1px solid var(--border-strong);
+  font-size: 0.9rem; font-weight: 600; color: var(--accent);
+}
+.creator-desc.filled {
+  display: flex; flex-direction: column; gap: 6px;
+  color: var(--text); font-weight: 400;
+}
+button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
+.creator-desc-head { display: flex; align-items: center; justify-content: space-between; }
+.creator-desc-label {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.creator-desc-edit {
+  padding: 2px 4px; background: none; border: none;
+  font-size: 0.8rem; font-weight: 600; color: var(--accent);
+}
+.creator-desc-body { font-size: 0.9rem; line-height: 1.45; color: var(--text); }
+.creator-desc-body > :first-child { margin-top: 0; }
+.creator-desc-body > :last-child { margin-bottom: 0; }
+
+.creator-cta {
+  position: sticky; bottom: 0; z-index: 2;
+  margin-top: auto;
+  padding: 18px 20px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+}
+
+/* Child-sheet nad kreatorem (kreator z-90, modale profilu 100). */
+.sheet-overlay.child { z-index: 95; }
+/* Sprężysty powrót po swipe (gdy nie zamykamy); w trakcie ciągnięcia bez tranzycji. */
+.sheet-overlay.child .sheet { transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
+.sheet-overlay.child .sheet.dragging { transition: none; }
+/* Strefa chwytu do swipe (grip + nagłówek) — bez natywnego scrolla pod palcem. */
+.sheet-drag { touch-action: none; }
+.child-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.child-head .modal-label { margin: 0; }
+.child-ok {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink);
+  border: none; font-size: 1rem; font-weight: 800;
+}
+.child-ok:active { transform: scale(0.94); }
+
+/* Link „dodaj/usuń datę końca" w inpucie terminu — ciaśniejszy niż .add-slot listy propozycji. */
+.slot-end-link { margin-top: 8px; font-size: 0.8rem; display: block; }

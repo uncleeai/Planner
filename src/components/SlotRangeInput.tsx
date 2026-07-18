@@ -3,17 +3,12 @@
 import { useState } from 'react';
 import type { SlotRange } from '@/lib/slotInput';
 import { todayDate } from '@/lib/slotInput';
-import DateTimeInput from '@/components/DateTimeInput';
 
-// „Teraz" w formacie input[type=datetime-local] ("YYYY-MM-DDTHH:mm", czas lokalny).
-function nowDateTimeLocal(): string {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 16);
-}
-
-// Input terminu. Domyślnie: jedna data + godzina spotkania (konkretny moment).
-// Po włączeniu „Dłuższy wypad" → Od / Do (+ opcjonalnie godzina) na kilka dni.
+// Input terminu (wspólny: kreator lobby + strona wypadu). Układ jak „Date and Time"
+// z Apple Invites: grupa wierszy etykieta-po-lewej / wartość-po-prawej.
+//  - switch „Cały dzień" (jawny; model danych bez zmian: time === '' ⇔ all_day),
+//  - „Start": data + godzina (godzina znika przy całym dniu),
+//  - „+ Dodaj datę końca" jako link (progressive disclosure) → wiersz „Koniec".
 export default function SlotRangeInput({
   value,
   onChange,
@@ -23,80 +18,109 @@ export default function SlotRangeInput({
   onChange: (v: SlotRange) => void;
   idPrefix?: string;
 }) {
-  const [longer, setLonger] = useState(!!value.doDate);
+  // Stany UI-lokalne, inicjowane z wartości (edycja slotu prefiluje przez slotToRange).
+  // Świeży (pusty) draft startuje z widoczną godziną — typowy wypad ma godzinę
+  // zbiórki; pozostawiona pusta i tak daje „cały dzień" (model: time '' = all_day).
+  const [allDay, setAllDay] = useState(!!value.od && !value.time);
+  const [withEnd, setWithEnd] = useState(!!value.doDate);
   const min = todayDate();
 
   return (
     <div className="slot-range">
-      <label className="toggle-row">
-        <span className="toggle-label">Dłuższy wypad</span>
-        <input
-          type="checkbox"
-          className="toggle-input"
-          checked={longer}
-          onChange={(e) => {
-            const on = e.target.checked;
-            setLonger(on);
-            // Wracając do pojedynczego terminu — wyczyść „Do".
-            if (!on) onChange({ ...value, doDate: '' });
-          }}
-        />
-        <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
-      </label>
+      <div className="slot-rows">
+        <label className="slot-row">
+          <span className="slot-row-label">Cały dzień</span>
+          <input
+            type="checkbox"
+            className="toggle-input"
+            checked={allDay}
+            onChange={(e) => {
+              const on = e.target.checked;
+              setAllDay(on);
+              // ON → bez godziny (model: time '' = all_day). OFF → seedujemy 18:00,
+              // żeby przełącznik nie kłócił się z derived all_day przy pustym polu.
+              onChange({ ...value, time: on ? '' : value.time || '18:00' });
+            }}
+          />
+          <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
+        </label>
 
-      {!longer ? (
-        <DateTimeInput
-          value={value.od ? `${value.od}T${value.time || '00:00'}` : ''}
-          placeholder="Wybierz datę i godzinę"
-          min={nowDateTimeLocal()}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (!v) {
-              onChange({ od: '', doDate: '', time: '' });
-              return;
-            }
-            const [d, t] = v.split('T');
-            onChange({ od: d, doDate: '', time: t ?? '' });
-          }}
-        />
-      ) : (
-        <div className="slot-range-grid">
-          <span className={`dt-field${value.od ? '' : ' dt-empty'}`}>
-            <input
-              id={`${idPrefix}-od`}
-              type="date"
-              value={value.od}
-              min={min}
-              onChange={(e) =>
-                onChange({
-                  ...value,
-                  od: e.target.value,
-                  doDate: value.doDate && value.doDate < e.target.value ? '' : value.doDate,
-                })
-              }
-            />
-            {!value.od && <span className="dt-placeholder">Od</span>}
-          </span>
-          <span className={`dt-field${value.doDate ? '' : ' dt-empty'}`}>
-            <input
-              id={`${idPrefix}-do`}
-              type="date"
-              value={value.doDate}
-              min={value.od || min}
-              onChange={(e) => onChange({ ...value, doDate: e.target.value })}
-            />
-            {!value.doDate && <span className="dt-placeholder">Do</span>}
-          </span>
-          <span className={`dt-field${value.time ? '' : ' dt-empty'}`}>
-            <input
-              id={`${idPrefix}-time`}
-              type="time"
-              value={value.time}
-              onChange={(e) => onChange({ ...value, time: e.target.value })}
-            />
-            {!value.time && <span className="dt-placeholder">Godzina (opcjonalnie)</span>}
+        <div className="slot-row">
+          <span className="slot-row-label">Start</span>
+          <span className="slot-row-fields">
+            <span className={`dt-field${value.od ? '' : ' dt-empty'}`}>
+              <input
+                id={`${idPrefix}-od`}
+                type="date"
+                value={value.od}
+                min={min}
+                onChange={(e) =>
+                  onChange({
+                    ...value,
+                    od: e.target.value,
+                    // „Do" przed „Od" nie ma sensu — czyścimy przy cofnięciu startu.
+                    doDate: value.doDate && value.doDate < e.target.value ? '' : value.doDate,
+                    // Wybór daty seeduje okrągłe 18:00 (chyba że „cały dzień") —
+                    // puste pole godziny otwierało natywny picker na bieżącej
+                    // minucie z zegarka, co wyglądało jak przypadkowa wartość.
+                    time: !allDay && !value.time ? '18:00' : value.time,
+                  })
+                }
+              />
+              {!value.od && <span className="dt-placeholder">Data</span>}
+            </span>
+            {!allDay && (
+              <span className={`dt-field${value.time ? '' : ' dt-empty'}`}>
+                <input
+                  id={`${idPrefix}-time`}
+                  type="time"
+                  value={value.time}
+                  onChange={(e) => onChange({ ...value, time: e.target.value })}
+                />
+                {!value.time && <span className="dt-placeholder">Godz.</span>}
+              </span>
+            )}
           </span>
         </div>
+
+        {withEnd && (
+          <div className="slot-row">
+            <span className="slot-row-label">Koniec</span>
+            <span className="slot-row-fields">
+              <span className={`dt-field${value.doDate ? '' : ' dt-empty'}`}>
+                <input
+                  id={`${idPrefix}-do`}
+                  type="date"
+                  value={value.doDate}
+                  min={value.od || min}
+                  onChange={(e) => onChange({ ...value, doDate: e.target.value })}
+                />
+                {!value.doDate && <span className="dt-placeholder">Data</span>}
+              </span>
+            </span>
+          </div>
+        )}
+      </div>
+
+      {!withEnd ? (
+        <button
+          type="button"
+          className="add-slot slot-end-link"
+          onClick={() => setWithEnd(true)}
+        >
+          + Dodaj datę końca (kilka dni)
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="add-slot slot-end-link"
+          onClick={() => {
+            setWithEnd(false);
+            onChange({ ...value, doDate: '' });
+          }}
+        >
+          − Usuń datę końca
+        </button>
       )}
     </div>
   );
