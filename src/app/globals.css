@@ -2400,21 +2400,15 @@ button.solid-danger { background: var(--no); color: #fff; }
   );
 }
 .creator-hero > *:not(.hero-photo) { position: relative; z-index: 1; }
-/* Crossfade tła: nowa fotka wjeżdża fade'em (remount przez key={emoji}), a
-   POPRZEDNIA (.hero-prev) stoi pod nią w pełnej kryciu — zero mignięcia
-   gradientu między kategoriami. Przy odznaczeniu .hero-prev.out gaśnie do
-   gradientu. Scope na kreator — hero dashboardu nietknięte. */
-.creator-hero .hero-photo { animation: heroPhotoIn 0.7s ease both; }
-.creator-hero .hero-photo.hero-prev { animation: none; }
-.creator-hero .hero-photo.hero-prev.out { animation: heroPhotoOut 0.5s ease both; }
-@keyframes heroPhotoIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* Crossfade tła: warstwy WSZYSTKICH kategorii zamontowane na stałe, wybrana
+   dostaje .on — czysta tranzycja opacity. Bez montowania w trakcie animacji
+   nie ma czego flickerować, a przerwaną tranzycję przeglądarka płynnie zawraca
+   z aktualnego krycia. Scope na kreator — hero dashboardu nietknięte. */
+.creator-hero .hero-photo.hero-cat {
+  opacity: 0;
+  transition: opacity 0.6s ease;
 }
-@keyframes heroPhotoOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
+.creator-hero .hero-photo.hero-cat.on { opacity: 1; }
 /* Dół strefy zlewa się z czernią strony — bez twardej krawędzi przy chipach.
    ::after maluje się NAD warstwami fotki, a treść (emoji/tytuł) ma z-index 1. */
 .creator-hero::after {

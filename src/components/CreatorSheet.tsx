@@ -118,39 +118,11 @@ export default function CreatorSheet({
   const terminSummary =
     filled.length > 1 ? `${filled.length} propozycje` : firstTimes ? formatSlotRange(firstTimes) : '';
 
-  const photo = heroImageForEmoji(emoji);
-  const crop = (emoji ? cropByEmoji.get(emoji) : null) ?? DEFAULT_CROP;
-
-  // Crossfade tła przy zmianie kategorii: poprzednia fotka zostaje POD spodem na
-  // czas wjazdu nowej (bez mignięcia gradientu między nimi); przy odznaczeniu
-  // poprzednia miękko gaśnie do gradientu (klasa .out). Sprzątanie po animationend.
-  //
-  // Baza ustawiana SYNCHRONICZNIE w handlerze kliknięcia chipa (pickCategory) —
-  // nie w useEffect, który odpala się PO paincie: przez jedną klatkę nie było ani
-  // starej, ani nowej fotki i prześwitywał gradient (flicker). Przy szybkim
-  // klikaniu raz ustawiona baza stoi, aż jakikolwiek fade dojedzie do końca.
+  // Tło kategorii: WSZYSTKIE warstwy zamontowane na stałe, crossfade czystą
+  // tranzycją opacity (klasa .on na wybranej). Zero montowania/odmontowywania
+  // w trakcie animacji = zero flickera; przerwaną w połowie tranzycję
+  // przeglądarka sama płynnie zawraca. Stały montaż = preload fotek gratis.
   type Bg = { photo: string; crop: Pick<HeroCrop, 'zoom' | 'pos_x' | 'pos_y' | 'brightness'> };
-  const currBg: Bg | null = photo ? { photo, crop } : null;
-  const [prevBg, setPrevBg] = useState<Bg | null>(null);
-
-  function pickCategory(next: string | null) {
-    const curPhoto = heroImageForEmoji(emoji);
-    const nextPhoto = heroImageForEmoji(next);
-    if (curPhoto && curPhoto !== nextPhoto) {
-      const curCrop = (emoji ? cropByEmoji.get(emoji) : null) ?? DEFAULT_CROP;
-      setPrevBg((p) => p ?? { photo: curPhoto, crop: curCrop });
-    }
-    setEmoji(next);
-  }
-
-  // Preload wszystkich fotek kategorii przy otwarciu — bez tego pierwszy wybór
-  // fade'ował PUSTĄ warstwę, a jpg „wskakiwał" w połowie animacji po pobraniu.
-  useEffect(() => {
-    for (const c of HERO_CATEGORIES) {
-      const src = heroImageForEmoji(c.emoji);
-      if (src) new Image().src = src;
-    }
-  }, []);
 
   // Warstwy fotki dla danego tła (te same co karta hero na dashboardzie).
   const photoLayers = (bg: Bg) => (
@@ -190,31 +162,20 @@ export default function CreatorSheet({
         {/* Strefa tła: gradient z akcentu → fotka kategorii po wyborze chipa.
             Tytuł mieszka NA tle — karta jest formularzem, bez osobnego podglądu. */}
         <div className="creator-hero">
-          {prevBg && (
-            <div
-              className={`hero-photo hero-prev${currBg ? '' : ' out'}`}
-              aria-hidden="true"
-              onAnimationEnd={(e) => {
-                e.stopPropagation();
-                if (!currBg) setPrevBg(null); // koniec gaśnięcia do gradientu
-              }}
-            >
-              {photoLayers(prevBg)}
-            </div>
-          )}
-          {currBg && (
-            <div
-              className="hero-photo"
-              aria-hidden="true"
-              key={emoji}
-              onAnimationEnd={(e) => {
-                e.stopPropagation();
-                setPrevBg(null); // nowa w pełni widoczna — stara do kosza
-              }}
-            >
-              {photoLayers(currBg)}
-            </div>
-          )}
+          {HERO_CATEGORIES.map((c) => {
+            const catPhoto = heroImageForEmoji(c.emoji);
+            if (!catPhoto) return null;
+            const catCrop = cropByEmoji.get(c.emoji) ?? DEFAULT_CROP;
+            return (
+              <div
+                key={c.emoji}
+                className={`hero-photo hero-cat${emoji === c.emoji ? ' on' : ''}`}
+                aria-hidden="true"
+              >
+                {photoLayers({ photo: catPhoto, crop: catCrop })}
+              </div>
+            );
+          })}
           {emoji && <div className="creator-emoji" aria-hidden="true">{emoji}</div>}
           <input
             className="creator-title"
@@ -235,7 +196,7 @@ export default function CreatorSheet({
                 key={c.emoji}
                 className={`cat-chip${emoji === c.emoji ? ' selected' : ''}`}
                 aria-pressed={emoji === c.emoji}
-                onClick={() => pickCategory(emoji === c.emoji ? null : c.emoji)}
+                onClick={() => setEmoji(emoji === c.emoji ? null : c.emoji)}
               >
                 <span className="cat-emoji" aria-hidden="true">{c.emoji}</span>
                 <span className="cat-label">{c.label}</span>
