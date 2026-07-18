@@ -501,6 +501,10 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   min-height: 52px;
   padding: 8px 14px;
   cursor: default; user-select: none;
+  /* Wiersz przełącznika to element <label> — reset globalnego stylu etykiet
+     (mono-uppercase), żeby „Cały dzień" i „Start" mówiły jednym głosem. */
+  font-family: inherit; letter-spacing: normal; text-transform: none;
+  margin-bottom: 0; color: var(--text);
 }
 .slot-row + .slot-row { border-top: 1px solid var(--border); }
 .slot-row-label { flex: 1; font-size: 0.94rem; font-weight: 500; color: var(--text); }
@@ -2396,12 +2400,20 @@ button.solid-danger { background: var(--no); color: #fff; }
   );
 }
 .creator-hero > *:not(.hero-photo) { position: relative; z-index: 1; }
-/* Fotka kategorii wyłania się z gradientu (remount przez key={emoji}),
-   zamiast wskakiwać z bicia. Scope na kreator — hero dashboardu nietknięte. */
-.creator-hero .hero-photo { animation: heroPhotoIn 0.6s ease both; }
+/* Crossfade tła: nowa fotka wjeżdża fade'em (remount przez key={emoji}), a
+   POPRZEDNIA (.hero-prev) stoi pod nią w pełnej kryciu — zero mignięcia
+   gradientu między kategoriami. Przy odznaczeniu .hero-prev.out gaśnie do
+   gradientu. Scope na kreator — hero dashboardu nietknięte. */
+.creator-hero .hero-photo { animation: heroPhotoIn 0.7s ease both; }
+.creator-hero .hero-photo.hero-prev { animation: none; }
+.creator-hero .hero-photo.hero-prev.out { animation: heroPhotoOut 0.5s ease both; }
 @keyframes heroPhotoIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes heroPhotoOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 /* Dół strefy zlewa się z czernią strony — bez twardej krawędzi przy chipach.
    ::after maluje się NAD warstwami fotki, a treść (emoji/tytuł) ma z-index 1. */

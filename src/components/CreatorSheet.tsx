@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -121,6 +121,41 @@ export default function CreatorSheet({
   const photo = heroImageForEmoji(emoji);
   const crop = (emoji ? cropByEmoji.get(emoji) : null) ?? DEFAULT_CROP;
 
+  // Crossfade tła przy zmianie kategorii: poprzednia fotka zostaje POD spodem na
+  // czas wjazdu nowej (bez mignięcia gradientu między nimi); przy odznaczeniu
+  // poprzednia miękko gaśnie do gradientu (klasa .out). Sprzątanie po animationend.
+  type Bg = { photo: string; crop: Pick<HeroCrop, 'zoom' | 'pos_x' | 'pos_y' | 'brightness'> };
+  const currBg: Bg | null = photo ? { photo, crop } : null;
+  const [prevBg, setPrevBg] = useState<Bg | null>(null);
+  const lastBgRef = useRef<Bg | null>(null);
+  useEffect(() => {
+    if (lastBgRef.current && lastBgRef.current.photo !== (photo ?? '')) {
+      setPrevBg(lastBgRef.current);
+    }
+    lastBgRef.current = photo ? { photo, crop } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emoji]);
+
+  // Warstwy fotki dla danego tła (te same co karta hero na dashboardzie).
+  const photoLayers = (bg: Bg) => (
+    <>
+      <div
+        className="hp-img"
+        style={{
+          backgroundImage: `url(${bg.photo})`,
+          backgroundSize: `${bg.crop.zoom}%`,
+          backgroundPosition: `${bg.crop.pos_x}% ${bg.crop.pos_y}%`,
+          ['--hp-bright' as string]: `${bg.crop.brightness / 100}`,
+        } as React.CSSProperties}
+      />
+      <i className="hp-tint" />
+      <i className="hp-half" />
+      <i className="hp-grain" />
+      <i className="hp-vig" />
+      <i className="hp-scrim" />
+    </>
+  );
+
   return (
     <div
       className={`creator${closing ? ' closing' : ''}`}
@@ -139,22 +174,29 @@ export default function CreatorSheet({
         {/* Strefa tła: gradient z akcentu → fotka kategorii po wyborze chipa.
             Tytuł mieszka NA tle — karta jest formularzem, bez osobnego podglądu. */}
         <div className="creator-hero">
-          {photo && (
-            <div className="hero-photo" aria-hidden="true" key={emoji}>
-              <div
-                className="hp-img"
-                style={{
-                  backgroundImage: `url(${photo})`,
-                  backgroundSize: `${crop.zoom}%`,
-                  backgroundPosition: `${crop.pos_x}% ${crop.pos_y}%`,
-                  ['--hp-bright' as string]: `${crop.brightness / 100}`,
-                } as React.CSSProperties}
-              />
-              <i className="hp-tint" />
-              <i className="hp-half" />
-              <i className="hp-grain" />
-              <i className="hp-vig" />
-              <i className="hp-scrim" />
+          {prevBg && (
+            <div
+              className={`hero-photo hero-prev${currBg ? '' : ' out'}`}
+              aria-hidden="true"
+              onAnimationEnd={(e) => {
+                e.stopPropagation();
+                if (!currBg) setPrevBg(null); // koniec gaśnięcia do gradientu
+              }}
+            >
+              {photoLayers(prevBg)}
+            </div>
+          )}
+          {currBg && (
+            <div
+              className="hero-photo"
+              aria-hidden="true"
+              key={emoji}
+              onAnimationEnd={(e) => {
+                e.stopPropagation();
+                setPrevBg(null); // nowa w pełni widoczna — stara do kosza
+              }}
+            >
+              {photoLayers(currBg)}
             </div>
           )}
           {emoji && <div className="creator-emoji" aria-hidden="true">{emoji}</div>}
