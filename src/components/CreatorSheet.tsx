@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { useTransitionNavigate } from '@/lib/transition';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { formatSlotRange, slotEndMs } from '@/lib/types';
 import { heroImageForEmoji, HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { uploadEventImage } from '@/lib/eventImage';
 import { Avatar } from '@/components/Avatar';
 import { Markdown } from '@/lib/markdown';
 import ChildSheet from '@/components/ChildSheet';
@@ -43,6 +44,29 @@ export default function CreatorSheet({
   const [closing, setClosing] = useState(false);
   const close = () => setClosing(true);
 
+  // Własne tło wypadu: url zostaje po „Usuń" (bgOn=false), żeby warstwa mogła
+  // zgasnąć tranzycją z obrazkiem w środku; nowy upload podmienia url.
+  const [bgUrl, setBgUrl] = useState<string | null>(null);
+  const [bgOn, setBgOn] = useState(false);
+  const [bgBusy, setBgBusy] = useState(false);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+
+  async function pickBackground(file: File | null) {
+    if (!file || bgBusy) return;
+    setBgBusy(true);
+    setError('');
+    try {
+      const url = await uploadEventImage(userId, file);
+      setBgUrl(url);
+      setBgOn(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się wgrać zdjęcia.');
+    } finally {
+      setBgBusy(false);
+      if (bgInputRef.current) bgInputRef.current.value = '';
+    }
+  }
+
   // Kreator przykrywa cały ekran — strona pod spodem nie może się przewijać.
   useEffect(() => {
     const prev = document.documentElement.style.overflow;
@@ -71,6 +95,7 @@ export default function CreatorSheet({
       .from('events')
       .insert({
         title: title.trim(),
+        image_url: bgOn && bgUrl ? bgUrl : null,
         location: location.trim() || null,
         latitude: locationCoords?.lat ?? null,
         longitude: locationCoords?.lon ?? null,
@@ -158,6 +183,24 @@ export default function CreatorSheet({
         <IconX size={14} />
       </button>
 
+      {/* Własne tło: pill w prawym górnym rogu (lustro X-a). Poza strefą hero,
+          żeby nie łapał jej reguł pozycjonowania dzieci. */}
+      <input
+        ref={bgInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => pickBackground(e.target.files?.[0] ?? null)}
+      />
+      <button
+        type="button"
+        className="creator-bg-btn"
+        disabled={bgBusy}
+        onClick={() => (bgOn ? setBgOn(false) : bgInputRef.current?.click())}
+      >
+        {bgBusy ? 'Wgrywam…' : bgOn ? '× Usuń tło' : '+ Tło'}
+      </button>
+
       <form className="creator-scroll" onSubmit={createEvent}>
         {/* Strefa tła: gradient z akcentu → fotka kategorii po wyborze chipa.
             Tytuł mieszka NA tle — karta jest formularzem, bez osobnego podglądu. */}
@@ -169,13 +212,36 @@ export default function CreatorSheet({
             return (
               <div
                 key={c.emoji}
-                className={`hero-photo hero-cat${emoji === c.emoji ? ' on' : ''}`}
+                className={`hero-photo hero-cat${emoji === c.emoji && !bgOn ? ' on' : ''}`}
                 aria-hidden="true"
               >
                 {photoLayers({ photo: catPhoto, crop: catCrop })}
               </div>
             );
           })}
+          {/* Własne tło — warstwa NAD kategoriami (późniejszy sibling), ten sam
+              mechanizm .on/tranzycja. Cover + centralny kadr (pinch-to-crop: etap 2). */}
+          <div className={`hero-photo hero-cat${bgOn && bgUrl ? ' on' : ''}`} aria-hidden="true">
+            {bgUrl && (
+              <>
+                <div
+                  className="hp-img"
+                  style={{
+                    backgroundImage: `url(${bgUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: '50% 40%',
+                    ['--hp-bright' as string]: '0.92',
+                  } as React.CSSProperties}
+                />
+                <i className="hp-tint" />
+                <i className="hp-half" />
+                <i className="hp-grain" />
+                <i className="hp-vig" />
+                <i className="hp-scrim" />
+              </>
+            )}
+          </div>
+
           {emoji && <div className="creator-emoji" aria-hidden="true">{emoji}</div>}
           <input
             className="creator-title"

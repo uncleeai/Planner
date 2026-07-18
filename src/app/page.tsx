@@ -722,9 +722,11 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const { userId, displayName, isAdmin } = useAuth();
   const isOrg = isAdmin || !ev.created_by_user_id || ev.created_by_user_id === userId;
 
-  // Tło hero dobierane po emoji wypadu (public/hero/<kategoria>.jpg). Brak pliku →
-  // background-image jest po prostu pusty, więc zostaje sam raster (bez błędu).
-  const heroPhoto = heroImageForEmoji(ev.emoji);
+  // Tło hero: własne zdjęcie wypadu (events.image_url) wygrywa z fotką kategorii
+  // (public/hero/<kategoria>.jpg). Własne renderuje się cover + image_focus
+  // (fotki z telefonu nie mają kalibracji zoom/pozycji per kategoria).
+  const custom = !!ev.image_url;
+  const heroPhoto = ev.image_url ?? heroImageForEmoji(ev.emoji);
   const c = crop ?? DEFAULT_CROP;
 
   // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
@@ -812,9 +814,9 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
             className="hp-img"
             style={{
               backgroundImage: `url(${heroPhoto})`,
-              backgroundSize: `${c.zoom}%`,
-              backgroundPosition: `${c.pos_x}% ${c.pos_y}%`,
-              ['--hp-bright' as string]: `${c.brightness / 100}`,
+              backgroundSize: custom ? 'cover' : `${c.zoom}%`,
+              backgroundPosition: custom ? (ev.image_focus ?? '50% 40%') : `${c.pos_x}% ${c.pos_y}%`,
+              ['--hp-bright' as string]: custom ? '0.92' : `${c.brightness / 100}`,
             } as React.CSSProperties}
           />
           <i className="hp-tint" />
