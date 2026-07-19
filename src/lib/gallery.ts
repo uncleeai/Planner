@@ -91,16 +91,41 @@ export async function uploadEventPhotos(
       }
 
       // 2) Podpis wysyłki (osobno per plik — proste i częściowo odporne).
+      //    Goły fetch zamiast functions.invoke — invoke zawijał prawdziwy błąd
+      //    w „Failed to send a request…"; tu status/treść widać wprost.
       const manifest = preview
         ? [
             { ext: 'jpg', kind: 'preview' },
             { ext: extOf(file), kind: 'original' },
           ]
         : [{ ext: extOf(file), kind: 'original' }];
-      const { data, error } = await supabase.functions.invoke('sign-photo-upload', {
-        body: { event_id: eventId, files: manifest },
-      });
-      if (error) throw new Error(`Podpis wysyłki: ${error.message ?? 'błąd funkcji'}`);
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error('Podpis wysyłki: brak sesji (zaloguj się ponownie).');
+      let signRes: Response;
+      try {
+        signRes = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/sign-photo-upload`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+            },
+            body: JSON.stringify({ event_id: eventId, files: manifest }),
+          },
+        );
+      } catch (err) {
+        throw new Error(
+          `Podpis wysyłki: sieć odrzuciła żądanie (${err instanceof Error ? err.message : '?'}).`,
+        );
+      }
+      if (!signRes.ok) {
+        const detail = await signRes.text().catch(() => '');
+        throw new Error(`Podpis wysyłki: HTTP ${signRes.status} ${detail.slice(0, 140)}`);
+      }
+      const data = await signRes.json();
       const uploads: { path: string; uploadUrl: string }[] = data?.uploads ?? [];
       if (uploads.length !== manifest.length) throw new Error('Zła odpowiedź podpisu wysyłki.');
 
