@@ -2551,22 +2551,27 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
 }
 
 /* ===== Morph pilla godziny przy „Cały dzień" (SlotRangeInput) =====
-   Pozioma wersja tricku grid-template-rows: kolumna 0fr↔1fr + fade wnętrza.
-   margin-left znosi gap rzędu, gdy pill jest zwinięty — data dosuwa się
-   do krawędzi zamiast zostawiać widmowe 8px. */
-.slot-time-wrap {
+   Blok pól Start ma STAŁĄ szerokość, animują się PROPORCJE kolumn
+   (1fr : 0.58fr ↔ 1fr : 0fr) + gap. Efekt: data rośnie i pochłania miejsce
+   po godzinie — jeden kształt się przelewa, nic nie wskakuje z boku. */
+.slot-row-fields.dual {
   display: grid;
-  grid-template-columns: 0fr;
-  margin-left: -8px;
+  width: 216px;
+  grid-template-columns: 1fr 0.58fr;
+  column-gap: 8px;
   transition:
     grid-template-columns 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-    margin-left 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    column-gap 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.slot-time-wrap.open { grid-template-columns: 1fr; margin-left: 0; }
-.slot-time-inner {
-  min-width: 0; overflow: hidden;
+.slot-row-fields.dual.all-day { grid-template-columns: 1fr 0fr; column-gap: 0px; }
+.slot-row-fields.dual > * { min-width: 0; }
+/* Wewnątrz siatki pille wypełniają swoje kolumny (bazowe min-width by blokowało zwijanie). */
+.slot-row-fields.dual input[type="date"],
+.slot-row-fields.dual input[type="time"] { min-width: 0; width: 100%; }
+.slot-time-cell {
+  overflow: hidden;
   display: flex;
-  opacity: 0;
-  transition: opacity 0.25s ease;
+  opacity: 1;
+  transition: opacity 0.22s ease;
 }
-.slot-time-wrap.open .slot-time-inner { opacity: 1; }
+.slot-row-fields.dual.all-day .slot-time-cell { opacity: 0; }
