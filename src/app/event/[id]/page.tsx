@@ -9,9 +9,7 @@ import type { Availability, Comment, EventRow, Profile, Reaction, Slot, Vote } f
 import { Avatar, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
-import DescriptionInput from '@/components/DescriptionInput';
-import LocationAutocomplete from '@/components/LocationAutocomplete';
-import EventEmojiInput from '@/components/EventEmojiInput';
+import CreatorSheet from '@/components/CreatorSheet';
 import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, slotToRange, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -145,13 +143,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
   const [editing, setEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editLocation, setEditLocation] = useState('');
-  const [editCoords, setEditCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [editEmoji, setEditEmoji] = useState<string | null>(null);
-  const [editDescription, setEditDescription] = useState('');
-  const [editBusy, setEditBusy] = useState(false);
-  const [editError, setEditError] = useState('');
 
   // Wiadomości nowsze niż moment wejścia na stronę dostają animację wjazdu
   // (comment-fresh w CSS); historia z pierwszego fetchu wchodzi bez animacji.
@@ -513,42 +504,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   function startEdit() {
     if (!event) return;
-    setEditTitle(event.title ?? '');
-    setEditLocation(event.location ?? '');
-    setEditCoords(
-      event.latitude != null && event.longitude != null
-        ? { lat: event.latitude, lon: event.longitude }
-        : null,
-    );
-    setEditEmoji(event.emoji ?? null);
-    setEditDescription(event.description ?? '');
-    setEditError('');
     setEditing(true);
-  }
-
-  async function saveEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editTitle.trim() || editBusy) return;
-    setEditBusy(true);
-    setEditError('');
-    const { error } = await supabase
-      .from('events')
-      .update({
-        title: editTitle.trim(),
-        location: editLocation.trim() || null,
-        latitude: editCoords?.lat ?? null,
-        longitude: editCoords?.lon ?? null,
-        emoji: editEmoji,
-        description: editDescription.trim() || null,
-      })
-      .eq('id', eventId);
-    setEditBusy(false);
-    if (error) {
-      setEditError(error.message ?? 'Nie udało się zapisać zmian.');
-      return;
-    }
-    setEditing(false);
-    load();
   }
 
   async function deleteEvent() {
@@ -725,52 +681,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <span className="nav-label">Lobby</span>
       </div>
 
-      {editing && (
-        <form className="card" onSubmit={saveEdit}>
-          <div className="modal-label">Edytuj wypad</div>
-          <div className="field">
-            <label htmlFor="edit-title">Nazwa</label>
-            <input
-              id="edit-title"
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="edit-location">Miejsce (opcjonalnie)</label>
-            <LocationAutocomplete
-              id="edit-location"
-              value={editLocation}
-              onChange={setEditLocation}
-              onCoords={setEditCoords}
-              placeholder="np. u Kuby, Zakopane…"
-            />
-          </div>
-          <EventEmojiInput value={editEmoji} onChange={setEditEmoji} />
-          <div className="field">
-            <label htmlFor="edit-description">Opis (opcjonalnie)</label>
-            <DescriptionInput
-              id="edit-description"
-              value={editDescription}
-              onChange={setEditDescription}
-              placeholder="np. co bierzemy, plan, szczegóły…"
-            />
-          </div>
-          {editError && <p className="small" style={{ color: 'var(--no)' }}>{editError}</p>}
-          <button type="submit" className="cta-gradient" disabled={!editTitle.trim() || editBusy}>
-            {editBusy ? 'Zapisuję…' : 'Zapisz zmiany'}
-          </button>
-          <button
-            type="button"
-            className="ghost"
-            style={{ width: '100%', marginTop: 8 }}
-            onClick={() => setEditing(false)}
-          >
-            Anuluj
-          </button>
-        </form>
+      {/* Edycja wypadu = ten sam pełnoekranowy kreator co tworzenie (tryb edit):
+          prefill, tło z pinch-to-crop, bez wiersza Termin (terminy niżej przy slotach). */}
+      {editing && event && (
+        <CreatorSheet
+          edit={event}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            load();
+          }}
+        />
       )}
 
       {!editing && (

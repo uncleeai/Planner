@@ -5,9 +5,15 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { useTransitionNavigate } from '@/lib/transition';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
-import { formatSlotRange, slotEndMs } from '@/lib/types';
+import { formatSlotRange, slotEndMs, type EventRow } from '@/lib/types';
 import { heroImageForEmoji, HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
-import { uploadEventImage, clampFocus, DEFAULT_FOCUS, type ImageFocus } from '@/lib/eventImage';
+import {
+  uploadEventImage,
+  clampFocus,
+  parseImageFocus,
+  DEFAULT_FOCUS,
+  type ImageFocus,
+} from '@/lib/eventImage';
 import { haptic } from '@/lib/haptics';
 import { Avatar } from '@/components/Avatar';
 import { Markdown } from '@/lib/markdown';
@@ -20,23 +26,34 @@ import { IconCalendar, IconPin, IconChevron, IconX } from '@/components/icons';
 // Pełnoekranowy kreator „Nowe lobby" (styl Apple Invites): karta JEST formularzem.
 // Wysuwa się od dołu na sprężynie sheeta; szczegóły (termin/miejsce/opis) edytują
 // child-sheety NAD kartą, więc karta nigdy nie skacze. Zamknięcie X = unmount =
-// porzucenie szkicu (świadomie — bez trzymania draftów). Tworzenie wypadu
-// (createEvent) przeniesione żywcem z dashboardu — zero zmian w zapisie.
+// porzucenie szkicu (świadomie — bez trzymania draftów).
+//
+// Tryb EDYCJI (prop `edit`): ta sama karta służy do edycji wypadu na jego stronie
+// — prefill z EventRow, bez wiersza Termin (terminy edytuje się przy slotach)
+// i bez rzędu hosta (admin może edytować cudzy wypad), zapis = UPDATE + onSaved.
 export default function CreatorSheet({
   cropByEmoji,
   onClose,
+  edit,
+  onSaved,
 }: {
-  cropByEmoji: Map<string, HeroCrop>;
+  cropByEmoji?: Map<string, HeroCrop>;
   onClose: () => void;
+  edit?: EventRow;
+  onSaved?: () => void;
 }) {
   const { userId, displayName, avatar } = useAuth();
   const navigate = useTransitionNavigate();
 
-  const [title, setTitle] = useState('');
-  const [location, setLocation] = useState('');
-  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [emoji, setEmoji] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState(edit?.title ?? '');
+  const [location, setLocation] = useState(edit?.location ?? '');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(
+    edit && edit.latitude != null && edit.longitude != null
+      ? { lat: edit.latitude, lon: edit.longitude }
+      : null,
+  );
+  const [emoji, setEmoji] = useState<string | null>(edit?.emoji ?? null);
+  const [description, setDescription] = useState(edit?.description ?? '');
   // Kilka propozycji terminu (sedno produktu) — pierwsza wymagana, puste ignorowane.
   const [slotDrafts, setSlotDrafts] = useState<SlotRange[]>([EMPTY_SLOT_RANGE]);
   const [busy, setBusy] = useState(false);
@@ -47,8 +64,8 @@ export default function CreatorSheet({
 
   // Własne tło wypadu: url zostaje po „Usuń" (bgOn=false), żeby warstwa mogła
   // zgasnąć tranzycją z obrazkiem w środku; nowy upload podmienia url.
-  const [bgUrl, setBgUrl] = useState<string | null>(null);
-  const [bgOn, setBgOn] = useState(false);
+  const [bgUrl, setBgUrl] = useState<string | null>(edit?.image_url ?? null);
+  const [bgOn, setBgOn] = useState(!!edit?.image_url);
   const [bgBusy, setBgBusy] = useState(false);
   const bgInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +79,7 @@ export default function CreatorSheet({
       setBgOn(true);
       // Świeży kadr + od razu tryb kadrowania (jak w Invites: wgrałeś → ustawiasz).
       setFocus(DEFAULT_FOCUS);
+      setHintSeen(false);
       setCropMode(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się wgrać zdjęcia.');
@@ -75,8 +93,12 @@ export default function CreatorSheet({
   // .crop-surface (touch-action: none = zero walki ze scrollem strony) tylko
   // w trybie kadrowania. Baseline przeliczany przy KAŻDEJ zmianie liczby palców
   // (start i koniec dotyku), więc pinch→pan przechodzi płynnie bez skoku.
-  const [focus, setFocus] = useState<ImageFocus>(DEFAULT_FOCUS);
+  const [focus, setFocus] = useState<ImageFocus>(
+    () => parseImageFocus(edit?.image_focus) ?? DEFAULT_FOCUS,
+  );
   const [cropMode, setCropMode] = useState(false);
+  // Podpowiedź gestów znika przy pierwszym dotknięciu; wraca przy wejściu w tryb.
+  const [hintSeen, setHintSeen] = useState(false);
   const gesture = useRef<{
     mode: 'pan' | 'pinch';
     startX: number;
@@ -88,6 +110,7 @@ export default function CreatorSheet({
   } | null>(null);
 
   function cropBaseline(e: React.TouchEvent) {
+    if (e.touches.length > 0) setHintSeen(true);
     const r = e.currentTarget.getBoundingClientRect();
     if (e.touches.length >= 2) {
       const [a, b] = [e.touches[0], e.touches[1]];
@@ -140,6 +163,41 @@ export default function CreatorSheet({
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
+
+    // Tryb edycji: UPDATE pól wypadu (terminy żyją przy slotach na stronie wypadu).
+    if (edit) {
+      if (!title.trim() || busy) return;
+      setBusy(true);
+      setError('');
+      const { error } = await supabase
+        .from('events')
+        .update({
+          title: title.trim(),
+          image_url: bgOn && bgUrl ? bgUrl : null,
+          image_focus:
+            bgOn && bgUrl
+              ? JSON.stringify({
+                  z: Math.round(focus.z * 100) / 100,
+                  x: Math.round(focus.x * 10) / 10,
+                  y: Math.round(focus.y * 10) / 10,
+                })
+              : null,
+          location: location.trim() || null,
+          latitude: locationCoords?.lat ?? null,
+          longitude: locationCoords?.lon ?? null,
+          emoji,
+          description: description.trim() || null,
+        })
+        .eq('id', edit.id);
+      setBusy(false);
+      if (error) {
+        setError(error.message ?? 'Nie udało się zapisać zmian.');
+        return;
+      }
+      onSaved?.();
+      return;
+    }
+
     // Puste dodatkowe propozycje ignorujemy; wypełnione muszą być poprawne.
     const filled = slotDrafts.filter((d) => d.od);
     const times = filled.map(buildSlotTimes);
@@ -243,7 +301,7 @@ export default function CreatorSheet({
     <div
       className={`creator${closing ? ' closing' : ''}`}
       role="dialog"
-      aria-label="Nowe lobby"
+      aria-label={edit ? "Edytuj wypad" : "Nowe lobby"}
       onAnimationEnd={(e) => {
         // Tylko animacja SAMEGO kreatora — animacje dzieci (child-sheety) bąbelkują.
         if (closing && e.target === e.currentTarget) onClose();
@@ -281,6 +339,7 @@ export default function CreatorSheet({
               className="creator-bg-btn"
               onClick={() => {
                 haptic();
+                setHintSeen(false);
                 setCropMode(true);
               }}
             >
@@ -314,7 +373,7 @@ export default function CreatorSheet({
           {HERO_CATEGORIES.map((c) => {
             const catPhoto = heroImageForEmoji(c.emoji);
             if (!catPhoto) return null;
-            const catCrop = cropByEmoji.get(c.emoji) ?? DEFAULT_CROP;
+            const catCrop = cropByEmoji?.get(c.emoji) ?? DEFAULT_CROP;
             return (
               <div
                 key={c.emoji}
@@ -356,7 +415,7 @@ export default function CreatorSheet({
               onTouchMove={cropMove}
               onTouchEnd={cropBaseline}
             >
-              <span className="crop-hint">Przesuń · ściśnij, aby przybliżyć</span>
+              {!hintSeen && <span className="crop-hint">Przesuń · ściśnij, aby przybliżyć</span>}
             </div>
           )}
           {emoji && <div className="creator-emoji" aria-hidden="true">{emoji}</div>}
@@ -388,6 +447,7 @@ export default function CreatorSheet({
           </div>
 
           <div className="creator-rows">
+            {!edit && (
             <button type="button" className="creator-row" onClick={() => setOpenSheet('termin')}>
               <IconCalendar size={17} />
               <span className="cr-text">
@@ -396,6 +456,7 @@ export default function CreatorSheet({
               </span>
               <IconChevron size={16} />
             </button>
+            )}
             <button type="button" className="creator-row" onClick={() => setOpenSheet('miejsce')}>
               <IconPin size={17} />
               <span className="cr-text">
@@ -406,6 +467,7 @@ export default function CreatorSheet({
             </button>
           </div>
 
+          {!edit && (
           <div className="creator-host">
             <span className="lp-host">
               <Avatar name={displayName} avatar={avatar} size={22} />
@@ -413,6 +475,7 @@ export default function CreatorSheet({
               <span className="host-tag">HOST</span>
             </span>
           </div>
+          )}
 
           {/* Opis: pusty → pill „Dodaj opis"; wpisany → podgląd (markdown) na miejscu,
               żeby nie trzeba było otwierać sheeta tylko po to, by go zobaczyć. Podgląd
@@ -441,9 +504,9 @@ export default function CreatorSheet({
           <button
             type="submit"
             className="cta-gradient"
-            disabled={!title.trim() || !slotDrafts[0]?.od || busy}
+            disabled={!title.trim() || (!edit && !slotDrafts[0]?.od) || busy}
           >
-            {busy ? 'Odpalam…' : 'Odpal lobby'}
+            {edit ? (busy ? 'Zapisuję…' : 'Zapisz zmiany') : busy ? 'Odpalam…' : 'Odpal lobby'}
           </button>
         </div>
       </form>

@@ -1494,49 +1494,6 @@ main::before {
 .hero-tile-main { font-family: var(--mono); font-size: 1.15rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
 .hero-tile-sub { font-size: 0.78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
-.emoji-picker { position: relative; }
-.emoji-trigger {
-  width: 100%;
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
-  background: var(--card-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  text-align: left;
-}
-.emoji-trigger-emoji { flex: 1; font-size: 22px; line-height: 1; }
-.emoji-trigger-ph { flex: 1; color: var(--muted); }
-.emoji-trigger-chev { color: var(--muted); transition: transform 0.2s ease; }
-.emoji-trigger-chev.open { transform: rotate(90deg); }
-
-/* Popover W PRZEPŁYWIE (nie absolute) — jak .loc-suggestions. Pola formularza mają
-   animację transform/opacity (reveal), która tworzy konteksty stackingu „więżące"
-   absolutny popover pod kolejnym polem. W przepływie po prostu rozpycha pola pod sobą. */
-.emoji-popover {
-  margin-top: 8px;
-  background: var(--card-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  padding: 12px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-}
-.emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.emoji-chip {
-  width: 100%; aspect-ratio: 1; padding: 0; font-size: 22px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.22); /* wcięta wnęka — odcina się od glassowego panelu */
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-}
-@media (hover: hover) {
-  .emoji-chip:hover { border-color: var(--border-strong); }
-}
-.emoji-chip.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.13); }
-.emoji-clear { margin-top: 10px; width: 100%; }
-
 /* ===== Skórka „Lobby": wordmark, skład, segmenty gotowości, MOTD, dok CTA ===== */
 
 /* Wordmark WYPAD.EXE z migającym kursorem */
