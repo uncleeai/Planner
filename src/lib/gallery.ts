@@ -9,8 +9,9 @@ import { supabase } from '@/lib/supabaseClient';
 // lastModified pliku (dla zdjęć z rolki = data wykonania).
 
 // Publiczny adres bucketa (R2 → Settings → Public Development URL). Puste =
-// galeria wyłączona (UI się nie renderuje) — uzupełnij po włączeniu w panelu.
-export const R2_PUBLIC_BASE = '';
+// galeria wyłączona (UI się nie renderuje). r2.dev wystarcza dla skali paczki;
+// upgrade = własna domena w panelu R2 i podmiana tej stałej.
+export const R2_PUBLIC_BASE = 'https://pub-bfab842060924ea18c2d40f24cca7939.r2.dev';
 
 export const isGalleryConfigured = !!R2_PUBLIC_BASE;
 

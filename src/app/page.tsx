@@ -23,6 +23,7 @@ import { prefetchEvent } from '@/lib/eventPrefetch';
 import { getChatSeen } from '@/lib/chatSeen';
 import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { parseImageFocus, DEFAULT_FOCUS } from '@/lib/eventImage';
+import { isGalleryConfigured } from '@/lib/gallery';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
@@ -119,6 +120,21 @@ export default function Home() {
   // i createEvent żyją w komponencie; unmount = porzucenie szkicu.
   const [showForm, setShowForm] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+
+  // Znaczek „📸 N" przy odbytych wypadach — jedno lekkie zapytanie o event_id
+  // wszystkich zdjęć (bez realtime; odświeża się przy wejściu na dashboard).
+  const [photoCounts, setPhotoCounts] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (!isGalleryConfigured) return;
+    supabase
+      .from('event_photos')
+      .select('event_id')
+      .then(({ data }) => {
+        const m = new Map<string, number>();
+        for (const r of data ?? []) m.set(r.event_id, (m.get(r.event_id) ?? 0) + 1);
+        setPhotoCounts(m);
+      });
+  }, []);
 
   const load = useCallback(async () => {
     const [{ data: ev }, { data: sl }, { data: vo }, { data: pr }, { data: cm }] = await Promise.all([
@@ -571,6 +587,7 @@ export default function Home() {
         items={past.map((ev) => ({ ev, variant: 'past' as const, slot: aggByEvent.get(ev.id)?.slot ?? null }))}
         agg={aggByEvent}
         muted
+        photoCounts={photoCounts}
       />
 
       {archived.length > 0 && (
@@ -622,12 +639,13 @@ function segStates(squad: SquadMember[]): (SquadMember['state'])[] {
 }
 
 // Sekcja rozkładu: mono-etykieta + płaskie wiersze z cienkimi liniami (bez kart).
-function Board({ title, items, agg, muted, unread }: {
+function Board({ title, items, agg, muted, unread, photoCounts }: {
   title: string;
   items: { ev: EventRow; variant: RowVariant; slot: Slot | null }[];
   agg: Map<string, Agg>;
   muted?: boolean;
   unread?: Set<string>;
+  photoCounts?: Map<string, number>;
 }) {
   if (items.length === 0) return null;
   return (
@@ -642,6 +660,7 @@ function Board({ title, items, agg, muted, unread }: {
             slot={slot}
             agg={agg.get(ev.id) ?? EMPTY_AGG}
             unread={unread?.has(ev.id)}
+            photoCount={photoCounts?.get(ev.id) ?? 0}
           />
         ))}
       </div>
@@ -651,8 +670,8 @@ function Board({ title, items, agg, muted, unread }: {
 
 // Płaski wiersz: tytuł + mono-podpis (data · godzina · miejsce);
 // po prawej segmenty gotowości albo plakietka statusu.
-function Row({ ev, variant, slot, agg, unread }: {
-  ev: EventRow; variant: RowVariant; slot: Slot | null; agg: Agg; unread?: boolean;
+function Row({ ev, variant, slot, agg, unread, photoCount }: {
+  ev: EventRow; variant: RowVariant; slot: Slot | null; agg: Agg; unread?: boolean; photoCount?: number;
 }) {
   const { href, handlers } = useEventNav(ev.id);
   const responded = agg.squad.filter((m) => m.state).length;
@@ -685,6 +704,9 @@ function Row({ ev, variant, slot, agg, unread }: {
         </span>
       )}
       {variant === 'upcoming' && <span className="badge">USTALONY</span>}
+      {variant === 'past' && !!photoCount && (
+        <span className="badge badge-muted photo-badge">📸 {photoCount}</span>
+      )}
       {variant === 'past' && <span className="badge badge-muted">GG</span>}
       {variant === 'expired' && <span className="badge badge-muted">Nie ustalono</span>}
       <IconChevron size={16} className="row-chevron" />

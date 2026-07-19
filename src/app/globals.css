@@ -2578,3 +2578,78 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
   transition: opacity 0.22s ease;
 }
 .slot-row-fields.dual.all-day .slot-time-cell { opacity: 0; }
+
+/* ===== Galeria wypadu (EventGallery) ===== */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.gallery-ph {
+  aspect-ratio: 1;
+  padding: 0; overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card-2);
+}
+.gallery-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery-ph:active { transform: scale(0.97); }
+.gallery-add {
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: 1.6rem; font-weight: 300; color: var(--muted);
+}
+.gallery-add:disabled { font-size: 0.72rem; font-family: var(--mono); }
+@media (hover: hover) {
+  .gallery-add:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+}
+
+/* Pełnoekranowy viewer: zdjęcie na czarnym, pasek autora/akcji na dole. */
+.photo-viewer {
+  position: fixed; inset: 0; z-index: 110;
+  background: rgba(0, 0, 0, 0.94);
+  display: flex; flex-direction: column;
+  animation: overlayFadeIn 0.2s ease both;
+}
+.pv-close {
+  top: calc(env(safe-area-inset-top) + 12px);
+  right: auto; left: 14px;
+  z-index: 2;
+}
+.pv-count {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 20px);
+  left: 0; right: 0;
+  text-align: center;
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--muted);
+  pointer-events: none;
+}
+.pv-img {
+  flex: 1; min-height: 0;
+  width: 100%;
+  object-fit: contain;
+}
+.pv-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+}
+.pv-who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.pv-meta { display: flex; flex-direction: column; min-width: 0; }
+.pv-meta b { font-size: 0.84rem; font-weight: 650; }
+.pv-meta span { font-family: var(--mono); font-size: 0.62rem; color: var(--muted); }
+.pv-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.pv-btn {
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--card-2); border: 1px solid var(--border);
+  color: var(--text); font-size: 0.78rem; font-weight: 600;
+  text-decoration: none;
+}
+.pv-btn.danger { color: var(--no); border-color: color-mix(in srgb, var(--no) 35%, transparent); }
+
+/* Znaczek liczby zdjęć przy odbytym wypadzie (obok GG) */
+.photo-badge { margin-right: 6px; }

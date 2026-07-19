@@ -10,6 +10,7 @@ import { Avatar, type Person } from '@/components/Avatar';
 import { IconPin, IconCalendarPlus, IconChevronLeft, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import CreatorSheet from '@/components/CreatorSheet';
+import EventGallery from '@/components/EventGallery';
 import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, slotToRange, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -1079,6 +1080,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </button>
         </form>
       </section>
+
+      <EventGallery eventId={eventId} members={members} isOrganizer={isOrganizer} />
 
       {isOrganizer && !editing && (
         <div className="event-danger-zone">
