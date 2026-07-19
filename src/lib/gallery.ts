@@ -66,58 +66,77 @@ async function makePreview(file: File): Promise<Blob> {
   );
 }
 
-// Wgrywa zdjęcia (oryginał + podgląd) i wstawia wiersze metadanych.
-// onProgress woływany po każdym UKOŃCZONYM zdjęciu (done, total).
+// Wgrywa zdjęcia (oryginał + podgląd) i wstawia wiersze metadanych — PER PLIK,
+// żeby jedno feralne zdjęcie nie kładło całej paczki (częściowy sukces zostaje).
+// onProgress po każdym UKOŃCZONYM zdjęciu; zwraca komunikaty błędów (puste = ok).
 export async function uploadEventPhotos(
   eventId: string,
   userId: string,
   files: File[],
   onProgress?: (done: number, total: number) => void,
-): Promise<void> {
-  if (files.length === 0) return;
+): Promise<string[]> {
+  const errors: string[] = [];
 
-  // Podglądy najpierw (sekwencyjnie — canvas + duże bitmapy potrafią zjeść RAM na telefonie).
-  const previews: Blob[] = [];
-  for (const f of files) previews.push(await makePreview(f));
-
-  // Jedno wywołanie funkcji podpisuje wszystko: [podgląd, oryginał] × N.
-  const manifest = files.flatMap((f) => [
-    { ext: 'jpg', kind: 'preview' },
-    { ext: extOf(f), kind: 'original' },
-  ]);
-  const { data, error } = await supabase.functions.invoke('sign-photo-upload', {
-    body: { event_id: eventId, files: manifest },
-  });
-  if (error) throw new Error('Nie udało się przygotować wysyłki.');
-  const uploads: { path: string; uploadUrl: string }[] = data?.uploads ?? [];
-  if (uploads.length !== manifest.length) throw new Error('Zła odpowiedź podpisu wysyłki.');
-
-  const rows: Omit<EventPhoto, 'id' | 'created_at'>[] = [];
   for (let i = 0; i < files.length; i++) {
-    const previewSlot = uploads[i * 2];
-    const originalSlot = uploads[i * 2 + 1];
-    const put = (slot: { uploadUrl: string }, body: Blob, type: string) =>
-      fetch(slot.uploadUrl, { method: 'PUT', body, headers: { 'Content-Type': type } }).then(
-        (r) => {
-          if (!r.ok) throw new Error(`Upload padł (${r.status}).`);
-        },
-      );
-    await Promise.all([
-      put(previewSlot, previews[i], 'image/jpeg'),
-      put(originalSlot, files[i], files[i].type || 'application/octet-stream'),
-    ]);
-    rows.push({
-      event_id: eventId,
-      user_id: userId,
-      preview_path: previewSlot.path,
-      original_path: originalSlot.path,
-      taken_at: files[i].lastModified ? new Date(files[i].lastModified).toISOString() : null,
-    });
+    const file = files[i];
+    try {
+      // 1) Podgląd. Gdy dekodowanie padnie (np. format, RAM) — jedziemy bez
+      //    podglądu: oryginał robi za preview (HEIC nie wyświetli się wszędzie,
+      //    ale zdjęcie nie ginie).
+      let preview: Blob | null = null;
+      try {
+        preview = await makePreview(file);
+      } catch (err) {
+        console.error('[galeria] podgląd padł:', file.name, err);
+      }
+
+      // 2) Podpis wysyłki (osobno per plik — proste i częściowo odporne).
+      const manifest = preview
+        ? [
+            { ext: 'jpg', kind: 'preview' },
+            { ext: extOf(file), kind: 'original' },
+          ]
+        : [{ ext: extOf(file), kind: 'original' }];
+      const { data, error } = await supabase.functions.invoke('sign-photo-upload', {
+        body: { event_id: eventId, files: manifest },
+      });
+      if (error) throw new Error(`Podpis wysyłki: ${error.message ?? 'błąd funkcji'}`);
+      const uploads: { path: string; uploadUrl: string }[] = data?.uploads ?? [];
+      if (uploads.length !== manifest.length) throw new Error('Zła odpowiedź podpisu wysyłki.');
+
+      // 3) PUT-y do R2.
+      const put = async (slot: { uploadUrl: string }, body: Blob, type: string) => {
+        const r = await fetch(slot.uploadUrl, {
+          method: 'PUT',
+          body,
+          headers: { 'Content-Type': type },
+        });
+        if (!r.ok) throw new Error(`Wysyłka do R2 padła (${r.status}).`);
+      };
+      const previewSlot = preview ? uploads[0] : null;
+      const originalSlot = preview ? uploads[1] : uploads[0];
+      await Promise.all([
+        ...(preview && previewSlot ? [put(previewSlot, preview, 'image/jpeg')] : []),
+        put(originalSlot, file, file.type || 'application/octet-stream'),
+      ]);
+
+      // 4) Wiersz metadanych.
+      const { error: insErr } = await supabase.from('event_photos').insert({
+        event_id: eventId,
+        user_id: userId,
+        preview_path: (previewSlot ?? originalSlot).path,
+        original_path: originalSlot.path,
+        taken_at: file.lastModified ? new Date(file.lastModified).toISOString() : null,
+      });
+      if (insErr) throw new Error(`Zapis metadanych: ${insErr.message}`);
+    } catch (err) {
+      console.error('[galeria] zdjęcie padło:', file.name, err);
+      errors.push(err instanceof Error ? err.message : 'Nieznany błąd.');
+    }
     onProgress?.(i + 1, files.length);
   }
 
-  const { error: insErr } = await supabase.from('event_photos').insert(rows);
-  if (insErr) throw new Error(insErr.message);
+  return errors;
 }
 
 export async function deleteEventPhoto(photo: EventPhoto): Promise<void> {

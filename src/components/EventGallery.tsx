@@ -71,7 +71,17 @@ export default function EventGallery({
     if (files.length === 0) return;
     setProgress({ done: 0, total: files.length });
     try {
-      await uploadEventPhotos(eventId, userId, files, (done, total) => setProgress({ done, total }));
+      const errors = await uploadEventPhotos(eventId, userId, files, (done, total) =>
+        setProgress({ done, total }),
+      );
+      if (errors.length > 0) {
+        appAlert(
+          errors.length === files.length
+            ? 'Nie udało się wgrać zdjęć'
+            : `Nie wgrało się ${errors.length} z ${files.length} zdjęć`,
+          errors[0],
+        );
+      }
     } catch (err) {
       appAlert('Nie udało się wgrać zdjęć', err instanceof Error ? err.message : 'Spróbuj ponownie.');
     } finally {
