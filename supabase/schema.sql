@@ -344,6 +344,39 @@ create policy "reactions update" on public.comment_reactions for update to authe
 create policy "reactions delete" on public.comment_reactions for delete to authenticated
   using (user_id = auth.uid());
 
+-- Galeria wypadu: METADANE zdjęć — same pliki żyją w Cloudflare R2 (bucket
+-- planner-photos; oryginał bajt-w-bajt + podgląd JPEG ~2048px generowany na
+-- telefonie). Upload podpisuje Edge Function `sign-photo-upload` (presigned PUT,
+-- tylko zalogowani), wiersz wstawia klient po udanym wgraniu. taken_at = data
+-- zrobienia zdjęcia (z pliku). Usuwa autor, organizator wypadu albo admin.
+create table if not exists public.event_photos (
+  id            uuid primary key default gen_random_uuid(),
+  event_id      uuid not null references public.events(id) on delete cascade,
+  user_id       uuid references auth.users(id) on delete set null,
+  preview_path  text not null,
+  original_path text,
+  taken_at      timestamptz,
+  created_at    timestamptz not null default now()
+);
+create index if not exists event_photos_event_idx on public.event_photos(event_id);
+
+alter table public.event_photos enable row level security;
+drop policy if exists "photos read"   on public.event_photos;
+drop policy if exists "photos insert" on public.event_photos;
+drop policy if exists "photos delete" on public.event_photos;
+create policy "photos read"   on public.event_photos for select to authenticated using (true);
+create policy "photos insert" on public.event_photos for insert to authenticated
+  with check (user_id = auth.uid());
+create policy "photos delete" on public.event_photos for delete to authenticated
+  using (
+    user_id = auth.uid()
+    or public.is_admin()
+    or exists (
+      select 1 from public.events e
+      where e.id = event_photos.event_id and e.created_by_user_id = auth.uid()
+    )
+  );
+
 -- Subskrypcje Web Push (powiadomienia o nowych wypadach). Jeden wiersz = jedno
 -- urządzenie/przeglądarka (klucz: endpoint). Wysyłką zajmuje się Edge Function
 -- `notify-new-event` (rola service_role omija RLS); klient zarządza tylko swoimi.
@@ -376,7 +409,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['events', 'slots', 'votes', 'profiles', 'comments', 'comment_reactions'] loop
+  foreach t in array array['events', 'slots', 'votes', 'profiles', 'comments', 'comment_reactions', 'event_photos'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

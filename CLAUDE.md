@@ -54,7 +54,8 @@ Guidance for AI assistants (and humans) working in this repository.
 │       ├── notify-reminders/     # Edge Function: cykl. push „nie dałeś znać" + „Jutro gramy!" (pg_cron)
 │       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
 │       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
-│       └── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
+│       ├── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
+│       └── sign-photo-upload/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
 ├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
@@ -94,6 +95,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina (+ testy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── eventImage.ts         # Upload własnego tła wypadu (skalowanie → bucket event-images)
+        ├── gallery.ts            # Galeria wypadu: upload do R2 (oryginał+podgląd) + metadane event_photos
         ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
