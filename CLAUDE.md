@@ -81,7 +81,6 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── SlotRangeInput.tsx    # Wspólny input terminu: data + „Cały dzień" + link daty końca
     │   ├── RedesignNotice.tsx    # Jednorazowa notka po redesignie (localStorage)
     │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
-    │   ├── EventEmojiInput.tsx   # Wybór emoji/kategorii wypadu (spójny z heroImage.ts)
     │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
     │   ├── WeatherModal.tsx      # Prognoza godzinowa na dzień wypadu (tap w kafelek pogody w hero)
     │   ├── Dialogs.tsx           # appAlert/appConfirm + DialogHost (zamiast natywnych alertów)
@@ -94,6 +93,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina (+ testy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
+        ├── eventImage.ts         # Upload własnego tła wypadu (skalowanie → bucket event-images)
         ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)

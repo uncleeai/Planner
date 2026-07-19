@@ -22,6 +22,7 @@ import { getCache, setCache } from '@/lib/dataCache';
 import { prefetchEvent } from '@/lib/eventPrefetch';
 import { getChatSeen } from '@/lib/chatSeen';
 import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { parseImageFocus, DEFAULT_FOCUS } from '@/lib/eventImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
@@ -722,10 +723,13 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   const { userId, displayName, isAdmin } = useAuth();
   const isOrg = isAdmin || !ev.created_by_user_id || ev.created_by_user_id === userId;
 
-  // Tło hero dobierane po emoji wypadu (public/hero/<kategoria>.jpg). Brak pliku →
-  // background-image jest po prostu pusty, więc zostaje sam raster (bez błędu).
-  const heroPhoto = heroImageForEmoji(ev.emoji);
+  // Tło hero: własne zdjęcie wypadu (events.image_url) wygrywa z fotką kategorii
+  // (public/hero/<kategoria>.jpg). Własne renderuje się cover + kadr z pinch-to-crop
+  // (image_focus, JSON {z,x,y}); brak/obcy format → domyślne wyśrodkowanie.
+  const custom = !!ev.image_url;
+  const heroPhoto = ev.image_url ?? heroImageForEmoji(ev.emoji);
   const c = crop ?? DEFAULT_CROP;
+  const focus = custom ? parseImageFocus(ev.image_focus) ?? DEFAULT_FOCUS : null;
 
   // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
@@ -807,14 +811,15 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
           (albo emoji bez pliku → tło transparentne) zostaje sam raster. Zdjęcie jako
           background-image: kadr/zoom/tekstury z placu zabaw (globals.css). */}
       {heroPhoto && (
-        <div className="hero-photo" aria-hidden="true">
+        <div className={`hero-photo${custom ? ' hp-custom' : ''}`} aria-hidden="true">
           <div
             className="hp-img"
             style={{
               backgroundImage: `url(${heroPhoto})`,
-              backgroundSize: `${c.zoom}%`,
-              backgroundPosition: `${c.pos_x}% ${c.pos_y}%`,
-              ['--hp-bright' as string]: `${c.brightness / 100}`,
+              backgroundSize: focus ? 'cover' : `${c.zoom}%`,
+              backgroundPosition: focus ? '50% 50%' : `${c.pos_x}% ${c.pos_y}%`,
+              transform: focus ? `translate(${focus.x}%, ${focus.y}%) scale(${focus.z})` : undefined,
+              ['--hp-bright' as string]: custom ? '0.82' : `${c.brightness / 100}`,
             } as React.CSSProperties}
           />
           <i className="hp-tint" />

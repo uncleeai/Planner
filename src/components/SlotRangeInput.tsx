@@ -47,7 +47,10 @@ export default function SlotRangeInput({
 
         <div className="slot-row">
           <span className="slot-row-label">Start</span>
-          <span className="slot-row-fields">
+          {/* Prawdziwy morph przy „Cały dzień": blok pól ma STAŁĄ szerokość,
+              a animują się proporcje kolumn (data ↔ godzina) — pill daty rośnie
+              i pochłania miejsce po godzinie, zamiast wskakiwać w prawo. */}
+          <span className={`slot-row-fields dual${allDay ? ' all-day' : ''}`}>
             <span className={`dt-field${value.od ? '' : ' dt-empty'}`}>
               <input
                 id={`${idPrefix}-od`}
@@ -69,17 +72,19 @@ export default function SlotRangeInput({
               />
               {!value.od && <span className="dt-placeholder">Data</span>}
             </span>
-            {!allDay && (
+            <span className="slot-time-cell" aria-hidden={allDay}>
               <span className={`dt-field${value.time ? '' : ' dt-empty'}`}>
                 <input
                   id={`${idPrefix}-time`}
                   type="time"
                   value={value.time}
+                  disabled={allDay}
+                  tabIndex={allDay ? -1 : undefined}
                   onChange={(e) => onChange({ ...value, time: e.target.value })}
                 />
                 {!value.time && <span className="dt-placeholder">Godz.</span>}
               </span>
-            )}
+            </span>
           </span>
         </div>
 

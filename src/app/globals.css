@@ -1494,49 +1494,6 @@ main::before {
 .hero-tile-main { font-family: var(--mono); font-size: 1.15rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
 .hero-tile-sub { font-size: 0.78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ===== Picker ikony wypadu: kompaktowy trigger + popover z siatką emoji ===== */
-.emoji-picker { position: relative; }
-.emoji-trigger {
-  width: 100%;
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
-  background: var(--card-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  text-align: left;
-}
-.emoji-trigger-emoji { flex: 1; font-size: 22px; line-height: 1; }
-.emoji-trigger-ph { flex: 1; color: var(--muted); }
-.emoji-trigger-chev { color: var(--muted); transition: transform 0.2s ease; }
-.emoji-trigger-chev.open { transform: rotate(90deg); }
-
-/* Popover W PRZEPŁYWIE (nie absolute) — jak .loc-suggestions. Pola formularza mają
-   animację transform/opacity (reveal), która tworzy konteksty stackingu „więżące"
-   absolutny popover pod kolejnym polem. W przepływie po prostu rozpycha pola pod sobą. */
-.emoji-popover {
-  margin-top: 8px;
-  background: var(--card-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  padding: 12px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-}
-.emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.emoji-chip {
-  width: 100%; aspect-ratio: 1; padding: 0; font-size: 22px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.22); /* wcięta wnęka — odcina się od glassowego panelu */
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-}
-@media (hover: hover) {
-  .emoji-chip:hover { border-color: var(--border-strong); }
-}
-.emoji-chip.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.13); }
-.emoji-clear { margin-top: 10px; width: 100%; }
-
 /* ===== Skórka „Lobby": wordmark, skład, segmenty gotowości, MOTD, dok CTA ===== */
 
 /* Wordmark WYPAD.EXE z migającym kursorem */
@@ -2081,6 +2038,23 @@ button.solid-danger { background: var(--no); color: #fff; }
     ),
     linear-gradient(100deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.38) 42%, transparent 70%);
 }
+/* Zdjęcia UŻYTKOWNIKÓW (hp-custom): kuratorowane fotki kategorii mają dobrany
+   kadr i światło, fotka z rolki to loteria — dostaje tint akcentem (hp-tint
+   istnieje w stacku od zawsze, tu go włączamy: mix-blend color = przemalowanie
+   na klimat apki z zachowaniem światła) i cięższy, równomierny scrim od dołu,
+   żeby tytuł/chipy/sloty nigdy nie walczyły z jasnym środkiem zdjęcia. */
+.hero-photo.hp-custom .hp-tint { opacity: 0.45; }
+.hero-photo.hp-custom .hp-scrim {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.34) 26%,
+      rgba(0, 0, 0, 0.78) 56%,
+      #000 100%
+    ),
+    linear-gradient(100deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.5) 45%, rgba(0, 0, 0, 0.2) 78%);
+}
 /* Treść hero nad fotką */
 .event-rich.hero > *:not(.hero-photo) { position: relative; z-index: 1; }
 
@@ -2372,6 +2346,33 @@ button.solid-danger { background: var(--no); color: #fff; }
   z-index: 3;
 }
 
+/* Narzędzia tła — pille w prawym górnym rogu (lustro X-a po lewej):
+   „+ Tło" / „Kadruj" + „×" / „Gotowe" (tryb kadrowania). */
+.creator-bg-tools {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  right: 14px;
+  z-index: 3;
+  display: flex; gap: 8px;
+}
+.creator-bg-btn {
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0.78rem; font-weight: 600;
+}
+.creator-bg-btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+.creator-bg-btn:disabled { color: var(--muted); }
+.creator-bg-btn:active { transform: scale(0.96); }
+
 .creator-scroll {
   flex: 1; min-height: 0;
   display: flex; flex-direction: column;
@@ -2527,3 +2528,53 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
 
 /* Link „dodaj/usuń datę końca" w inpucie terminu — ciaśniejszy niż .add-slot listy propozycji. */
 .slot-end-link { margin-top: 8px; font-size: 0.8rem; display: block; }
+
+/* ===== Pinch-to-crop własnego tła (kreator) =====
+   Nakładka łapie gesty na całej strefie hero tylko w trybie kadrowania;
+   touch-action: none odcina scroll strony pod palcem. Selektor po nakładce
+   celowo mocniejszy niż reguła pozycjonowania dzieci hero. */
+.creator-hero .crop-surface {
+  position: absolute; inset: 0; z-index: 2;
+  touch-action: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.crop-hint {
+  padding: 9px 15px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+
+/* ===== Morph pilla godziny przy „Cały dzień" (SlotRangeInput) =====
+   Blok pól Start ma STAŁĄ szerokość, animują się PROPORCJE kolumn
+   (1fr : 0.58fr ↔ 1fr : 0fr) + gap. Efekt: data rośnie i pochłania miejsce
+   po godzinie — jeden kształt się przelewa, nic nie wskakuje z boku. */
+.slot-row-fields.dual {
+  display: grid;
+  width: 216px;
+  grid-template-columns: 1fr 0.58fr;
+  column-gap: 8px;
+  transition:
+    grid-template-columns 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    column-gap 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.slot-row-fields.dual.all-day { grid-template-columns: 1fr 0fr; column-gap: 0px; }
+.slot-row-fields.dual > * { min-width: 0; }
+/* Wewnątrz siatki pille wypełniają swoje kolumny (bazowe min-width by blokowało
+   zwijanie, a bazowe .dt-field { width: auto } zapadało pill w błędnym kole:
+   wrapper od contentu, input 100% wrappera → zero). */
+.slot-row-fields.dual .dt-field { width: 100%; }
+.slot-row-fields.dual input[type="date"],
+.slot-row-fields.dual input[type="time"] { min-width: 0; width: 100%; }
+.slot-time-cell {
+  overflow: hidden;
+  display: flex;
+  opacity: 1;
+  transition: opacity 0.22s ease;
+}
+.slot-row-fields.dual.all-day .slot-time-cell { opacity: 0; }
