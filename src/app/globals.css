@@ -2565,7 +2565,10 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
 }
 .slot-row-fields.dual.all-day { grid-template-columns: 1fr 0fr; column-gap: 0px; }
 .slot-row-fields.dual > * { min-width: 0; }
-/* Wewnątrz siatki pille wypełniają swoje kolumny (bazowe min-width by blokowało zwijanie). */
+/* Wewnątrz siatki pille wypełniają swoje kolumny (bazowe min-width by blokowało
+   zwijanie, a bazowe .dt-field { width: auto } zapadało pill w błędnym kole:
+   wrapper od contentu, input 100% wrappera → zero). */
+.slot-row-fields.dual .dt-field { width: 100%; }
 .slot-row-fields.dual input[type="date"],
 .slot-row-fields.dual input[type="time"] { min-width: 0; width: 100%; }
 .slot-time-cell {
