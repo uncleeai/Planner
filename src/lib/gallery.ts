@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 
 // Galeria wypadu — upload zdjęć do Cloudflare R2 (przez presigned URL-e z Edge
-// Function sign-photo-upload) + wpisy metadanych w event_photos.
+// Function gallery-sign) + wpisy metadanych w event_photos.
 //
 // Per zdjęcie lecą DWA pliki: oryginał bajt-w-bajt (HEIC/JPEG/…, do pobrania)
 // i podgląd JPEG ~2048px generowany na telefonie (siatka/viewer — szybki i
@@ -105,7 +105,7 @@ export async function uploadEventPhotos(
       let signRes: Response;
       try {
         signRes = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/sign-photo-upload`,
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/gallery-sign`,
           {
             method: 'POST',
             headers: {

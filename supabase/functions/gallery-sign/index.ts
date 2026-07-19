@@ -1,4 +1,4 @@
-// Edge Function: sign-photo-upload — podpisuje uploady zdjęć galerii do
+// Edge Function: gallery-sign (dawniej sign-photo-upload — nazwa bez „photo-upload", bo listy content blockerów w Safari ucinały ścieżkę) — podpisuje uploady zdjęć galerii do
 // Cloudflare R2 (presigned PUT, SigV4 przez aws4fetch). Klient NIGDY nie widzi
 // kluczy R2; funkcja (verify JWT = tylko zalogowana paczka) buduje ścieżki
 // server-side: <event_id>/<uid>-<ts>-<i>[-orig].<ext> i zwraca URL-e ważne 10 min.
@@ -75,6 +75,6 @@ Deno.serve(async (req) => {
     out.push({ path, uploadUrl: signed.url });
   }
 
-  console.log('[sign-photo-upload] uid=', uid, 'event=', eventId, 'files=', out.length);
+  console.log('[gallery-sign] uid=', uid, 'event=', eventId, 'files=', out.length);
   return json({ uploads: out });
 });

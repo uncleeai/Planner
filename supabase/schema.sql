@@ -346,7 +346,7 @@ create policy "reactions delete" on public.comment_reactions for delete to authe
 
 -- Galeria wypadu: METADANE zdjęć — same pliki żyją w Cloudflare R2 (bucket
 -- planner-photos; oryginał bajt-w-bajt + podgląd JPEG ~2048px generowany na
--- telefonie). Upload podpisuje Edge Function `sign-photo-upload` (presigned PUT,
+-- telefonie). Upload podpisuje Edge Function `gallery-sign` (presigned PUT,
 -- tylko zalogowani), wiersz wstawia klient po udanym wgraniu. taken_at = data
 -- zrobienia zdjęcia (z pliku). Usuwa autor, organizator wypadu albo admin.
 create table if not exists public.event_photos (

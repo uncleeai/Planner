@@ -55,7 +55,7 @@ Guidance for AI assistants (and humans) working in this repository.
 │       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
 │       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
 │       ├── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
-│       └── sign-photo-upload/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
+│       └── gallery-sign/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
 ├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
