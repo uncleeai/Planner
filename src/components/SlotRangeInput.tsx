@@ -69,17 +69,24 @@ export default function SlotRangeInput({
               />
               {!value.od && <span className="dt-placeholder">Data</span>}
             </span>
-            {!allDay && (
-              <span className={`dt-field${value.time ? '' : ' dt-empty'}`}>
-                <input
-                  id={`${idPrefix}-time`}
-                  type="time"
-                  value={value.time}
-                  onChange={(e) => onChange({ ...value, time: e.target.value })}
-                />
-                {!value.time && <span className="dt-placeholder">Godz.</span>}
+            {/* Pill godziny zawsze zamontowany — „Cały dzień" zwija go morphem
+                (grid 0fr↔1fr w poziomie), nie twardym mount/unmount. disabled
+                w stanie zwiniętym = nie da się tapnąć w połowie animacji. */}
+            <span className={`slot-time-wrap${allDay ? '' : ' open'}`} aria-hidden={allDay}>
+              <span className="slot-time-inner">
+                <span className={`dt-field${value.time ? '' : ' dt-empty'}`}>
+                  <input
+                    id={`${idPrefix}-time`}
+                    type="time"
+                    value={value.time}
+                    disabled={allDay}
+                    tabIndex={allDay ? -1 : undefined}
+                    onChange={(e) => onChange({ ...value, time: e.target.value })}
+                  />
+                  {!value.time && <span className="dt-placeholder">Godz.</span>}
+                </span>
               </span>
-            )}
+            </span>
           </span>
         </div>
 

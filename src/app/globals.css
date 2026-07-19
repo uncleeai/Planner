@@ -2549,3 +2549,24 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
   color: rgba(255, 255, 255, 0.85);
   pointer-events: none;
 }
+
+/* ===== Morph pilla godziny przy „Cały dzień" (SlotRangeInput) =====
+   Pozioma wersja tricku grid-template-rows: kolumna 0fr↔1fr + fade wnętrza.
+   margin-left znosi gap rzędu, gdy pill jest zwinięty — data dosuwa się
+   do krawędzi zamiast zostawiać widmowe 8px. */
+.slot-time-wrap {
+  display: grid;
+  grid-template-columns: 0fr;
+  margin-left: -8px;
+  transition:
+    grid-template-columns 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    margin-left 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.slot-time-wrap.open { grid-template-columns: 1fr; margin-left: 0; }
+.slot-time-inner {
+  min-width: 0; overflow: hidden;
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.slot-time-wrap.open .slot-time-inner { opacity: 1; }
