@@ -6,7 +6,8 @@
 // Kadr (zoom + pozycja) per kategoria ustawia admin w apce (panel „Kadrowanie zdjęć",
 // tabela hero_crops). Domyślne wartości niżej — dla kategorii jeszcze nieustawionych.
 //
-// Kategorie MUSZĄ się zgadzać z EVENT_EMOJIS w src/components/EventEmojiInput.tsx.
+// HERO_CATEGORIES to jedyne źródło kategorii — chipy w kreatorze (CreatorSheet)
+// renderują się wprost z tej listy.
 export const HERO_CATEGORIES: { emoji: string; slug: string; label: string }[] = [
   { emoji: '🏀', slug: 'basketball', label: 'Basket' },
   { emoji: '🎂', slug: 'cake', label: 'Urodziny' },
