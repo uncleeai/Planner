@@ -174,8 +174,12 @@ export async function uploadEventPhotos(
 }
 
 export async function deleteEventPhoto(photo: EventPhoto): Promise<void> {
-  // Kasujemy tylko wpis — plik w R2 zostaje sierotą (świadomie: brak klucza po
-  // stronie klienta; sprzątanie sierot to ewentualna przyszła Edge Function).
-  const { error } = await supabase.from('event_photos').delete().eq('id', photo.id);
+  // Kosz: zamiast twardo kasować, stemplujemy deleted_at — zdjęcie znika z
+  // galerii od razu, a plik w R2 zostaje jako bufor. Po TRASH_TTL_DAYS Edge
+  // Function `gallery-gc` (pg_cron) skasuje pliki z R2 i sam wiersz.
+  const { error } = await supabase
+    .from('event_photos')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', photo.id);
   if (error) throw new Error(error.message);
 }

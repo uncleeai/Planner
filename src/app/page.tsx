@@ -129,6 +129,7 @@ export default function Home() {
     supabase
       .from('event_photos')
       .select('event_id')
+      .is('deleted_at', null)
       .then(({ data }) => {
         const m = new Map<string, number>();
         for (const r of data ?? []) m.set(r.event_id, (m.get(r.event_id) ?? 0) + 1);

@@ -55,7 +55,8 @@ Guidance for AI assistants (and humans) working in this repository.
 │       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
 │       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
 │       ├── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
-│       └── gallery-sign/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
+│       ├── gallery-sign/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
+│       └── gallery-gc/       # Edge Function: sprzątanie kosza galerii — po 30 dniach kasuje pliki z R2 + wpis (pg_cron, no-verify-jwt)
 ├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
@@ -155,6 +156,13 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (rola service_role) rozsyła push o nowym wypadzie do wszystkich poza twórcą. Powiadomienia
   na iOS tylko w PWA dodanym do ekranu głównego (16.4+). Toast „na żywo" przy otwartej apce
   jest w `auth.tsx` (Realtime na INSERT `events`).
+- **event_photos** — galeria wypadu: `event_id` + `user_id` + `preview_path`/`original_path`
+  (klucze w R2) + `taken_at`. Upload przez presigned PUT (Edge Function `gallery-sign`,
+  wołana z klienta przez same-origin proxy `/api/gallery-sign`). **Kosz:** „usuń" ustawia
+  `deleted_at` (UPDATE — soft delete; znika z galerii, plik w R2 zostaje jako bufor), a
+  Edge Function `gallery-gc` (pg_cron, raz dziennie) po 30 dniach kasuje pliki z R2 i sam
+  wiersz. Zapytania galerii filtrują `deleted_at is null`. Realtime; RLS: czytają wszyscy
+  zalogowani, wrzuca do kosza/usuwa autor, organizator albo admin.
 - **comments** — komentarze pod wypadem (koordynacja): `event_id` + `user_id` (konto)
   + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; edytuje
   tylko autor; usuwa autor, organizator albo admin. Realtime + wątek pod terminami na

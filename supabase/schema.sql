@@ -356,17 +356,35 @@ create table if not exists public.event_photos (
   preview_path  text not null,
   original_path text,
   taken_at      timestamptz,
-  created_at    timestamptz not null default now()
+  created_at    timestamptz not null default now(),
+  -- Kosz: „usuń" ustawia deleted_at (znika z galerii, plik w R2 zostaje). Edge
+  -- Function `gallery-gc` (pg_cron) po X dniach kasuje wpis i pliki z R2.
+  deleted_at    timestamptz
 );
+alter table public.event_photos add column if not exists deleted_at timestamptz;
 create index if not exists event_photos_event_idx on public.event_photos(event_id);
+-- Wąski indeks tylko po rzeczach w koszu — tanie zapytanie GC.
+create index if not exists event_photos_trash_idx on public.event_photos(deleted_at)
+  where deleted_at is not null;
 
 alter table public.event_photos enable row level security;
 drop policy if exists "photos read"   on public.event_photos;
 drop policy if exists "photos insert" on public.event_photos;
+drop policy if exists "photos update" on public.event_photos;
 drop policy if exists "photos delete" on public.event_photos;
 create policy "photos read"   on public.event_photos for select to authenticated using (true);
 create policy "photos insert" on public.event_photos for insert to authenticated
   with check (user_id = auth.uid());
+-- UPDATE = wrzucenie do kosza (deleted_at). Ci sami, co mogliby usunąć.
+create policy "photos update" on public.event_photos for update to authenticated
+  using (
+    user_id = auth.uid()
+    or public.is_admin()
+    or exists (
+      select 1 from public.events e
+      where e.id = event_photos.event_id and e.created_by_user_id = auth.uid()
+    )
+  );
 create policy "photos delete" on public.event_photos for delete to authenticated
   using (
     user_id = auth.uid()

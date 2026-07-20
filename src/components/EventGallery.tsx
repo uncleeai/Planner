@@ -46,6 +46,7 @@ export default function EventGallery({
       .from('event_photos')
       .select('*')
       .eq('event_id', eventId)
+      .is('deleted_at', null)
       .order('taken_at', { ascending: true })
       .order('created_at', { ascending: true });
     setPhotos((data ?? []) as EventPhoto[]);
