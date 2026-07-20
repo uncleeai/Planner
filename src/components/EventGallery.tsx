@@ -285,12 +285,18 @@ export default function EventGallery({
               className="pv-track"
               style={{ transform: 'translate3d(-100%, 0, 0)' }}
             >
-              {[viewerIdx - 1, viewerIdx, viewerIdx + 1].map((idx, slot) => {
+              {[viewerIdx - 1, viewerIdx, viewerIdx + 1].map((idx) => {
                 const ph = idx >= 0 && idx < photos.length ? photos[idx] : null;
+                // Klucz po INDEKSIE zdjęcia, nie slocie: przy commicie indeksu
+                // React przenosi gotowe (zdekodowane) <img> zamiast podmieniać
+                // im src w trakcie animacji — bez re-dekodowania = bez gubienia
+                // klatek w doślizgu.
                 return (
-                  <div className="pv-slide" key={slot}>
+                  <div className="pv-slide" key={idx}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {ph && <img className="pv-img" src={photoUrl(ph.preview_path)} alt="" />}
+                    {ph && (
+                      <img className="pv-img" src={photoUrl(ph.preview_path)} alt="" decoding="async" />
+                    )}
                   </div>
                 );
               })}
