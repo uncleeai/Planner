@@ -33,7 +33,13 @@ export default function EventGallery({
   const [viewerIdx, setViewerIdx] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const swipeX = useRef<number | null>(null);
+  // Pager viewera (przesuwanie palcem jak w iOS Zdjęcia): dx = bieżące
+  // przesunięcie w px, anim = czy toczy się animacja dojazdu/powrotu.
+  const [dragDx, setDragDx] = useState(0);
+  const [anim, setAnim] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragStart = useRef<{ x: number; w: number } | null>(null);
+  const pendingIdx = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -112,6 +118,53 @@ export default function EventGallery({
     }
   }
 
+  // --- Pager viewera: przesuwanie palcem między zdjęciami (jak iOS Zdjęcia) ---
+  function onSwipeStart(e: React.TouchEvent) {
+    if (anim || viewerIdx === null) return;
+    const w = trackRef.current?.clientWidth ?? window.innerWidth;
+    dragStart.current = { x: e.touches[0].clientX, w };
+    setDragDx(0);
+  }
+  function onSwipeMove(e: React.TouchEvent) {
+    const start = dragStart.current;
+    if (start === null || viewerIdx === null) return;
+    let dx = e.touches[0].clientX - start.x;
+    // Opór gumki na krańcach (brak sąsiada w tę stronę).
+    if ((viewerIdx === 0 && dx > 0) || (viewerIdx === photos.length - 1 && dx < 0)) dx *= 0.28;
+    setDragDx(dx);
+  }
+  function onSwipeEnd() {
+    const start = dragStart.current;
+    dragStart.current = null;
+    if (start === null || viewerIdx === null) return;
+    const w = start.w;
+    const threshold = Math.min(72, w * 0.22);
+    let target = viewerIdx;
+    if (dragDx <= -threshold && viewerIdx < photos.length - 1) target = viewerIdx + 1;
+    else if (dragDx >= threshold && viewerIdx > 0) target = viewerIdx - 1;
+
+    // Nic do animowania (czysty tap bez ruchu) — nie właączamy tranzycji, żeby
+    // onTransitionEnd na pewno padł i nie zablokował pagera.
+    if (target === viewerIdx && dragDx === 0) return;
+
+    setAnim(true);
+    if (target === viewerIdx) {
+      pendingIdx.current = null;
+      setDragDx(0); // powrót na miejsce
+    } else {
+      pendingIdx.current = target;
+      setDragDx(target > viewerIdx ? -w : w); // dojazd do sąsiada
+    }
+  }
+  function onSwipeSettled() {
+    setAnim(false);
+    if (pendingIdx.current !== null) {
+      setViewerIdx(pendingIdx.current);
+      pendingIdx.current = null;
+    }
+    setDragDx(0);
+  }
+
   if (!isGalleryConfigured) return null;
 
   const current = viewerIdx !== null ? photos[viewerIdx] : null;
@@ -140,14 +193,7 @@ export default function EventGallery({
           onClick={() => (progress ? abortRef.current?.abort() : inputRef.current?.click())}
           aria-label={progress ? 'Zatrzymaj wgrywanie' : 'Dodaj zdjęcia'}
         >
-          {progress ? (
-            <>
-              <span className="gallery-stop-sq" />
-              {progress.done}/{progress.total}
-            </>
-          ) : (
-            '+'
-          )}
+          {progress ? `${progress.done}/${progress.total}…` : '+'}
         </button>
       </div>
       <input
@@ -159,27 +205,36 @@ export default function EventGallery({
         onChange={(e) => onPick(e.target.files)}
       />
 
-      {current && (
-        <div
-          className="photo-viewer"
-          onTouchStart={(e) => {
-            swipeX.current = e.touches[0].clientX;
-          }}
-          onTouchEnd={(e) => {
-            if (swipeX.current === null) return;
-            const dx = e.changedTouches[0].clientX - swipeX.current;
-            swipeX.current = null;
-            if (Math.abs(dx) < 40 || viewerIdx === null) return;
-            const next = viewerIdx + (dx < 0 ? 1 : -1);
-            if (next >= 0 && next < photos.length) setViewerIdx(next);
-          }}
-        >
+      {current && viewerIdx !== null && (
+        <div className="photo-viewer">
           <button type="button" className="modal-close pv-close" onClick={() => setViewerIdx(null)} aria-label="Zamknij">
             <IconX size={14} />
           </button>
-          <span className="pv-count">{(viewerIdx ?? 0) + 1} / {photos.length}</span>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="pv-img" src={photoUrl(current.preview_path)} alt="" />
+          <span className="pv-count">{viewerIdx + 1} / {photos.length}</span>
+          <div
+            className="pv-stage"
+            onTouchStart={onSwipeStart}
+            onTouchMove={onSwipeMove}
+            onTouchEnd={onSwipeEnd}
+            onTouchCancel={onSwipeEnd}
+          >
+            <div
+              ref={trackRef}
+              className={anim ? 'pv-track anim' : 'pv-track'}
+              style={{ transform: `translate3d(calc(-100% + ${dragDx}px), 0, 0)` }}
+              onTransitionEnd={onSwipeSettled}
+            >
+              {[viewerIdx - 1, viewerIdx, viewerIdx + 1].map((idx, slot) => {
+                const ph = idx >= 0 && idx < photos.length ? photos[idx] : null;
+                return (
+                  <div className="pv-slide" key={slot}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {ph && <img className="pv-img" src={photoUrl(ph.preview_path)} alt="" />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div className="pv-bar">
             <span className="pv-who">
               {author && <Avatar name={author.display_name} avatar={author.avatar} size={24} />}
