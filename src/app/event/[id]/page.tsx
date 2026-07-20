@@ -1039,8 +1039,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         setPickerFor(c.id);
                       })
                     : {})}
-                  {...(canDel && editingCommentId !== c.id
+                  {...(canDel && saved && editingCommentId !== c.id
                     ? {
+                        // saved: świeży (optymistyczny) wpis zaraz dostanie nowe
+                        // id i nowy element DOM — swipe w tym oknie łapałby
+                        // znikający element (wizualny skok).
                         onTouchStart: (e: React.TouchEvent<HTMLDivElement>) => commentSwipeStart(c, e),
                         onTouchMove: commentSwipeMove,
                         onTouchEnd: commentSwipeEnd,
