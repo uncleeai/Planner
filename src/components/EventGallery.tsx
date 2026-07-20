@@ -34,11 +34,16 @@ export default function EventGallery({
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Pager viewera (przesuwanie palcem jak w iOS Zdjęcia): dx = bieżące
-  // przesunięcie w px, anim = czy toczy się animacja dojazdu/powrotu.
+  // przesunięcie w px; animMs = czas dojazdu/powrotu (0 = śledzenie palca).
+  // Tranzycja jest ZAWSZE zdefiniowana, zmieniamy tylko czas — inaczej Safari
+  // potrafi pominąć animację włączaną w tej samej klatce co zmiana transformu
+  // (stąd „przeskok"). Czas liczymy z prędkości gestu → dojazd płynnie
+  // kontynuuje ruch palca (momentum jak natywnie).
   const [dragDx, setDragDx] = useState(0);
-  const [anim, setAnim] = useState(false);
+  const [animMs, setAnimMs] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ x: number; w: number } | null>(null);
+  const velRef = useRef<{ x: number; t: number; v: number } | null>(null);
   const pendingIdx = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -121,17 +126,25 @@ export default function EventGallery({
 
   // --- Pager viewera: przesuwanie palcem między zdjęciami (jak iOS Zdjęcia) ---
   function onSwipeStart(e: React.TouchEvent) {
-    if (anim || viewerIdx === null) return;
+    if (animMs > 0 || viewerIdx === null) return; // nie przerywamy trwającego dojazdu
     const w = trackRef.current?.clientWidth ?? window.innerWidth;
-    dragStart.current = { x: e.touches[0].clientX, w };
+    const x = e.touches[0].clientX;
+    dragStart.current = { x, w };
+    velRef.current = { x, t: performance.now(), v: 0 };
+    setAnimMs(0);
     setDragDx(0);
   }
   function onSwipeMove(e: React.TouchEvent) {
     const start = dragStart.current;
     if (start === null || viewerIdx === null) return;
-    let dx = e.touches[0].clientX - start.x;
+    const x = e.touches[0].clientX;
+    let dx = x - start.x;
     // Opór gumki na krańcach (brak sąsiada w tę stronę).
-    if ((viewerIdx === 0 && dx > 0) || (viewerIdx === photos.length - 1 && dx < 0)) dx *= 0.28;
+    if ((viewerIdx === 0 && dx > 0) || (viewerIdx === photos.length - 1 && dx < 0)) dx *= 0.3;
+    // Chwilowa prędkość (px/ms) z ostatniej próbki — do momentum przy puszczeniu.
+    const now = performance.now();
+    const prev = velRef.current;
+    if (prev && now > prev.t) velRef.current = { x, t: now, v: (x - prev.x) / (now - prev.t) };
     setDragDx(dx);
   }
   function onSwipeEnd() {
@@ -139,30 +152,46 @@ export default function EventGallery({
     dragStart.current = null;
     if (start === null || viewerIdx === null) return;
     const w = start.w;
-    const threshold = Math.min(72, w * 0.22);
+    const v = velRef.current?.v ?? 0; // + = w prawo (do poprzedniego), − = do następnego
+    velRef.current = null;
+
+    const FLICK = 0.3; // px/ms — próg „machnięcia": commit nawet przy małym dystansie
+    const distTh = Math.min(80, w * 0.22);
+    const canPrev = viewerIdx > 0;
+    const canNext = viewerIdx < photos.length - 1;
+
     let target = viewerIdx;
-    if (dragDx <= -threshold && viewerIdx < photos.length - 1) target = viewerIdx + 1;
-    else if (dragDx >= threshold && viewerIdx > 0) target = viewerIdx - 1;
+    if (v <= -FLICK && canNext) target = viewerIdx + 1;
+    else if (v >= FLICK && canPrev) target = viewerIdx - 1;
+    else if (dragDx <= -distTh && canNext) target = viewerIdx + 1;
+    else if (dragDx >= distTh && canPrev) target = viewerIdx - 1;
 
-    // Nic do animowania (czysty tap bez ruchu) — nie właączamy tranzycji, żeby
-    // onTransitionEnd na pewno padł i nie zablokował pagera.
-    if (target === viewerIdx && dragDx === 0) return;
+    const targetDx = target === viewerIdx ? 0 : target > viewerIdx ? -w : w;
 
-    setAnim(true);
-    if (target === viewerIdx) {
-      pendingIdx.current = null;
-      setDragDx(0); // powrót na miejsce
-    } else {
-      pendingIdx.current = target;
-      setDragDx(target > viewerIdx ? -w : w); // dojazd do sąsiada
+    // Nic do animowania (czysty tap / już na miejscu) — commit bez tranzycji,
+    // żeby brak onTransitionEnd nie zamroził pagera.
+    if (targetDx === dragDx) {
+      if (target !== viewerIdx) setViewerIdx(target);
+      setAnimMs(0);
+      setDragDx(0);
+      return;
     }
+
+    // Czas dojazdu z prędkości gestu: szybkie machnięcie → krótko, wolne → dłużej.
+    // Podłoga prędkości trzyma dojazd płynny; clamp trzyma go w naturalnym zakresie.
+    const remaining = Math.abs(targetDx - dragDx);
+    const speed = Math.max(Math.abs(v), 1.1);
+    const dur = Math.round(Math.max(160, Math.min(380, remaining / speed)));
+    pendingIdx.current = target === viewerIdx ? null : target;
+    setAnimMs(dur);
+    setDragDx(targetDx);
   }
   function onSwipeSettled() {
-    setAnim(false);
     if (pendingIdx.current !== null) {
       setViewerIdx(pendingIdx.current);
       pendingIdx.current = null;
     }
+    setAnimMs(0); // wracamy do śledzenia palca; commit środkowego slajdu = bez skoku
     setDragDx(0);
   }
 
@@ -221,8 +250,11 @@ export default function EventGallery({
           >
             <div
               ref={trackRef}
-              className={anim ? 'pv-track anim' : 'pv-track'}
-              style={{ transform: `translate3d(calc(-100% + ${dragDx}px), 0, 0)` }}
+              className="pv-track"
+              style={{
+                transform: `translate3d(calc(-100% + ${dragDx}px), 0, 0)`,
+                transition: `transform ${animMs}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+              }}
               onTransitionEnd={onSwipeSettled}
             >
               {[viewerIdx - 1, viewerIdx, viewerIdx + 1].map((idx, slot) => {
