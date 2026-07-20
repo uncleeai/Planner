@@ -1045,7 +1045,26 @@ img.avatar { display: inline-block; }
 /* Komentarze pod wypadem */
 .comments-card h2 { margin-bottom: 14px; }
 .comment-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
-.comment { display: flex; gap: 10px; align-items: flex-start; }
+.comment { position: relative; touch-action: pan-y; }
+/* Swipe-to-delete (jak iOS Mail): treść rzędu jeździ w lewo, odsłaniając
+   przycisk „Usuń" pod spodem. Pozycją w trakcie gestu steruje JS (inline),
+   stan otwarty utrwala transform z Reacta; tranzycja robi doślizg. */
+.comment-swipe {
+  display: flex; gap: 10px; align-items: flex-start;
+  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.comment-swipe-del {
+  position: absolute; top: 2px; bottom: 2px; right: 0; width: 64px;
+  border: none; border-radius: var(--radius-sm);
+  background: var(--no); color: #fff;
+  font-size: 0.78rem; font-weight: 700;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+/* Na dotyku usuwanie robi swipe — ✕ w nagłówku tylko dla myszy. */
+@media (pointer: coarse) {
+  .comment-del { display: none; }
+}
 .comment-body { flex: 1; min-width: 0; }
 .comment-head { display: flex; align-items: center; gap: 8px; }
 .comment-author { font-weight: 600; font-size: 0.9rem; }
