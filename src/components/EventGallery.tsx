@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import {
@@ -33,18 +33,17 @@ export default function EventGallery({
   const [viewerIdx, setViewerIdx] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // Pager viewera (przesuwanie palcem jak w iOS Zdjęcia): dx = bieżące
-  // przesunięcie w px; animMs = czas dojazdu/powrotu (0 = śledzenie palca).
-  // Tranzycja jest ZAWSZE zdefiniowana, zmieniamy tylko czas — inaczej Safari
-  // potrafi pominąć animację włączaną w tej samej klatce co zmiana transformu
-  // (stąd „przeskok"). Czas liczymy z prędkości gestu → dojazd płynnie
-  // kontynuuje ruch palca (momentum jak natywnie).
-  const [dragDx, setDragDx] = useState(0);
-  const [animMs, setAnimMs] = useState(0);
+  // Pager viewera (jak iOS Zdjęcia): pozycję trzymamy w refie i piszemy
+  // transform bezpośrednio na elemencie (bez setState per klatka), a dojazd po
+  // puszczeniu napędza sprężyna w rAF startująca z prędkością palca. Dzięki
+  // temu animację można w KAŻDEJ chwili przerwać dotknięciem — łapiesz
+  // zdjęcie w locie i ciągniesz dalej, jak natywnie.
   const trackRef = useRef<HTMLDivElement>(null);
-  const dragStart = useRef<{ x: number; w: number } | null>(null);
-  const velRef = useRef<{ x: number; t: number; v: number } | null>(null);
-  const pendingIdx = useRef<number | null>(null);
+  const posRef = useRef(0); // przesunięcie tracka w px względem wycentrowania
+  const velRef = useRef(0); // px/ms, + = palec w prawo
+  const rafRef = useRef<number | null>(null);
+  const dragRef = useRef<{ baseX: number; basePos: number; w: number } | null>(null);
+  const sampleRef = useRef<{ x: number; t: number } | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -125,75 +124,107 @@ export default function EventGallery({
   }
 
   // --- Pager viewera: przesuwanie palcem między zdjęciami (jak iOS Zdjęcia) ---
+  const applyPos = useCallback(() => {
+    const el = trackRef.current;
+    if (el) el.style.transform = `translate3d(calc(-100% + ${posRef.current}px), 0, 0)`;
+  }, []);
+  // Po każdym renderze (w tym po zmianie indeksu w locie animacji) przykładamy
+  // bieżącą pozycję ZANIM przeglądarka namaluje klatkę — zero mignięć.
+  useLayoutEffect(() => {
+    applyPos();
+  });
+  const stopAnim = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+  }, []);
+  useEffect(() => stopAnim, [stopAnim]);
+
+  // Sprężyna krytycznie tłumiona do 0 (ω w 1/ms): startuje z prędkością palca
+  // i wygasza się bez oscylacji — miękki doślizg zamiast przyciągnięcia.
+  function settle() {
+    stopAnim();
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(now - last, 32);
+      last = now;
+      const OMEGA = 0.012;
+      let x = posRef.current;
+      let v = velRef.current;
+      v += (-OMEGA * OMEGA * x - 2 * OMEGA * v) * dt;
+      x += v * dt;
+      if (Math.abs(x) < 0.5 && Math.abs(v) < 0.05) {
+        posRef.current = 0;
+        velRef.current = 0;
+        applyPos();
+        rafRef.current = null;
+        return;
+      }
+      posRef.current = x;
+      velRef.current = v;
+      applyPos();
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }
+
+  function openViewer(i: number) {
+    stopAnim();
+    posRef.current = 0;
+    velRef.current = 0;
+    setViewerIdx(i);
+  }
   function onSwipeStart(e: React.TouchEvent) {
-    if (animMs > 0 || viewerIdx === null) return; // nie przerywamy trwającego dojazdu
-    const w = trackRef.current?.clientWidth ?? window.innerWidth;
+    if (viewerIdx === null) return;
+    stopAnim(); // przejęcie w locie — ciągniemy dalej od bieżącej pozycji
     const x = e.touches[0].clientX;
-    dragStart.current = { x, w };
-    velRef.current = { x, t: performance.now(), v: 0 };
-    setAnimMs(0);
-    setDragDx(0);
+    const w = trackRef.current?.clientWidth ?? window.innerWidth;
+    dragRef.current = { baseX: x, basePos: posRef.current, w };
+    sampleRef.current = { x, t: performance.now() };
+    velRef.current = 0;
   }
   function onSwipeMove(e: React.TouchEvent) {
-    const start = dragStart.current;
-    if (start === null || viewerIdx === null) return;
+    const drag = dragRef.current;
+    if (drag === null || viewerIdx === null) return;
     const x = e.touches[0].clientX;
-    let dx = x - start.x;
+    let pos = drag.basePos + (x - drag.baseX);
     // Opór gumki na krańcach (brak sąsiada w tę stronę).
-    if ((viewerIdx === 0 && dx > 0) || (viewerIdx === photos.length - 1 && dx < 0)) dx *= 0.3;
-    // Chwilowa prędkość (px/ms) z ostatniej próbki — do momentum przy puszczeniu.
+    if ((viewerIdx === 0 && pos > 0) || (viewerIdx === photos.length - 1 && pos < 0)) pos *= 0.3;
+    // Wygładzona prędkość chwilowa (px/ms) — napęd sprężyny przy puszczeniu.
     const now = performance.now();
-    const prev = velRef.current;
-    if (prev && now > prev.t) velRef.current = { x, t: now, v: (x - prev.x) / (now - prev.t) };
-    setDragDx(dx);
+    const prev = sampleRef.current;
+    if (prev && now > prev.t) {
+      const inst = (x - prev.x) / (now - prev.t);
+      velRef.current = velRef.current * 0.2 + inst * 0.8;
+    }
+    sampleRef.current = { x, t: now };
+    posRef.current = pos;
+    applyPos();
   }
   function onSwipeEnd() {
-    const start = dragStart.current;
-    dragStart.current = null;
-    if (start === null || viewerIdx === null) return;
-    const w = start.w;
-    const v = velRef.current?.v ?? 0; // + = w prawo (do poprzedniego), − = do następnego
-    velRef.current = null;
+    const drag = dragRef.current;
+    dragRef.current = null;
+    sampleRef.current = null;
+    if (drag === null || viewerIdx === null) return;
+    const { w } = drag;
+    const pos = posRef.current;
+    const v = velRef.current;
 
-    const FLICK = 0.3; // px/ms — próg „machnięcia": commit nawet przy małym dystansie
+    const FLICK = 0.3; // px/ms — machnięcie przełącza nawet przy małym dystansie
     const distTh = Math.min(80, w * 0.22);
-    const canPrev = viewerIdx > 0;
     const canNext = viewerIdx < photos.length - 1;
+    const canPrev = viewerIdx > 0;
 
-    let target = viewerIdx;
-    if (v <= -FLICK && canNext) target = viewerIdx + 1;
-    else if (v >= FLICK && canPrev) target = viewerIdx - 1;
-    else if (dragDx <= -distTh && canNext) target = viewerIdx + 1;
-    else if (dragDx >= distTh && canPrev) target = viewerIdx - 1;
-
-    const targetDx = target === viewerIdx ? 0 : target > viewerIdx ? -w : w;
-
-    // Nic do animowania (czysty tap / już na miejscu) — commit bez tranzycji,
-    // żeby brak onTransitionEnd nie zamroził pagera.
-    if (targetDx === dragDx) {
-      if (target !== viewerIdx) setViewerIdx(target);
-      setAnimMs(0);
-      setDragDx(0);
-      return;
+    // Commit indeksu OD RAZU, kompensując pozycję o szerokość — klatka wygląda
+    // identycznie (slajdy się przesuwają, pozycja to wyrównuje), a sprężyna
+    // zawsze zbiega do 0. Bez „pending" i czekania na koniec animacji.
+    if ((v <= -FLICK || pos <= -distTh) && canNext) {
+      posRef.current = pos + w;
+      setViewerIdx(viewerIdx + 1);
+    } else if ((v >= FLICK || pos >= distTh) && canPrev) {
+      posRef.current = pos - w;
+      setViewerIdx(viewerIdx - 1);
     }
-
-    // Czas dojazdu z prędkości gestu: szybkie machnięcie → krócej, wolne → dłużej.
-    // Krzywa (ease-out z długim ogonem) robi całą „miękkość" — start w tempie
-    // palca, potem długie wygaszanie; dlatego czasy są dość długie.
-    const remaining = Math.abs(targetDx - dragDx);
-    const speed = Math.max(Math.abs(v), 0.7);
-    const dur = Math.round(Math.max(300, Math.min(560, remaining / speed)));
-    pendingIdx.current = target === viewerIdx ? null : target;
-    setAnimMs(dur);
-    setDragDx(targetDx);
-  }
-  function onSwipeSettled() {
-    if (pendingIdx.current !== null) {
-      setViewerIdx(pendingIdx.current);
-      pendingIdx.current = null;
-    }
-    setAnimMs(0); // wracamy do śledzenia palca; commit środkowego slajdu = bez skoku
-    setDragDx(0);
+    settle();
   }
 
   if (!isGalleryConfigured) return null;
@@ -211,7 +242,7 @@ export default function EventGallery({
             type="button"
             key={p.id}
             className="gallery-ph"
-            onClick={() => setViewerIdx(i)}
+            onClick={() => openViewer(i)}
             aria-label="Pokaż zdjęcie"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -252,11 +283,7 @@ export default function EventGallery({
             <div
               ref={trackRef}
               className="pv-track"
-              style={{
-                transform: `translate3d(calc(-100% + ${dragDx}px), 0, 0)`,
-                transition: `transform ${animMs}ms cubic-bezier(0.16, 1, 0.3, 1)`,
-              }}
-              onTransitionEnd={onSwipeSettled}
+              style={{ transform: 'translate3d(-100%, 0, 0)' }}
             >
               {[viewerIdx - 1, viewerIdx, viewerIdx + 1].map((idx, slot) => {
                 const ph = idx >= 0 && idx < photos.length ? photos[idx] : null;

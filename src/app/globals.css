@@ -2641,8 +2641,7 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
   display: flex;
   height: 100%; width: 100%;
   will-change: transform;
-  /* Tranzycja sterowana inline (transitionDuration): 0ms = śledzenie palca,
-     >0 = dojazd z momentum. Trzymana w JS, nie w klasie — patrz EventGallery. */
+  /* Bez transition: pozycją (transform) steruje sprężyna w rAF — EventGallery. */
 }
 .pv-slide {
   flex: 0 0 100%;
