@@ -2639,6 +2639,7 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
 }
 .pv-track {
   display: flex;
+  gap: 16px; /* prześwit między zdjęciami (jak iOS); trzymaj w synchronie z PV_GAP */
   height: 100%; width: 100%;
   will-change: transform;
   /* Bez transition: pozycją (transform) steruje sprężyna w rAF — EventGallery. */

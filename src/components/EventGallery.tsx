@@ -28,6 +28,8 @@ export default function EventGallery({
   isOrganizer: boolean;
 }) {
   const { userId } = useAuth();
+  // Prześwit między slajdami viewera w px — musi zgadzać się z gap .pv-track.
+  const PV_GAP = 16;
   const [photos, setPhotos] = useState<EventPhoto[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [viewerIdx, setViewerIdx] = useState<number | null>(null);
@@ -126,8 +128,9 @@ export default function EventGallery({
   // --- Pager viewera: przesuwanie palcem między zdjęciami (jak iOS Zdjęcia) ---
   const applyPos = useCallback(() => {
     const el = trackRef.current;
-    if (el) el.style.transform = `translate3d(calc(-100% + ${posRef.current}px), 0, 0)`;
-  }, []);
+    // -100% - gap centruje środkowy slajd (slajdy są rozsunięte o gap).
+    if (el) el.style.transform = `translate3d(calc(-100% - ${PV_GAP - posRef.current}px), 0, 0)`;
+  }, [PV_GAP]);
   // Po każdym renderze (w tym po zmianie indeksu w locie animacji) przykładamy
   // bieżącą pozycję ZANIM przeglądarka namaluje klatkę — zero mignięć.
   useLayoutEffect(() => {
@@ -217,11 +220,12 @@ export default function EventGallery({
     // Commit indeksu OD RAZU, kompensując pozycję o szerokość — klatka wygląda
     // identycznie (slajdy się przesuwają, pozycja to wyrównuje), a sprężyna
     // zawsze zbiega do 0. Bez „pending" i czekania na koniec animacji.
+    const stride = w + PV_GAP; // krok strony: szerokość slajdu + prześwit
     if ((v <= -FLICK || pos <= -distTh) && canNext) {
-      posRef.current = pos + w;
+      posRef.current = pos + stride;
       setViewerIdx(viewerIdx + 1);
     } else if ((v >= FLICK || pos >= distTh) && canPrev) {
-      posRef.current = pos - w;
+      posRef.current = pos - stride;
       setViewerIdx(viewerIdx - 1);
     }
     settle();
@@ -283,7 +287,7 @@ export default function EventGallery({
             <div
               ref={trackRef}
               className="pv-track"
-              style={{ transform: 'translate3d(-100%, 0, 0)' }}
+              style={{ transform: `translate3d(calc(-100% - ${PV_GAP}px), 0, 0)` }}
             >
               {[viewerIdx - 1, viewerIdx, viewerIdx + 1].map((idx) => {
                 const ph = idx >= 0 && idx < photos.length ? photos[idx] : null;
