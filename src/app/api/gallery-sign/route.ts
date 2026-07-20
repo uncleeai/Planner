@@ -28,6 +28,22 @@ export async function POST(req: Request) {
   });
 
   const text = await res.text();
+
+  // 404 z bramki = funkcji nie ma na TYM projekcie Supabase. Zamiast surowego
+  // „Requested function was not found" mówimy wprost, na jaki projekt trafiamy —
+  // najczęstsza przyczyna to NEXT_PUBLIC_SUPABASE_URL wskazujący inny projekt niż
+  // ten, na którym wdrożono `gallery-sign` (+ sekrety R2).
+  if (res.status === 404) {
+    const ref = /^https:\/\/([a-z0-9]+)\.supabase\.co/.exec(base)?.[1] ?? base;
+    return NextResponse.json(
+      {
+        error: `Funkcja gallery-sign nie jest wdrożona na projekcie Supabase „${ref}". ` +
+          `Wdróż ją tam (i sekrety R2) albo ustaw NEXT_PUBLIC_SUPABASE_URL na projekt, który ją ma.`,
+      },
+      { status: 404 },
+    );
+  }
+
   return new NextResponse(text, {
     status: res.status,
     headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
