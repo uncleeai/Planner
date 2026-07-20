@@ -177,11 +177,12 @@ export default function EventGallery({
       return;
     }
 
-    // Czas dojazdu z prędkości gestu: szybkie machnięcie → krótko, wolne → dłużej.
-    // Podłoga prędkości trzyma dojazd płynny; clamp trzyma go w naturalnym zakresie.
+    // Czas dojazdu z prędkości gestu: szybkie machnięcie → krócej, wolne → dłużej.
+    // Krzywa (ease-out z długim ogonem) robi całą „miękkość" — start w tempie
+    // palca, potem długie wygaszanie; dlatego czasy są dość długie.
     const remaining = Math.abs(targetDx - dragDx);
-    const speed = Math.max(Math.abs(v), 1.1);
-    const dur = Math.round(Math.max(160, Math.min(380, remaining / speed)));
+    const speed = Math.max(Math.abs(v), 0.7);
+    const dur = Math.round(Math.max(300, Math.min(560, remaining / speed)));
     pendingIdx.current = target === viewerIdx ? null : target;
     setAnimMs(dur);
     setDragDx(targetDx);
@@ -253,7 +254,7 @@ export default function EventGallery({
               className="pv-track"
               style={{
                 transform: `translate3d(calc(-100% + ${dragDx}px), 0, 0)`,
-                transition: `transform ${animMs}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+                transition: `transform ${animMs}ms cubic-bezier(0.16, 1, 0.3, 1)`,
               }}
               onTransitionEnd={onSwipeSettled}
             >
