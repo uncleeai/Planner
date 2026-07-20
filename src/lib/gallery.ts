@@ -102,11 +102,20 @@ export async function uploadEventPhotos(
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error('Podpis wysyłki: brak sesji (zaloguj się ponownie).');
-      let signRes: Response;
-      try {
-        signRes = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/gallery-sign`,
-          {
+      // Dwa adresy tej samej funkcji: główny + zapasowa (legacy) domena.
+      // Inna nazwa hosta omija filtry URL (content blockery) i ewentualne
+      // patche fetcha per-host; próbujemy po kolei.
+      const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+      const ref = /^https:\/\/([a-z0-9]+)\.supabase\.co/.exec(base)?.[1];
+      const endpoints = [
+        `${base}/functions/v1/gallery-sign`,
+        ...(ref ? [`https://${ref}.functions.supabase.co/gallery-sign`] : []),
+      ];
+      let signRes: Response | null = null;
+      let netErr = '';
+      for (const url of endpoints) {
+        try {
+          signRes = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -114,12 +123,15 @@ export async function uploadEventPhotos(
               apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
             },
             body: JSON.stringify({ event_id: eventId, files: manifest }),
-          },
-        );
-      } catch (err) {
-        throw new Error(
-          `Podpis wysyłki: sieć odrzuciła żądanie (${err instanceof Error ? err.message : '?'}).`,
-        );
+          });
+          break;
+        } catch (err) {
+          netErr = err instanceof Error ? err.message : '?';
+          console.error('[galeria] fetch odrzucony:', url, err);
+        }
+      }
+      if (!signRes) {
+        throw new Error(`Podpis wysyłki: sieć odrzuciła żądanie na obu adresach (${netErr}).`);
       }
       if (!signRes.ok) {
         const detail = await signRes.text().catch(() => '');
