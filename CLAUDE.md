@@ -71,7 +71,8 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── global-error.tsx      # Awaryjny ekran, gdy wysypie się sam root layout
     │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, czat, ustalanie terminu
     │   ├── event/[id]/loading.tsx # Skeleton przejścia do wypadu
-    │   └── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
+    │   ├── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
+    │   └── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
@@ -95,7 +96,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina (+ testy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── eventImage.ts         # Upload własnego tła wypadu (skalowanie → bucket event-images)
-        ├── gallery.ts            # Galeria wypadu: upload do R2 (oryginał+podgląd) + metadane event_photos
+        ├── gallery.ts            # Galeria wypadu: upload do R2 (oryginał+podgląd) + metadane event_photos; podpis przez /api/gallery-sign (same-origin)
         ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)

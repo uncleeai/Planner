@@ -91,8 +91,6 @@ export async function uploadEventPhotos(
       }
 
       // 2) Podpis wysyłki (osobno per plik — proste i częściowo odporne).
-      //    Goły fetch zamiast functions.invoke — invoke zawijał prawdziwy błąd
-      //    w „Failed to send a request…"; tu status/treść widać wprost.
       const manifest = preview
         ? [
             { ext: 'jpg', kind: 'preview' },
@@ -102,36 +100,26 @@ export async function uploadEventPhotos(
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error('Podpis wysyłki: brak sesji (zaloguj się ponownie).');
-      // Dwa adresy tej samej funkcji: główny + zapasowa (legacy) domena.
-      // Inna nazwa hosta omija filtry URL (content blockery) i ewentualne
-      // patche fetcha per-host; próbujemy po kolei.
-      const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-      const ref = /^https:\/\/([a-z0-9]+)\.supabase\.co/.exec(base)?.[1];
-      const endpoints = [
-        `${base}/functions/v1/gallery-sign`,
-        ...(ref ? [`https://${ref}.functions.supabase.co/gallery-sign`] : []),
-      ];
-      let signRes: Response | null = null;
-      let netErr = '';
-      for (const url of endpoints) {
-        try {
-          signRes = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
-            },
-            body: JSON.stringify({ event_id: eventId, files: manifest }),
-          });
-          break;
-        } catch (err) {
-          netErr = err instanceof Error ? err.message : '?';
-          console.error('[galeria] fetch odrzucony:', url, err);
-        }
-      }
-      if (!signRes) {
-        throw new Error(`Podpis wysyłki: sieć odrzuciła żądanie na obu adresach (${netErr}).`);
+      // Idziemy przez WŁASNY origin apki (/api/gallery-sign), a serwer forwarduje
+      // do Edge Function. Same-origin = brak CORS/preflightu i nie jest to żądanie
+      // third-party, więc blokery treści / iCloud Private Relay / kaprysy preflightu
+      // na iOS Safari nie ubijają wysyłki — goły fetch prosto do *.supabase.co padał
+      // „Load failed" i nie docierał nawet do Supabase.
+      let signRes: Response;
+      try {
+        signRes = await fetch('/api/gallery-sign', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+          },
+          body: JSON.stringify({ event_id: eventId, files: manifest }),
+        });
+      } catch (err) {
+        throw new Error(
+          `Podpis wysyłki: sieć odrzuciła żądanie (${err instanceof Error ? err.message : '?'}).`,
+        );
       }
       if (!signRes.ok) {
         const detail = await signRes.text().catch(() => '');
