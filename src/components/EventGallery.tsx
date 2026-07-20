@@ -32,6 +32,7 @@ export default function EventGallery({
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [viewerIdx, setViewerIdx] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const swipeX = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -69,12 +70,19 @@ export default function EventGallery({
   async function onPick(list: FileList | null) {
     const files = list ? Array.from(list) : [];
     if (files.length === 0) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     setProgress({ done: 0, total: files.length });
     try {
-      const errors = await uploadEventPhotos(eventId, userId, files, (done, total) =>
-        setProgress({ done, total }),
+      const errors = await uploadEventPhotos(
+        eventId,
+        userId,
+        files,
+        (done, total) => setProgress({ done, total }),
+        controller.signal,
       );
-      if (errors.length > 0) {
+      // Po zatrzymaniu nie pokazujemy błędu — to świadoma akcja użytkownika.
+      if (errors.length > 0 && !controller.signal.aborted) {
         appAlert(
           errors.length === files.length
             ? 'Nie udało się wgrać zdjęć'
@@ -85,6 +93,7 @@ export default function EventGallery({
     } catch (err) {
       appAlert('Nie udało się wgrać zdjęć', err instanceof Error ? err.message : 'Spróbuj ponownie.');
     } finally {
+      abortRef.current = null;
       setProgress(null);
       if (inputRef.current) inputRef.current.value = '';
       load();
@@ -127,11 +136,18 @@ export default function EventGallery({
         ))}
         <button
           type="button"
-          className="gallery-add"
-          disabled={!!progress}
-          onClick={() => inputRef.current?.click()}
+          className={progress ? 'gallery-add uploading' : 'gallery-add'}
+          onClick={() => (progress ? abortRef.current?.abort() : inputRef.current?.click())}
+          aria-label={progress ? 'Zatrzymaj wgrywanie' : 'Dodaj zdjęcia'}
         >
-          {progress ? `${progress.done}/${progress.total}…` : '+'}
+          {progress ? (
+            <>
+              <span className="gallery-stop-sq" />
+              {progress.done}/{progress.total}
+            </>
+          ) : (
+            '+'
+          )}
         </button>
       </div>
       <input

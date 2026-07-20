@@ -2603,6 +2603,18 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
   font-size: 1.6rem; font-weight: 300; color: var(--muted);
 }
 .gallery-add:disabled { font-size: 0.72rem; font-family: var(--mono); }
+/* Stan wgrywania: kafelek „+" staje się przyciskiem stop (tap = przerwij). */
+.gallery-add.uploading {
+  flex-direction: column; gap: 5px;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--text);
+  font-size: 0.72rem; font-family: var(--mono);
+}
+.gallery-stop-sq {
+  width: 15px; height: 15px; border-radius: 3px;
+  background: var(--accent);
+}
 @media (hover: hover) {
   .gallery-add:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 }

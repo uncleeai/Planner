@@ -74,10 +74,14 @@ export async function uploadEventPhotos(
   userId: string,
   files: File[],
   onProgress?: (done: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<string[]> {
   const errors: string[] = [];
 
   for (let i = 0; i < files.length; i++) {
+    // Zatrzymanie przez użytkownika: przerywamy PRZED kolejnym zdjęciem, więc
+    // dotąd wgrane zostają (upload jest sekwencyjny), a reszta się nie zaczyna.
+    if (signal?.aborted) break;
     const file = files[i];
     try {
       // 1) Podgląd. Gdy dekodowanie padnie (np. format, RAM) — jedziemy bez
@@ -115,6 +119,7 @@ export async function uploadEventPhotos(
             apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
           },
           body: JSON.stringify({ event_id: eventId, files: manifest }),
+          signal,
         });
       } catch (err) {
         throw new Error(
@@ -135,6 +140,7 @@ export async function uploadEventPhotos(
           method: 'PUT',
           body,
           headers: { 'Content-Type': type },
+          signal,
         });
         if (!r.ok) throw new Error(`Wysyłka do R2 padła (${r.status}).`);
       };
@@ -155,6 +161,9 @@ export async function uploadEventPhotos(
       });
       if (insErr) throw new Error(`Zapis metadanych: ${insErr.message}`);
     } catch (err) {
+      // Przerwanie w locie (użytkownik dał stop podczas fetcha) — nie liczymy
+      // tego jako błąd, po prostu kończymy pętlę.
+      if (signal?.aborted) break;
       console.error('[galeria] zdjęcie padło:', file.name, err);
       errors.push(err instanceof Error ? err.message : 'Nieznany błąd.');
     }
