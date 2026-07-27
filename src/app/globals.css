@@ -1046,7 +1046,7 @@ img.avatar { display: inline-block; }
   margin:
     calc(-28px - env(safe-area-inset-top))
     calc(-20px - env(safe-area-inset-right))
-    18px
+    -36px
     calc(-20px - env(safe-area-inset-left));
   aspect-ratio: 4 / 3;
   max-height: 46vh;
@@ -1059,13 +1059,18 @@ img.avatar { display: inline-block; }
   filter: saturate(1.2) contrast(1.12) brightness(var(--hp-bright, 0.92)) blur(0.3px);
 }
 .ev-hero .hp-grain { opacity: 0.14; }
-/* Zdjęcie schodzi do tła strony — bez jasnej wyspy w ciemnym ekranie. */
+/* Zdjęcie schodzi do tła strony — bez jasnej wyspy w ciemnym ekranie. Kadr trzymamy
+   czysty aż do ~62%, a całe wygaszenie dzieje się przy samej krawędzi: wcześniejsza
+   wersja gasiła do czerni już w 3/4 wysokości i zamiast przejścia była czarna ściana.
+   Dolne stopnie liczone na kolorze tła (--bg), nie na czystej czerni — inaczej nad
+   ciemnym tłem strony robi się szara mgiełka. */
 .ev-hero .ev-hero-fade {
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0.42) 0%,
-    rgba(0, 0, 0, 0.12) 34%,
-    rgba(0, 0, 0, 0.55) 74%,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0) 26%,
+    rgba(0, 0, 0, 0) 62%,
+    rgba(12, 14, 16, 0.45) 84%,
     var(--bg) 100%
   );
 }
@@ -1086,7 +1091,9 @@ img.avatar { display: inline-block; }
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-.ev-hero-head { margin-bottom: 18px; }
+/* Tytuł wjeżdża w dolną strefę wygaszenia kadru (ujemny margines hero powyżej),
+   więc zdjęcie „nachodzi" na napis zamiast kończyć się pasem pustej czerni. */
+.ev-hero-head { position: relative; margin-bottom: 18px; }
 .ev-hero-head .large-title { margin-bottom: 4px; }
 .past-chip {
   font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
