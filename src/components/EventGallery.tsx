@@ -22,10 +22,13 @@ export default function EventGallery({
   eventId,
   members,
   isOrganizer,
+  hideLabel = false,
 }: {
   eventId: string;
   members: Profile[];
   isOrganizer: boolean;
+  /** Po wypadzie galeria stoi zaraz pod hero i nie potrzebuje mono-etykiety. */
+  hideLabel?: boolean;
 }) {
   const { userId } = useAuth();
   // Prześwit między slajdami viewera w px — musi zgadzać się z gap .pv-track.
@@ -239,7 +242,10 @@ export default function EventGallery({
 
   return (
     <section>
-      <div className="section-label">Zdjęcia{photos.length > 0 ? ` · ${photos.length}` : ''}</div>
+      {!hideLabel && (
+        <div className="section-label">Zdjęcia{photos.length > 0 ? ` · ${photos.length}` : ''}</div>
+      )}
+      {photos.length === 0 && <p className="small muted gallery-empty">Brak zdjęć z tego wypadu.</p>}
       <div className="gallery-grid">
         {photos.map((p, i) => (
           <button

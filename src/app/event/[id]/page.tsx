@@ -7,10 +7,13 @@ import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
 import type { Availability, Comment, EventRow, Profile, Reaction, Slot, Vote } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
-import { IconPin, IconCalendarPlus, IconChevronLeft, IconPencil } from '@/components/icons';
+import { IconCalendarPlus, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import CreatorSheet from '@/components/CreatorSheet';
 import EventGallery from '@/components/EventGallery';
+import EventHero from '@/components/EventHero';
+import { DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { loadHeroCrops } from '@/lib/heroCrops';
 import { Markdown } from '@/lib/markdown';
 import { buildSlotTimes, slotToRange, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { useTransitionNavigate } from '@/lib/transition';
@@ -124,6 +127,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [members, setMembers] = useState<Profile[]>(() => seed?.profiles ?? []);
   const [loading, setLoading] = useState(!seedEvent);
   const [notFound, setNotFound] = useState(false);
+
+  // Kadr fotki kategorii pod hero. Z listy przychodzi w cache'u; przy wejściu
+  // prosto z linku dociągamy go raz (do tego czasu domyślny kadr).
+  const [heroCrops, setHeroCrops] = useState<HeroCrop[]>(() => seed?.heroCrops ?? []);
+  useEffect(() => {
+    if (heroCrops.length > 0) return;
+    loadHeroCrops().then(setHeroCrops);
+  }, [heroCrops.length]);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -733,22 +744,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main className="glass-page">
-      <div className="nav-row">
-        <Link
-          href="/"
-          className="back-btn-round"
-          onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-            e.preventDefault();
-            navigate('/', 'back');
-          }}
-          aria-label="Wróć"
-        >
-          <IconChevronLeft size={20} />
-        </Link>
-        <span className="nav-label">Lobby</span>
-      </div>
-
       {/* Edycja wypadu = ten sam pełnoekranowy kreator co tworzenie (tryb edit):
           prefill, tło z pinch-to-crop, bez wiersza Termin (terminy niżej przy slotach). */}
       {editing && event && (
@@ -762,31 +757,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         />
       )}
 
+      {!editing && event && (
+        <EventHero
+          event={event}
+          crop={heroCrops.find((c) => c.emoji === event.emoji) ?? null}
+          isPast={isPast}
+          canEdit={isOrganizer && !isPast}
+          onEdit={startEdit}
+          onBack={() => navigate('/', 'back')}
+        />
+      )}
+
       {!editing && (
       <header className="app-header">
-        <div className="title-row">
-          <h1 className="large-title">{event?.title}</h1>
-          {isOrganizer && !isPast && (
-            <button
-              type="button"
-              className="title-edit-btn"
-              onClick={startEdit}
-              aria-label="Edytuj wypad"
-            >
-              <IconPencil size={17} />
-            </button>
-          )}
-        </div>
-        {(event?.location || event?.created_by) && (
-          <div className="event-submeta">
-            {event?.location && (
-              <span><IconPin size={13} /> {event.location}</span>
-            )}
-            {event?.location && event?.created_by && <span className="sep">·</span>}
-            {event?.created_by && <span>host: {event.created_by}</span>}
-          </div>
-        )}
-        <div className={`confirmed-inline-wrapper${headerDate ? ' show' : ''}`}>
+        {/* Kalendarz tylko przed wypadem — po fakcie nie ma czego dodawać. */}
+        <div className={`confirmed-inline-wrapper${headerDate && !isPast ? ' show' : ''}`}>
           <div className="confirmed-inline">
             {lastHeaderSlot && (
               <>
@@ -817,9 +802,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <div className="event-description"><Markdown text={event.description} /></div>
       )}
 
-      {isPast && (
-        <p className="readonly-note">Ten wypad już się odbył — to tylko podgląd.</p>
-      )}
+      {/* Po wypadzie zdjęcia są tym, po co się tu wraca — lądują zaraz pod hero
+          (bez mono-etykiety, siatka mówi sama za siebie). Przed wypadem galeria
+          zostaje na dole, pod czatem. */}
+      {isPast && <EventGallery eventId={eventId} members={members} isOrganizer={isOrganizer} hideLabel />}
 
       {!isPast && slots.length > 0 && memberCount > 0 && missingMembers.length > 0 && (
         <div className="vote-status">
@@ -847,22 +833,26 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <section className="ev-section">
         <div className="rail">
-          <div className="section-label">Ready check</div>
+          <div className="section-label">{isPast ? 'Kto był' : 'Ready check'}</div>
           {memberCount > 0 && !isPast && slots.length > 0 && (
             <span className={`chip ${votedCount >= memberCount ? 'ok' : 'hot'}`}>
               {votedCount}/{memberCount} DAŁO ZNAĆ
             </span>
           )}
         </div>
-        {stats.length === 0 && (
+        {stats.length === 0 && !isPast && (
           <p className="small muted">Brak terminów. Dodaj pierwszy poniżej.</p>
         )}
 
-        {stats.map(({ slot, yes, mine, votes: slotVotes }) => {
+        {/* Po wypadzie liczy się tylko ten termin, który się odbył — nieaktualne
+            propozycje (dziś wyciszone) znikają, zostaje jeden kafel z obsadą. */}
+        {(isPast ? stats.filter(({ slot }) => slot.id === status.slotId) : stats)
+          .map(({ slot, yes, mine, votes: slotVotes }) => {
           const isBest = yes > 0 && yes === maxYes;
           const isSettledSlot = status.settled && status.slotId === slot.id;
-          const showBestBadge = !isSettledSlot && isBest && !isTie;
-          const showTieBadge = !isSettledSlot && isBest && isTie;
+          // Po fakcie „Prowadzi"/„Remis" nie niosą już informacji.
+          const showBestBadge = !isPast && !isSettledSlot && isBest && !isTie;
+          const showTieBadge = !isPast && !isSettledSlot && isBest && isTie;
           const canDelete = isOrganizer || slot.created_by_user_id === userId;
           return (
           <div
@@ -1182,7 +1172,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </form>
       </section>
 
-      <EventGallery eventId={eventId} members={members} isOrganizer={isOrganizer} />
+      {!isPast && <EventGallery eventId={eventId} members={members} isOrganizer={isOrganizer} />}
 
       {isOrganizer && !editing && (
         <div className="event-danger-zone">

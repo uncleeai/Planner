@@ -76,6 +76,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   └── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
+    │   ├── EventHero.tsx         # Hero strony wypadu: zdjęcie full-bleed + tytuł/meta pod nim (fallback tekstowy bez zdjęcia)
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)

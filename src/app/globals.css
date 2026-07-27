@@ -413,6 +413,10 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   justify-content: center;
   width: 38px;
   height: 38px;
+  /* Rozmiar jest stały, więc globalny padding buttona (13px 18px) musi zejść —
+     inaczej jako <button> ściska ikonę do zera szerokości. */
+  padding: 0;
+  flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--card);
   border: 1px solid var(--border-strong);
@@ -1032,15 +1036,67 @@ img.avatar { display: inline-block; }
 .desc-tool b { font-weight: 800; }
 
 /* Notka, że wypad już się odbył (strona w trybie podglądu) */
-.readonly-note {
-  margin: 0 0 18px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--muted);
-  font-size: 0.85rem;
+/* Hero strony wypadu: zdjęcie na całą szerokość ekranu, tytuł i meta pod nim.
+   Full-bleed = wyjście poza padding .container (góra + boki, razem z safe-area).
+   Kształt: hero dotyka krawędzi, więc promień 0; wszystkie karty niżej zostają
+   przy --radius/--radius-sm. Wysokość rezerwuje aspect-ratio, żeby doładowanie
+   zdjęcia nie przesuwało treści. */
+.ev-hero {
+  position: relative;
+  margin:
+    calc(-28px - env(safe-area-inset-top))
+    calc(-20px - env(safe-area-inset-right))
+    18px
+    calc(-20px - env(safe-area-inset-left));
+  aspect-ratio: 4 / 3;
+  max-height: 46vh;
+  overflow: hidden;
 }
+.ev-hero .hero-photo { border-radius: 0; }
+/* Hero jest duże — blur maskujący kompresję (potrzebny w małej karcie) tutaj
+   tylko rozmydla zdjęcie, a ziarno w tej skali robi się brudne. Oba w dół. */
+.ev-hero .hp-img {
+  filter: saturate(1.2) contrast(1.12) brightness(var(--hp-bright, 0.92)) blur(0.3px);
+}
+.ev-hero .hp-grain { opacity: 0.14; }
+/* Zdjęcie schodzi do tła strony — bez jasnej wyspy w ciemnym ekranie. */
+.ev-hero .ev-hero-fade {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.42) 0%,
+    rgba(0, 0, 0, 0.12) 34%,
+    rgba(0, 0, 0, 0.55) 74%,
+    var(--bg) 100%
+  );
+}
+/* Przyciski nad zdjęciem: własne ciemne tło + obrys, czytelne też na jasnej fotce. */
+.ev-hero-nav {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: calc(env(safe-area-inset-left) + 16px);
+  right: calc(env(safe-area-inset-right) + 16px);
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 1;
+}
+.ev-hero-nav .back-btn-round {
+  margin: 0;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.ev-hero-head { margin-bottom: 18px; }
+.ev-hero-head .large-title { margin-bottom: 4px; }
+.past-chip {
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+}
+.gallery-empty { margin: 0 0 10px; }
 
 /* Komentarze pod wypadem */
 .comments-card h2 { margin-bottom: 14px; }
@@ -1886,7 +1942,8 @@ main.has-dock { padding-bottom: 24px; }
   .glass-page > .app-header,
   .glass-page > .event-description,
   .glass-page > .vote-status,
-  .glass-page > .readonly-note {
+  .glass-page > .ev-hero,
+  .glass-page > .ev-hero-head {
     animation: enter-in 0.52s cubic-bezier(0.22, 0.9, 0.3, 1) 0.06s backwards;
   }
   .glass-page > section:nth-of-type(2) { animation-delay: 0.15s; }
