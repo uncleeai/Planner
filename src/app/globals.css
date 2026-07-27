@@ -1052,7 +1052,30 @@ img.avatar { display: inline-block; }
   max-height: 46vh;
   overflow: hidden;
 }
-.ev-hero .hero-photo { border-radius: 0; }
+/* Prawdziwy feather: zamiast kłaść na zdjęcie ciemną nakładkę, wygaszamy MASKĄ
+   samo zdjęcie do przezroczystości. Nakładka zawsze zostawia ślad cięcia na
+   dolnej krawędzi (widać go zwłaszcza na jasnych partiach kadru), a maska
+   dochodzi do zera dokładnie na krawędzi — nie da się wskazać, gdzie zdjęcie
+   się kończy. Gęste stopnie przybliżają krzywą ease, żeby nie było banding. */
+.ev-hero .hero-photo {
+  border-radius: 0;
+  -webkit-mask-image: var(--ev-hero-mask);
+  mask-image: var(--ev-hero-mask);
+  --ev-hero-mask: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 38%,
+    rgba(0, 0, 0, 0.97) 48%,
+    rgba(0, 0, 0, 0.9) 57%,
+    rgba(0, 0, 0, 0.78) 65%,
+    rgba(0, 0, 0, 0.62) 73%,
+    rgba(0, 0, 0, 0.44) 80%,
+    rgba(0, 0, 0, 0.27) 87%,
+    rgba(0, 0, 0, 0.13) 93%,
+    rgba(0, 0, 0, 0.04) 97%,
+    transparent 100%
+  );
+}
 /* Hero jest duże — blur maskujący kompresję (potrzebny w małej karcie) tutaj
    tylko rozmydla zdjęcie, a ziarno w tej skali robi się brudne. Oba w dół. */
 .ev-hero .hp-img {
@@ -1064,15 +1087,10 @@ img.avatar { display: inline-block; }
    wersja gasiła do czerni już w 3/4 wysokości i zamiast przejścia była czarna ściana.
    Dolne stopnie liczone na kolorze tła (--bg), nie na czystej czerni — inaczej nad
    ciemnym tłem strony robi się szara mgiełka. */
+/* Zostaje już tylko delikatny scrim u góry — pod pływające przyciski, żeby nie
+   traciły kontrastu na jasnym kadrze. Zejście zdjęcia robi maska wyżej. */
 .ev-hero .ev-hero-fade {
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.3) 0%,
-    rgba(0, 0, 0, 0) 26%,
-    rgba(0, 0, 0, 0) 62%,
-    rgba(12, 14, 16, 0.45) 84%,
-    var(--bg) 100%
-  );
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0) 24%);
 }
 /* Przyciski nad zdjęciem: własne ciemne tło + obrys, czytelne też na jasnej fotce. */
 .ev-hero-nav {
