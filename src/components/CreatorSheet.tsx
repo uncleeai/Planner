@@ -7,6 +7,7 @@ import { useTransitionNavigate } from '@/lib/transition';
 import { buildSlotTimes, EMPTY_SLOT_RANGE, type SlotRange } from '@/lib/slotInput';
 import { formatSlotRange, slotEndMs, type EventRow } from '@/lib/types';
 import { heroImageForEmoji, HERO_CATEGORIES, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
+import { firstEmoji } from '@/lib/emoji';
 import {
   uploadEventImage,
   clampFocus,
@@ -53,6 +54,8 @@ export default function CreatorSheet({
       : null,
   );
   const [emoji, setEmoji] = useState<string | null>(edit?.emoji ?? null);
+  // Emoji spoza dwunastu kategorii = wybrane własnym polem (kafelek „Inne").
+  const isOwnEmoji = !!emoji && !HERO_CATEGORIES.some((c) => c.emoji === emoji);
   const [description, setDescription] = useState(edit?.description ?? '');
   // Kilka propozycji terminu (sedno produktu) — pierwsza wymagana, puste ignorowane.
   const [slotDrafts, setSlotDrafts] = useState<SlotRange[]>([EMPTY_SLOT_RANGE]);
@@ -444,6 +447,36 @@ export default function CreatorSheet({
                 <span className="cat-label">{c.label}</span>
               </button>
             ))}
+            {/* Własne emoji: kafelek to w istocie pole tekstowe — tap podnosi
+                klawiaturę, a użytkownik przełącza ją na emoji. Wpisane znaki
+                przepuszczamy przez firstEmoji(), więc litera czy spacja nic nie
+                robi, a wklejony tekst z emoji zostawia sam emoji. */}
+            <span className="cat-own-wrap">
+              {/* Kafelek jest zwykłym <button>, żeby miał dokładnie te same metryki
+                  co chipy kategorii; pole leży przezroczyste nad nim i przejmuje tap. */}
+              <button type="button" className={`cat-chip${isOwnEmoji ? ' selected' : ''}`} tabIndex={-1}>
+                <span className="cat-emoji" aria-hidden="true">{isOwnEmoji ? emoji : '＋'}</span>
+                <span className="cat-label">{isOwnEmoji ? 'Zmień' : 'Inne'}</span>
+              </button>
+              <input
+                className="cat-own-input"
+                type="text"
+                value=""
+                aria-label="Własne emoji"
+                title="Wybierz dowolne emoji z klawiatury (na komputerze: Win+. albo Ctrl+Cmd+Spacja)"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                onChange={(e) => {
+                  const picked = firstEmoji(e.target.value);
+                  if (picked) setEmoji(picked);
+                }}
+                onKeyDown={(e) => {
+                  // Backspace w pustym polu zdejmuje własne emoji.
+                  if (e.key === 'Backspace' && isOwnEmoji) setEmoji(null);
+                }}
+              />
+            </span>
           </div>
 
           <div className="creator-rows">

@@ -2423,6 +2423,27 @@ button.solid-danger { background: var(--no); color: #fff; }
 }
 .cat-chip.selected .cat-label { color: var(--accent); }
 .cat-chip:active { transform: scale(0.96); }
+/* Kafelek „Inne" — to <label> z polem tekstowym rozciągniętym na całą powierzchnię:
+   tap w dowolne miejsce kafelka podnosi klawiaturę, z której wybiera się emoji.
+   Pole zostaje przezroczyste i puste (wartość ląduje od razu w stanie kreatora). */
+/* Kafelek „Inne": w środku zwykły <button> (te same metryki co chipy kategorii),
+   a nad nim przezroczyste pole tekstowe. Tap trafia w pole, więc podnosi się
+   klawiatura i wystarczy przełączyć ją na emoji. */
+.cat-own-wrap { position: relative; flex: 0 0 auto; display: flex; }
+/* Selektor dwuklasowy (0,2,0) celowo — bazowy input[type="text"] (0,1,1) wygrałby
+   z pojedynczą klasą i wstawił tu swoje tło, ramkę i padding.
+   Bez width/height: 100% — liczą się od content-boxu i kłócą z inset:0. */
+.cat-own-wrap .cat-own-input {
+  position: absolute; inset: 0;
+  padding: 0; border: none; border-radius: var(--radius-sm);
+  background: none; box-shadow: none;
+  color: transparent; caret-color: transparent;
+  text-align: center;
+}
+.cat-own-wrap .cat-own-input:focus { outline: none; box-shadow: none; }
+.cat-own-wrap:focus-within .cat-chip {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
 
 /* ===== Pełnoekranowy kreator „Nowe lobby" (CreatorSheet, styl Invites) =====
    Karta JEST formularzem: strefa tła (gradient z akcentu → fotka kategorii),

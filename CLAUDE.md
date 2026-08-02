@@ -97,6 +97,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina (+ testy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
+        ├── emoji.ts              # Wyciąganie własnego emoji wypadu z wejścia klawiatury (grafemy, +testy)
         ├── eventImage.ts         # Upload własnego tła wypadu (skalowanie → bucket event-images)
         ├── gallery.ts            # Galeria wypadu: upload do R2 (oryginał+podgląd) + metadane event_photos; podpis przez /api/gallery-sign (same-origin)
         ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)
@@ -221,7 +222,9 @@ i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql
   `supabase/schema.sql` w panelu Supabase. Pełna instrukcja w `README.md`.
 - **Testy:** `npm test` (vitest) — unit-testy czystej logiki w `src/lib`
   (`types.test.ts`: reguły klepania terminu/prowadzącego, końce zakresów,
-  formaty dat; `slotInput.test.ts`: budowanie slotu z pól Od/Do/Godzina).
+  formaty dat; `slotInput.test.ts`: budowanie slotu z pól Od/Do/Godzina;
+  `emoji.test.ts`: sanityzacja własnego emoji — litery/spacje odrzucone, flagi
+  i sekwencje ZWJ w całości).
   Odpalane z `TZ=Europe/Warsaw` dla powtarzalności dat. Brak testów UI/E2E —
   zachowanie sprawdzamy na preview. Lint: brak konfiguracji.
 - **Sanity check:** `next build` weryfikuje typy TypeScript (strict). Po
