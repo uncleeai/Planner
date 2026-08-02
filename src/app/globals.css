@@ -2429,18 +2429,21 @@ button.solid-danger { background: var(--no); color: #fff; }
 /* ===== Karuzela emoji (pokrętło w stylu iOS) =====
    Ramka akcentu stoi nieruchomo na środku, emoji jadą pod nią i snapują —
    wybrane jest to w ramce. Lista zapętla się (trzy kopie cyklu w DOM). */
-.emoji-wheel { position: relative; }
+.emoji-wheel { position: relative; --wheel-item: 62px; }
 .wheel-rail {
   display: flex;
+  /* ZERO gapu i równe kafelki — na tym opiera się arytmetyka w EmojiCarousel
+     (indeks = scrollLeft / szerokość kafelka). Odstępy robi padding kafelka. */
   gap: 0;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  /* Zapas = pół szyny minus pół kafelka, żeby SKRAJNE pozycje też dojechały
-     na środek; liczony zmienną, bo tej samej wartości używa kafelek. */
-  padding: 4px calc(50% - var(--wheel-item) / 2);
+  /* Zapas = pół szyny minus pół kafelka, żeby skrajne pozycje też dojechały na środek. */
+  padding: 5px calc(50% - var(--wheel-item) / 2);
   scrollbar-width: none;
   overscroll-behavior-x: contain;
-  --wheel-item: 64px;
+  /* Boki gasną zamiast urywać emoji w pół. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
 }
 .wheel-rail::-webkit-scrollbar { display: none; }
 .wheel-item {
@@ -2449,22 +2452,23 @@ button.solid-danger { background: var(--no); color: #fff; }
   height: var(--wheel-item);
   display: flex; align-items: center; justify-content: center;
   scroll-snap-align: center;
-  /* Kafelki poza ramką są przygaszone — oko samo wraca na środek. */
-  opacity: 0.42;
-  transform: scale(0.84);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  /* Boczne kafelki cichsze — oko samo wraca na środek. */
+  opacity: 0.3;
+  transform: scale(0.76);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 /* Klasę „centered" dokłada JS wprost na DOM (bez re-renderu) — kafelek pod ramką. */
 .wheel-item.centered { opacity: 1; transform: none; }
-.wheel-emoji { font-size: 30px; line-height: 1; }
-/* Ramka wyboru — nieruchoma, dokładnie na środku szyny. */
+.wheel-emoji { font-size: 32px; line-height: 1; }
+/* Gniazdo wyboru — nieruchome, na środku szyny: wypełnienie akcentem + ramka. */
 .wheel-frame {
   position: absolute;
-  top: 4px;
+  top: 5px;
   left: 50%; transform: translateX(-50%);
-  width: 64px; height: 64px;
-  border: 1.5px solid var(--accent);
-  border-radius: var(--radius-sm);
+  width: var(--wheel-item); height: var(--wheel-item);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 16px;
   pointer-events: none;
 }
 .wheel-label {

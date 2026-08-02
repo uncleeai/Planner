@@ -6,18 +6,20 @@ import { firstEmoji } from '@/lib/emoji';
 import { haptic } from '@/lib/haptics';
 
 // Wybór emoji wypadu: karuzela w stylu pokrętła iOS. Ramka akcentu stoi
-// nieruchomo na środku, emoji przesuwają się pod nią i snapują — wybrane jest
-// zawsze to w ramce. Lista zapętla się w obie strony (bez końca).
+// nieruchomo na środku, emoji jadą pod nią i snapują — wybrane jest to w ramce.
+// Lista zapętla się w obie strony (trzy kopie cyklu; po zatrzymaniu wracamy do
+// środkowej, co jest niewidoczne, bo kopie są identyczne).
 //
-// Zapętlenie: renderujemy listę trzy razy i po zatrzymaniu scrolla po cichu
-// przestawiamy scrollLeft o szerokość jednej kopii, gdy zbliżamy się do skraju.
-// Kopie są identyczne, więc przeskok jest niewidoczny, a przesunięcie o dokładną
-// wielokrotność „stride" nie rozjeżdża snapowania.
+// WYDAJNOŚĆ: handler scrolla nie dotyka geometrii DOM. Kafelki mają równą
+// szerokość i zerowy odstęp, a boczny zapas szyny to dokładnie połowa kafelka,
+// więc indeks pod ramką to po prostu scrollLeft / szerokość kafelka. Wcześniejsza
+// wersja liczyła to, czytając offsetLeft wszystkich kafelków przy każdym zdarzeniu
+// scroll i przestawiając klasy na wszystkich — wymuszony reflow w najgorętszym
+// miejscu dławił gest na telefonie (scroll „puszczał" i gubił dotyk).
 //
 // Ostatnia pozycja cyklu to kafelek „własne": przezroczyste pole tekstowe nad
-// kafelkiem — tap podnosi klawiaturę, a wpisane znaki filtruje firstEmoji(),
-// więc litera czy spacja nic nie robią. iOS nie pozwala otworzyć klawiatury od
-// razu na emoji (nie ma takiego API), stąd karuzela jako główna droga wyboru.
+// kafelkiem. iOS nie pozwala otworzyć klawiatury od razu na emoji (nie ma takiego
+// API), więc karuzela jest główną drogą, a pole — furtką na resztę emoji.
 
 const COPIES = 3;
 
@@ -29,144 +31,154 @@ export default function EmojiCarousel({
   onChange: (emoji: string | null) => void;
 }) {
   const railRef = useRef<HTMLDivElement>(null);
-  const itemsRef = useRef<HTMLDivElement[]>([]);
-  const centeredRef = useRef<number>(-1); // indeks w cyklu, ostatnio wyśrodkowany
-  const slotRef = useRef<number>(-1); // konkretny kafelek (z kopią) pod ramką
-  const settleRef = useRef<number>(0);
+  const itemsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const strideRef = useRef(0); // szerokość kafelka w px (mierzona raz)
+  const slotRef = useRef(-1); // kafelek pod ramką (z numerem kopii)
+  const settleRef = useRef(0);
+  const rafRef = useRef(0);
+  const touchingRef = useRef(false);
   const readyRef = useRef(false);
-  // Czy ramka stoi na kafelku „własne" — tylko po to, by podpis nie kłamał
-  // (emoji wpisuje użytkownik, więc value zostaje jeszcze poprzednie).
-  const [onOwnTile, setOnOwnTile] = useState(false);
 
-  // Podświetlenie kafelka pod ramką przestawiamy wprost na DOM: gdyby szło przez
-  // stan Reacta, każdy piksel przewijania przerysowywałby całą karuzelę.
-  const markCentered = useCallback((slot: number) => {
-    itemsRef.current.forEach((el, i) => el?.classList.toggle('centered', i === slot));
-  }, []);
+  const [onOwnTile, setOnOwnTile] = useState(false);
 
   const cycle = HERO_CATEGORIES.length + 1; // + kafelek „własne"
   const ownIndex = cycle - 1;
   const isOwn = !!value && !HERO_CATEGORIES.some((c) => c.emoji === value);
 
-  // Który kafelek jest teraz najbliżej środka szyny.
-  const centerIndex = useCallback((): number => {
-    const rail = railRef.current;
-    if (!rail) return -1;
-    const mid = rail.scrollLeft + rail.clientWidth / 2;
-    let best = -1;
-    let bestDist = Infinity;
-    itemsRef.current.forEach((el, i) => {
-      if (!el) return;
-      const d = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid);
-      if (d < bestDist) {
-        bestDist = d;
-        best = i;
-      }
-    });
-    return best;
+  // Podświetlenie przestawiamy na dwóch kafelkach (stary/nowy), nie na wszystkich,
+  // i wprost na DOM — stan Reacta przerysowywałby całą szynę co klatkę.
+  const markCentered = useCallback((slot: number) => {
+    const prev = slotRef.current;
+    if (prev === slot) return;
+    itemsRef.current[prev]?.classList.remove('centered');
+    itemsRef.current[slot]?.classList.add('centered');
+    slotRef.current = slot;
   }, []);
 
-  // Przewinięcie tak, by kafelek o danym indeksie stanął na środku.
-  const centerOn = useCallback((idx: number, smooth: boolean) => {
+  const slotAt = useCallback((scrollLeft: number): number => {
+    const stride = strideRef.current;
+    if (!stride) return -1;
+    return Math.max(0, Math.min(cycle * COPIES - 1, Math.round(scrollLeft / stride)));
+  }, [cycle]);
+
+  const scrollToSlot = useCallback((slot: number, smooth: boolean) => {
     const rail = railRef.current;
-    const el = itemsRef.current[idx];
-    if (!rail || !el) return;
-    rail.scrollTo({
-      left: el.offsetLeft + el.offsetWidth / 2 - rail.clientWidth / 2,
-      behavior: smooth ? 'smooth' : 'auto',
-    });
+    if (!rail || !strideRef.current) return;
+    rail.scrollTo({ left: slot * strideRef.current, behavior: smooth ? 'smooth' : 'auto' });
   }, []);
 
-  // Start: ustawiamy się na wybranym emoji w ŚRODKOWEJ kopii, żeby od razu dało
-  // się przewijać w obie strony.
+  // Start: wybrane emoji w ŚRODKOWEJ kopii, żeby dało się jechać w obie strony.
   useEffect(() => {
-    const start = HERO_CATEGORIES.findIndex((c) => c.emoji === value);
-    const within = start >= 0 ? start : isOwn ? ownIndex : 0;
-    centerOn(cycle + within, false);
-    centeredRef.current = within;
-    slotRef.current = cycle + within;
-    markCentered(cycle + within);
+    const rail = railRef.current;
+    const first = itemsRef.current[0];
+    if (!rail || !first) return;
+    // offsetWidth, NIE getBoundingClientRect(): boczne kafelki są pomniejszone
+    // transformem, a rect zwraca rozmiar PO transformacji — stride wyszedłby
+    // o jedną czwartą za mały i cała arytmetyka by się rozjechała.
+    strideRef.current = first.offsetWidth;
+
+    const found = HERO_CATEGORIES.findIndex((c) => c.emoji === value);
+    const within = found >= 0 ? found : isOwn ? ownIndex : 0;
+    const slot = cycle + within;
+    scrollToSlot(slot, false);
+    itemsRef.current[slot]?.classList.add('centered');
+    slotRef.current = slot;
+    setOnOwnTile(within === ownIndex);
     readyRef.current = true;
-    // celowo tylko na montowaniu — dalej pozycją rządzi palec
+    // tylko na montowaniu — dalej pozycją rządzi palec
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function onScroll() {
-    if (!readyRef.current) return;
-    const idx = centerIndex();
-    if (idx < 0) return;
-    if (idx !== slotRef.current) {
-      slotRef.current = idx;
-      markCentered(idx); // natychmiastowy feedback, jeszcze w trakcie ruchu
-    }
-    const inCycle = idx % cycle;
-    // Tick przy każdym minięciu kafelka — bez dotykania stanu Reacta, żeby
-    // przewijanie zostało płynne.
-    if (inCycle !== centeredRef.current) {
-      centeredRef.current = inCycle;
-      haptic();
-    }
-    // Stan (i podgląd tła w kreatorze) aktualizujemy dopiero po zatrzymaniu.
-    window.clearTimeout(settleRef.current);
-    settleRef.current = window.setTimeout(settle, 140);
+    if (!readyRef.current || rafRef.current) return;
+    // Jedno wejście na klatkę — zdarzeń scroll jest znacznie więcej niż klatek.
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      const rail = railRef.current;
+      if (!rail) return;
+      const slot = slotAt(rail.scrollLeft);
+      if (slot < 0) return;
+      if (slot !== slotRef.current) {
+        markCentered(slot);
+        haptic(); // Android; na iOS 26.5+ Apple zablokowało haptic ze skryptu
+      }
+      window.clearTimeout(settleRef.current);
+      settleRef.current = window.setTimeout(settle, 120);
+    });
   }
 
   function settle() {
     const rail = railRef.current;
     if (!rail) return;
-    const idx = centerIndex();
-    if (idx < 0) return;
-    const inCycle = idx % cycle;
+    // Palec wciąż na ekranie → nie przestawiamy pozycji, bo to przerywa gest.
+    if (touchingRef.current) {
+      settleRef.current = window.setTimeout(settle, 120);
+      return;
+    }
+    const slot = slotAt(rail.scrollLeft);
+    if (slot < 0) return;
+    const inCycle = slot % cycle;
 
-    // Zapętlenie: wracamy do środkowej kopii, gdy zawędrowaliśmy do skrajnej.
-    const copy = Math.floor(idx / cycle);
-    if (copy !== 1) {
+    // Zapętlenie: cicho wracamy do środkowej kopii (ta sama pozycja w cyklu).
+    if (Math.floor(slot / cycle) !== 1) {
       const target = cycle + inCycle;
-      centerOn(target, false);
+      scrollToSlot(target, false);
+      itemsRef.current[slot]?.classList.remove('centered');
+      itemsRef.current[target]?.classList.add('centered');
       slotRef.current = target;
-      markCentered(target);
     }
 
     setOnOwnTile(inCycle === ownIndex);
-    if (inCycle === ownIndex) {
-      // Kafelek „własne" nie wybiera sam z siebie — emoji wpisuje użytkownik.
-      return;
-    }
+    if (inCycle === ownIndex) return; // emoji wpisuje użytkownik
     const picked = HERO_CATEGORIES[inCycle].emoji;
     if (picked !== value) onChange(picked);
   }
 
-  useEffect(() => () => window.clearTimeout(settleRef.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(settleRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    },
+    [],
+  );
 
-  // React przy renderze przepisuje className i skasowałby klasę dodaną wyżej
-  // ręcznie, więc po każdym renderze przywracamy podświetlenie.
+  // React przy renderze przepisuje className i skasowałby klasę dodaną ręcznie.
   useEffect(() => {
-    if (slotRef.current >= 0) markCentered(slotRef.current);
+    if (slotRef.current >= 0) itemsRef.current[slotRef.current]?.classList.add('centered');
   });
 
-  // Trzy kopie cyklu — środkowa jest tą „prawdziwą", skrajne dają zapas na
-  // przewijanie w obie strony.
   const slots = Array.from({ length: cycle * COPIES }, (_, i) => i);
 
   return (
     <div className="emoji-wheel">
-      {/* Ramka wyboru: stoi na środku, nie rusza się razem z emoji. */}
       <div className="wheel-frame" aria-hidden="true" />
-      <div className="wheel-rail" ref={railRef} onScroll={onScroll}>
+      <div
+        className="wheel-rail"
+        ref={railRef}
+        onScroll={onScroll}
+        onTouchStart={() => {
+          touchingRef.current = true;
+        }}
+        onTouchEnd={() => {
+          touchingRef.current = false;
+        }}
+        onTouchCancel={() => {
+          touchingRef.current = false;
+        }}
+      >
         {slots.map((slot) => {
           const i = slot % cycle;
           const own = i === ownIndex;
-          const cat = own ? null : HERO_CATEGORIES[i];
           return (
             <div
               key={slot}
               className="wheel-item"
               ref={(el) => {
-                if (el) itemsRef.current[slot] = el;
+                itemsRef.current[slot] = el;
               }}
             >
               <span className="wheel-emoji" aria-hidden="true">
-                {own ? (isOwn ? value : '＋') : cat!.emoji}
+                {own ? (isOwn ? value : '＋') : HERO_CATEGORIES[i].emoji}
               </span>
               {own && (
                 <input
@@ -178,7 +190,6 @@ export default function EmojiCarousel({
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  onFocus={() => centerOn(slot, true)}
                   onChange={(e) => {
                     const picked = firstEmoji(e.target.value);
                     if (picked) onChange(picked);
@@ -193,11 +204,11 @@ export default function EmojiCarousel({
         })}
       </div>
       <div className="wheel-label">
-        {onOwnTile && !isOwn
-          ? 'Tap = swoje emoji'
-          : isOwn
+        {onOwnTile
+          ? isOwn
             ? 'Własne'
-            : HERO_CATEGORIES.find((c) => c.emoji === value)?.label ?? 'Bez ikonki'}
+            : 'Tap = swoje emoji'
+          : HERO_CATEGORIES.find((c) => c.emoji === value)?.label ?? 'Bez ikonki'}
       </div>
     </div>
   );
