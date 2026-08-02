@@ -76,6 +76,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   └── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
+    │   ├── EmojiCarousel.tsx     # Wybór emoji wypadu: zapętlona karuzela ze snapem (ramka na środku) + kafelek własnego emoji
     │   ├── EventHero.tsx         # Hero strony wypadu: zdjęcie full-bleed + tytuł/meta pod nim (fallback tekstowy bez zdjęcia)
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
@@ -97,7 +98,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa+awatar, flaga isAdmin) + hook useAuth
         ├── slotInput.ts          # Budowanie terminu (starts/ends/all_day) z pól Od/Do/Godzina (+ testy)
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
-        ├── emoji.ts              # Wyciąganie własnego emoji wypadu z wejścia klawiatury (grafemy, +testy)
+        ├── emoji.ts              # Wyciąganie własnego emoji z wejścia klawiatury (grafemy, +testy) — używane przez EmojiCarousel
         ├── eventImage.ts         # Upload własnego tła wypadu (skalowanie → bucket event-images)
         ├── gallery.ts            # Galeria wypadu: upload do R2 (oryginał+podgląd) + metadane event_photos; podpis przez /api/gallery-sign (same-origin)
         ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)

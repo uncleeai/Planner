@@ -2426,24 +2426,64 @@ button.solid-danger { background: var(--no); color: #fff; }
 /* Kafelek „Inne" — to <label> z polem tekstowym rozciągniętym na całą powierzchnię:
    tap w dowolne miejsce kafelka podnosi klawiaturę, z której wybiera się emoji.
    Pole zostaje przezroczyste i puste (wartość ląduje od razu w stanie kreatora). */
-/* Kafelek „Inne": w środku zwykły <button> (te same metryki co chipy kategorii),
-   a nad nim przezroczyste pole tekstowe. Tap trafia w pole, więc podnosi się
-   klawiatura i wystarczy przełączyć ją na emoji. */
-.cat-own-wrap { position: relative; flex: 0 0 auto; display: flex; }
-/* Selektor dwuklasowy (0,2,0) celowo — bazowy input[type="text"] (0,1,1) wygrałby
-   z pojedynczą klasą i wstawił tu swoje tło, ramkę i padding.
-   Bez width/height: 100% — liczą się od content-boxu i kłócą z inset:0. */
-.cat-own-wrap .cat-own-input {
+/* ===== Karuzela emoji (pokrętło w stylu iOS) =====
+   Ramka akcentu stoi nieruchomo na środku, emoji jadą pod nią i snapują —
+   wybrane jest to w ramce. Lista zapętla się (trzy kopie cyklu w DOM). */
+.emoji-wheel { position: relative; }
+.wheel-rail {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  /* Zapas = pół szyny minus pół kafelka, żeby SKRAJNE pozycje też dojechały
+     na środek; liczony zmienną, bo tej samej wartości używa kafelek. */
+  padding: 4px calc(50% - var(--wheel-item) / 2);
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  --wheel-item: 64px;
+}
+.wheel-rail::-webkit-scrollbar { display: none; }
+.wheel-item {
+  position: relative;
+  flex: 0 0 var(--wheel-item);
+  height: var(--wheel-item);
+  display: flex; align-items: center; justify-content: center;
+  scroll-snap-align: center;
+  /* Kafelki poza ramką są przygaszone — oko samo wraca na środek. */
+  opacity: 0.42;
+  transform: scale(0.84);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+/* Klasę „centered" dokłada JS wprost na DOM (bez re-renderu) — kafelek pod ramką. */
+.wheel-item.centered { opacity: 1; transform: none; }
+.wheel-emoji { font-size: 30px; line-height: 1; }
+/* Ramka wyboru — nieruchoma, dokładnie na środku szyny. */
+.wheel-frame {
+  position: absolute;
+  top: 4px;
+  left: 50%; transform: translateX(-50%);
+  width: 64px; height: 64px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+.wheel-label {
+  margin-top: 6px;
+  text-align: center;
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted);
+}
+/* Pole własnego emoji leży przezroczyste na swoim kafelku (dwuklasowy selektor
+   celowo — bazowy input[type="text"] (0,1,1) wstawiłby tu tło, ramkę i padding). */
+.wheel-item .wheel-own-input {
   position: absolute; inset: 0;
-  padding: 0; border: none; border-radius: var(--radius-sm);
+  padding: 0; border: none; border-radius: inherit;
   background: none; box-shadow: none;
   color: transparent; caret-color: transparent;
   text-align: center;
 }
-.cat-own-wrap .cat-own-input:focus { outline: none; box-shadow: none; }
-.cat-own-wrap:focus-within .cat-chip {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-}
+.wheel-item .wheel-own-input:focus { outline: none; box-shadow: none; }
 
 /* ===== Pełnoekranowy kreator „Nowe lobby" (CreatorSheet, styl Invites) =====
    Karta JEST formularzem: strefa tła (gradient z akcentu → fotka kategorii),
