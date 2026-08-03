@@ -353,6 +353,10 @@ create table if not exists public.event_photos (
   id            uuid primary key default gen_random_uuid(),
   event_id      uuid not null references public.events(id) on delete cascade,
   user_id       uuid references auth.users(id) on delete set null,
+  -- Trzy rozmiary: miniatura do siatki (~400 px), podgląd do pełnego ekranu
+  -- (~2048 px) i oryginał do pobrania. Siatka MUSI brać thumb_path — podgląd
+  -- waży ~1 MB, a kafelek ma ~120 px (stare wpisy bez miniatury lecą z podglądu).
+  thumb_path    text,
   preview_path  text not null,
   original_path text,
   taken_at      timestamptz,
@@ -362,6 +366,7 @@ create table if not exists public.event_photos (
   deleted_at    timestamptz
 );
 alter table public.event_photos add column if not exists deleted_at timestamptz;
+alter table public.event_photos add column if not exists thumb_path text;
 create index if not exists event_photos_event_idx on public.event_photos(event_id);
 -- Wąski indeks tylko po rzeczach w koszu — tanie zapytanie GC.
 create index if not exists event_photos_trash_idx on public.event_photos(deleted_at)

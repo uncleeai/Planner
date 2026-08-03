@@ -19,15 +19,26 @@ export function photoUrl(path: string): string {
   return `${R2_PUBLIC_BASE}/${path}`;
 }
 
+// Pliki są niezmienne (nazwa niesie znacznik czasu), więc mogą wisieć w cache
+// przeglądarki bez rewalidacji. Bez tego R2 nie odsyła żadnego Cache-Control
+// i każde wejście w wypad dopytywało serwer o każde zdjęcie.
+export const R2_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
 export type EventPhoto = {
   id: string;
   event_id: string;
   user_id: string | null;
+  thumb_path: string | null;
   preview_path: string;
   original_path: string | null;
   taken_at: string | null;
   created_at: string;
 };
+
+/** Miniatura do siatki; zdjęcia sprzed miniatur spadają na podgląd. */
+export function thumbUrl(p: EventPhoto): string {
+  return photoUrl(p.thumb_path ?? p.preview_path);
+}
 
 // Rozszerzenie oryginału z typu MIME (fallback: końcówka nazwy, potem jpg).
 function extOf(file: File): string {
@@ -43,11 +54,14 @@ function extOf(file: File): string {
   return m ? m[1].toLowerCase() : 'jpg';
 }
 
-// Podgląd JPEG do max 2048px po dłuższym boku — wyższy standard niż iCloud
-// Shared Albums (2048), wizualnie nieodróżnialny na telefonie.
-async function makePreview(file: File): Promise<Blob> {
+// Skalowanie JPEG do zadanego dłuższego boku.
+//
+// Robimy DWA rozmiary pochodne: podgląd 2048 px (pełny ekran, standard iCloud
+// Shared Albums) i miniaturę 400 px do siatki. Bez miniatury siatka ciągnęła
+// podglądy — kafelek ma ~120 px, a plik ~1 MB, więc otwarcie wypadu z siedmioma
+// zdjęciami kosztowało ~6,7 MB i kilkanaście sekund na LTE.
+async function makeScaled(file: File, MAX: number, quality: number): Promise<Blob> {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const MAX = 2048;
   const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale);
   const h = Math.round(bitmap.height * scale);
@@ -61,10 +75,13 @@ async function makePreview(file: File): Promise<Blob> {
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error('Nie udało się przetworzyć zdjęcia.'))),
       'image/jpeg',
-      0.85,
+      quality,
     ),
   );
 }
+
+const PREVIEW_MAX = 2048;
+const THUMB_MAX = 400;
 
 // Wgrywa zdjęcia (oryginał + podgląd) i wstawia wiersze metadanych — PER PLIK,
 // żeby jedno feralne zdjęcie nie kładło całej paczki (częściowy sukces zostaje).
@@ -88,8 +105,10 @@ export async function uploadEventPhotos(
       //    podglądu: oryginał robi za preview (HEIC nie wyświetli się wszędzie,
       //    ale zdjęcie nie ginie).
       let preview: Blob | null = null;
+      let thumb: Blob | null = null;
       try {
-        preview = await makePreview(file);
+        preview = await makeScaled(file, PREVIEW_MAX, 0.85);
+        thumb = await makeScaled(file, THUMB_MAX, 0.72);
       } catch (err) {
         console.error('[galeria] podgląd padł:', file.name, err);
       }
@@ -99,6 +118,7 @@ export async function uploadEventPhotos(
         ? [
             { ext: 'jpg', kind: 'preview' },
             { ext: extOf(file), kind: 'original' },
+            ...(thumb ? [{ ext: 'jpg', kind: 'thumb' }] : []),
           ]
         : [{ ext: extOf(file), kind: 'original' }];
       const { data: sess } = await supabase.auth.getSession();
@@ -139,15 +159,20 @@ export async function uploadEventPhotos(
         const r = await fetch(slot.uploadUrl, {
           method: 'PUT',
           body,
-          headers: { 'Content-Type': type },
+          // Nazwa pliku niesie znacznik czasu i nigdy się nie zmienia, więc plik
+          // może wisieć w cache przeglądarki na stałe. Nagłówek jest objęty
+          // podpisem (gallery-sign), więc musi iść dokładnie w tej postaci.
+          headers: { 'Content-Type': type, 'Cache-Control': R2_CACHE_CONTROL },
           signal,
         });
         if (!r.ok) throw new Error(`Wysyłka do R2 padła (${r.status}).`);
       };
       const previewSlot = preview ? uploads[0] : null;
       const originalSlot = preview ? uploads[1] : uploads[0];
+      const thumbSlot = preview && thumb ? uploads[2] : null;
       await Promise.all([
         ...(preview && previewSlot ? [put(previewSlot, preview, 'image/jpeg')] : []),
+        ...(thumb && thumbSlot ? [put(thumbSlot, thumb, 'image/jpeg')] : []),
         put(originalSlot, file, file.type || 'application/octet-stream'),
       ]);
 
@@ -155,6 +180,7 @@ export async function uploadEventPhotos(
       const { error: insErr } = await supabase.from('event_photos').insert({
         event_id: eventId,
         user_id: userId,
+        thumb_path: thumbSlot?.path ?? null,
         preview_path: (previewSlot ?? originalSlot).path,
         original_path: originalSlot.path,
         taken_at: file.lastModified ? new Date(file.lastModified).toISOString() : null,

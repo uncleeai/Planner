@@ -2610,21 +2610,28 @@ button.solid-danger { background: var(--no); color: #fff; }
 }
 
 /* Szklana grupa wierszy (Termin / Miejsce) — wiersz otwiera child-sheet. */
+/* Karty kreatora (Termin/Miejsce/Opis): na tle #0c0e10 karta w kolorze --card
+   niemal znikała i wiersze wyglądały na puste. Jaśniejsza powierzchnia + cienki
+   rozjaśniony kant u góry dają im wypukłość, a ikona w akcencie robi zaczep dla
+   oka, żeby treść nie pływała samotnie w prostokącie. */
 .creator-rows {
-  background: var(--card);
+  background: var(--card-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .creator-row {
   width: 100%;
-  display: flex; align-items: center; gap: 12px;
-  padding: 13px 14px;
+  display: flex; align-items: center; gap: 13px;
+  padding: 12px 14px;
   background: none; border: none; border-radius: 0;
   color: var(--text); text-align: left;
 }
 .creator-row + .creator-row { border-top: 1px solid var(--border); }
 .creator-row > svg { color: var(--muted); flex-shrink: 0; }
+/* Wiodąca ikona w akcencie — daje wierszowi zaczep dla oka; chevron zostaje cichy. */
+.creator-row > svg:first-of-type { color: color-mix(in srgb, var(--accent) 72%, var(--muted)); }
 .creator-row:active { background: rgba(255, 255, 255, 0.04); }
 .cr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .cr-label {
@@ -2645,11 +2652,12 @@ button.solid-danger { background: var(--no); color: #fff; }
 .creator-desc {
   width: 100%; text-align: left;
   padding: 12px 14px; border-radius: var(--radius);
-  background: var(--card); border: 1px solid var(--border-strong);
+  background: var(--card-2); border: 1px solid var(--border-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   font-size: 0.9rem; font-weight: 600; color: var(--accent);
 }
 .creator-desc.filled {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 4px;
   color: var(--text); font-weight: 400;
 }
 button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }

@@ -7,6 +7,7 @@ import {
   uploadEventPhotos,
   deleteEventPhoto,
   photoUrl,
+  thumbUrl,
   isGalleryConfigured,
   type EventPhoto,
 } from '@/lib/gallery';
@@ -15,8 +16,8 @@ import { Avatar } from '@/components/Avatar';
 import { appAlert, appConfirm } from '@/components/Dialogs';
 import { IconX } from '@/components/icons';
 
-// Galeria wypadu: siatka podglądów (JPEG 2048px z R2) + pełnoekranowy viewer ze
-// swipe. Oryginały bajt-w-bajt do pobrania w viewerze. Realtime bez filtra
+// Galeria wypadu: siatka miniatur (400px) + pełnoekranowy viewer ze swipe na
+// podglądach (2048px). Oryginały bajt-w-bajt do pobrania w viewerze. Realtime bez filtra
 // (filtry nie łapią DELETE — jak przy reakcjach), reload i tak pyta per wypad.
 export default function EventGallery({
   eventId,
@@ -256,7 +257,7 @@ export default function EventGallery({
             aria-label="Pokaż zdjęcie"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photoUrl(p.preview_path)} alt="" loading="lazy" />
+            <img src={thumbUrl(p)} alt="" loading="lazy" decoding="async" />
           </button>
         ))}
         <button

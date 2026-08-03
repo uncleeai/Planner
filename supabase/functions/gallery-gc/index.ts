@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
   const cutoff = new Date(Date.now() - TRASH_TTL_DAYS * 86400_000).toISOString();
   const { data: rows, error } = await supabase
     .from('event_photos')
-    .select('id, preview_path, original_path')
+    .select('id, thumb_path, preview_path, original_path')
     .not('deleted_at', 'is', null)
     .lt('deleted_at', cutoff)
     .limit(200);
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
   const purged: string[] = [];
   let orphaned = 0;
   for (const row of rows ?? []) {
-    const paths = [row.preview_path, row.original_path].filter(
+    const paths = [row.thumb_path, row.preview_path, row.original_path].filter(
       (p): p is string => typeof p === 'string' && p.length > 0,
     );
     const uniq = [...new Set(paths)]; // podgląd i oryginał bywają tym samym plikiem
