@@ -2426,6 +2426,39 @@ button.solid-danger { background: var(--no); color: #fff; }
 /* Kafelek „Inne" — to <label> z polem tekstowym rozciągniętym na całą powierzchnię:
    tap w dowolne miejsce kafelka podnosi klawiaturę, z której wybiera się emoji.
    Pole zostaje przezroczyste i puste (wartość ląduje od razu w stanie kreatora). */
+/* ===== Ekran startowy (BootScreen) =====
+   Zarys interfejsu zamiast napisu „Wczytuję…". Połysk jedzie transformem, nie
+   tłem — trzyma się zasady „tylko kompozytor" i jest wygaszany przy
+   prefers-reduced-motion (reszta animacji skórki tak samo). */
+.boot { display: flex; flex-direction: column; gap: 12px; }
+.boot-bar { width: 108px; height: 38px; border-radius: var(--radius-sm); }
+.boot-hero { height: 208px; border-radius: var(--radius); }
+.boot-row { height: 74px; border-radius: var(--radius); }
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(232, 237, 240, 0.055),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: skel-sweep 1.6s ease-in-out infinite;
+  }
+}
+@keyframes skel-sweep {
+  to { transform: translateX(100%); }
+}
+
 /* ===== Karuzela emoji (pokrętło w stylu iOS) =====
    Ramka akcentu stoi nieruchomo na środku, emoji jadą pod nią i snapują —
    wybrane jest to w ramce. Lista zapętla się (trzy kopie cyklu w DOM). */

@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
 import { Avatar } from '@/components/Avatar';
+import BootScreen from '@/components/BootScreen';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 import { resyncPushSubscription } from '@/lib/push';
 import { isAdminEmail } from '@/lib/admin';
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!ready) return <main><p className="muted">Wczytuję…</p></main>;
+  if (!ready) return <BootScreen />;
 
   if (!session) return <LoginForm />;
 
