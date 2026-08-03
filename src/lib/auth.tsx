@@ -232,15 +232,14 @@ function LoginForm() {
           <p className="small muted">Wysłaliśmy 6-cyfrowy kod na <strong>{email}</strong>.</p>
           <div className="field">
             <label htmlFor="code">Kod z maila</label>
-            {/* CELOWO bez inputMode="numeric": podpowiedź autofillu (kod z maila)
-                pojawia się w pasku sugestii NAD klawiaturą, a wariant numeryczny
-                w Safari tego paska nie ma — kod trzeba było przepisywać ręcznie.
-                Zwykła klawiatura kosztuje jedno tapnięcie przy ręcznym wpisywaniu.
-                Autofill z maila wymaga jeszcze, żeby iOS rozpoznał kod w treści
-                wiadomości — zob. README → „Logowanie". */}
+            {/* Klawiatura numeryczna NIE psuje autofillu — sprawdzone na iOS: kod
+                z maila podpowiada się i przy niej. Warunkiem jest treść maila,
+                a nie rodzaj klawiatury: iOS musi rozpoznać kod w wiadomości,
+                stąd angielskie zdanie w szablonie (zob. README → „Logowanie"). */}
             <input
               id="code"
               type="text"
+              inputMode="numeric"
               autoComplete="one-time-code"
               placeholder="np. 123456"
               value={code}

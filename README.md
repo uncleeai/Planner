@@ -124,6 +124,9 @@ komunikat „Ten adres nie jest na liście paczki". Konfiguracja w panelu:
    maila** — parser Apple szuka liczby przy angielskich zwrotach w rodzaju *verification
    code* / *code*. Przy polskim „Twój kod logowania: 123456" podpowiedź zwykle się nie
    pojawia i kod trzeba przepisywać ręcznie. Reszta wiadomości może być po polsku.
+   Szablon zmieniaj **w każdym projekcie Supabase osobno** (preview i produkcja to
+   osobne bazy) — zmiana w jednym nie przenosi się do drugiego. Rodzaj klawiatury
+   w apce nie ma tu znaczenia; sprawdzone, że przy numerycznej autofill też działa.
    Nie rozdzielaj cyfr spacjami ani znacznikami HTML — parser zobaczy wtedy śmieci
    zamiast kodu. (Autofill z maila wymaga też iOS 17+; do iOS 25 konto musi być
    skonfigurowane w natywnej apce Mail, od iOS 26 działa też Gmail i spółka.)
