@@ -112,8 +112,21 @@ komunikat „Ten adres nie jest na liście paczki". Konfiguracja w panelu:
      `supabase functions deploy invite-user`. Nowa osoba od razu loguje się kodem w apce.
    - **Z panelu:** *Authentication → Users → Add user* dla każdego znajomego.
 4. *Authentication → Email Templates* — dodaj **kod** `{{ .Token }}` do treści szablonu
-   **Magic Link** (używany przy logowaniu kodem), np. `Twój kod logowania: {{ .Token }}`.
-   Domyślny szablon pokazuje tylko link, a my logujemy się kodem wpisywanym w apce.
+   **Magic Link** (używany przy logowaniu kodem). Domyślny szablon pokazuje tylko link,
+   a my logujemy się kodem wpisywanym w apce. **Zdanie z kodem zostaw po angielsku:**
+
+   ```html
+   <p>Your verification code is <strong>{{ .Token }}</strong></p>
+   <p>Wpisz ten kod w apce — wygasa po godzinie.</p>
+   ```
+
+   iOS podpowiada kod nad klawiaturą (autofill), ale najpierw musi go **znaleźć w treści
+   maila** — parser Apple szuka liczby przy angielskich zwrotach w rodzaju *verification
+   code* / *code*. Przy polskim „Twój kod logowania: 123456" podpowiedź zwykle się nie
+   pojawia i kod trzeba przepisywać ręcznie. Reszta wiadomości może być po polsku.
+   Nie rozdzielaj cyfr spacjami ani znacznikami HTML — parser zobaczy wtedy śmieci
+   zamiast kodu. (Autofill z maila wymaga też iOS 17+; do iOS 25 konto musi być
+   skonfigurowane w natywnej apce Mail, od iOS 26 działa też Gmail i spółka.)
 5. Uruchom (lub uruchom ponownie) `supabase/schema.sql` — włącza reguły RLS „tylko
    zalogowani; każdy edytuje swoje".
 
