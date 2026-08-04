@@ -23,6 +23,7 @@ import { loadEventBundle } from '@/lib/eventPrefetch';
 import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
+import { notifyComment } from '@/lib/notifyComment';
 import { markChatSeen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { appAlert, appConfirm } from '@/components/Dialogs';
@@ -452,13 +453,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       created_at: new Date().toISOString(),
     };
     setComments((prev) => [...prev, optimistic]);
-    const { error } = await supabase
+    // select().single() — potrzebujemy id zapisanego wiersza, żeby powiadomienie
+    // czytało treść i autora z bazy (klient nie wysyła ich sam).
+    const { data: saved, error } = await supabase
       .from('comments')
-      .insert({ event_id: eventId, user_id: userId, author_name: displayName, body });
+      .insert({ event_id: eventId, user_id: userId, author_name: displayName, body })
+      .select('id')
+      .single();
     if (error) {
       setNewComment(body);
       load();
+      return;
     }
+    if (saved) notifyComment(saved.id);
   }
 
   async function deleteComment(id: string) {

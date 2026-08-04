@@ -178,6 +178,21 @@ Konfiguracja push:
 Bez kroku 2 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`) przełącznik powiadomień się nie pokazuje —
 działa wtedy sam toast na żywo.
 
+### Push o nowym komentarzu
+
+Funkcja `notify-comment` wysyła powiadomienie z **treścią wiadomości i autorem** do
+całej paczki poza autorem. Woła ją klient po zapisaniu komentarza (`src/lib/notifyComment.ts`),
+przekazując **samo `comment_id`** — treść, autora i wypad funkcja czyta z bazy, a JWT
+sprawdza, czy woła ją rzeczywisty autor. Wszystkie wiadomości z jednego wypadu mają
+wspólny znacznik, więc kolejna **podmienia** poprzednią na ekranie blokady zamiast
+budować stos.
+
+```bash
+supabase functions deploy notify-comment   # z weryfikacją JWT, bez --no-verify-jwt
+```
+
+Używa tych samych sekretów VAPID co pozostałe powiadomienia.
+
 ### Przypomnienia (cykliczny push): „nie dałeś znać", „Jutro gramy!", „wrzuć zdjęcia"
 
 Funkcja `notify-reminders` robi trzy przebiegi:

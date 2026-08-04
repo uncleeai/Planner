@@ -54,6 +54,7 @@ Guidance for AI assistants (and humans) working in this repository.
 │       ├── notify-reminders/     # Edge Function: cykl. push „nie dałeś znać" + „Jutro gramy!" + „wrzuć zdjęcia" (pg_cron)
 │       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
 │       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
+│       ├── notify-comment/       # Edge Function: push o nowym komentarzu (treść+autor z bazy, verify JWT)
 │       ├── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
 │       ├── gallery-sign/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
 │       └── gallery-gc/       # Edge Function: sprzątanie kosza galerii — po 30 dniach kasuje pliki z R2 + wpis (pg_cron, no-verify-jwt)
@@ -106,6 +107,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
         ├── notifyConfirmed.ts    # Fire-and-forget push „✓ GRAMY" (Edge Function notify-confirmed)
+        ├── notifyComment.ts      # Fire-and-forget push o nowym komentarzu (Edge Function notify-comment)
         ├── heroImage.ts          # Mapa emoji → zdjęcie tła karty hero (public/hero/*.jpg) + kategorie
         ├── heroCrops.ts          # Odczyt/zapis kadru hero per kategoria (tabela hero_crops)
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
