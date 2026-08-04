@@ -69,22 +69,36 @@ export default function EmojiCarousel({
 
   // Start: wybrane emoji w ŚRODKOWEJ kopii, żeby dało się jechać w obie strony.
   useEffect(() => {
-    const rail = railRef.current;
-    const first = itemsRef.current[0];
-    if (!rail || !first) return;
-    // offsetWidth, NIE getBoundingClientRect(): boczne kafelki są pomniejszone
-    // transformem, a rect zwraca rozmiar PO transformacji — stride wyszedłby
-    // o jedną czwartą za mały i cała arytmetyka by się rozjechała.
-    strideRef.current = first.offsetWidth;
+    let raf = 0;
+    const init = () => {
+      const rail = railRef.current;
+      const first = itemsRef.current[0];
+      if (!rail || !first) return;
+      // offsetWidth, NIE getBoundingClientRect(): boczne kafelki są pomniejszone
+      // transformem, a rect zwraca rozmiar PO transformacji — stride wyszedłby
+      // o jedną czwartą za mały i cała arytmetyka by się rozjechała.
+      const w = first.offsetWidth;
+      // Zerowa szerokość = kafelki nie mają jeszcze layoutu (kreator w trakcie
+      // wjazdu). Bez tego stride zostałby na 0 i karuzela nie ruszyłaby wcale.
+      if (!w) {
+        raf = requestAnimationFrame(init);
+        return;
+      }
+      strideRef.current = w;
 
-    const found = HERO_CATEGORIES.findIndex((c) => c.emoji === value);
-    const within = found >= 0 ? found : isOwn ? ownIndex : 0;
-    const slot = cycle + within;
-    scrollToSlot(slot, false);
-    itemsRef.current[slot]?.classList.add('centered');
-    slotRef.current = slot;
-    setOnOwnTile(within === ownIndex);
-    readyRef.current = true;
+      const found = HERO_CATEGORIES.findIndex((c) => c.emoji === value);
+      const within = found >= 0 ? found : isOwn ? ownIndex : 0;
+      const slot = cycle + within;
+      scrollToSlot(slot, false);
+      itemsRef.current[slot]?.classList.add('centered');
+      slotRef.current = slot;
+      setOnOwnTile(within === ownIndex);
+      readyRef.current = true;
+    };
+    init();
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
     // tylko na montowaniu — dalej pozycją rządzi palec
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

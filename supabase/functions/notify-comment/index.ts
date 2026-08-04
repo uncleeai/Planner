@@ -73,8 +73,10 @@ Deno.serve(async (req) => {
     .eq('id', commentId)
     .maybeSingle();
   if (!comment) return json({ error: 'Nie ma takiego komentarza.' }, 404);
-  // Tylko autor może rozesłać powiadomienie o swoim komentarzu.
-  if (comment.user_id && comment.user_id !== uid) return json({ error: 'Nie Twój komentarz.' }, 403);
+  // Tylko autor może rozesłać powiadomienie o swoim komentarzu. Porównanie wprost
+  // (bez „user_id &&"): stare komentarze mają user_id = null i przy łagodniejszym
+  // warunku każdy zalogowany mógłby rozesłać paczce push o cudzym wpisie.
+  if (comment.user_id !== uid) return json({ error: 'Nie Twój komentarz.' }, 403);
 
   const { data: event } = await supabase
     .from('events')
