@@ -1,11 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { searchPlaces, type Place } from '@/lib/weather';
+import { searchPlaces, placeFromCoords, type Place } from '@/lib/weather';
+import { coordsFromMapsLink, looksLikeMapsLink } from '@/lib/mapsLink';
 
-// Pole lokalizacji z podpowiedziami prawdziwych miejscowości (Open-Meteo geocoding).
-// Wybór z listy ustawia nazwę + współrzędne (→ pogoda). Można też wpisać coś swojego —
-// wtedy współrzędne są czyszczone (brak pogody), ale nazwa zostaje.
+// Pole lokalizacji z podpowiedziami prawdziwych miejsc (Photon/OpenStreetMap —
+// rozumie ulice z numerem, nie tylko miejscowości). Wybór z listy ustawia nazwę
+// + współrzędne (→ pogoda i nawigacja). Można też wpisać coś swojego — wtedy
+// współrzędne są czyszczone, ale nazwa zostaje.
+//
+// Drugie wejście: WKLEJONY LINK Z MAP (albo sama para współrzędnych). Dla miejsc
+// bez adresu — „polana za lasem", pinezka na parkingu — to jedyny sposób podania
+// dokładnego punktu bez rysowania własnej mapy. Link skrócony (maps.app.goo.gl)
+// rozwijamy przez /api/maps-link, bo przeglądarka nie pójdzie za obcym
+// przekierowaniem; nazwę dobieramy odwrotnym geokodowaniem.
 export default function LocationAutocomplete({
   value,
   onChange,
@@ -21,7 +29,38 @@ export default function LocationAutocomplete({
 }) {
   const [results, setResults] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
+  const [pinning, setPinning] = useState(false);
   const justPicked = useRef(false);
+
+  // Wklejony link/współrzędne → punkt na mapie + czytelna nazwa.
+  async function usePastedLink(raw: string) {
+    setPinning(true);
+    setResults([]);
+    setOpen(false);
+    try {
+      let point = coordsFromMapsLink(raw);
+      if (!point && looksLikeMapsLink(raw)) {
+        // Skrócony link — współrzędne siedzą dopiero pod przekierowaniem.
+        const res = await fetch('/api/maps-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: raw.trim() }),
+        }).catch(() => null);
+        if (res?.ok) {
+          const d = await res.json().catch(() => null);
+          if (d && typeof d.lat === 'number' && typeof d.lon === 'number') point = d;
+        }
+      }
+      if (!point) return false;
+      justPicked.current = true;
+      const name = await placeFromCoords(point.lat, point.lon);
+      onChange(name ?? `${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}`);
+      onCoords({ lat: point.lat, lon: point.lon });
+      return true;
+    } finally {
+      setPinning(false);
+    }
+  }
 
   // Debounce wyszukiwania; przerywamy poprzedni fetch przy nowym wpisie.
   useEffect(() => {
@@ -30,7 +69,8 @@ export default function LocationAutocomplete({
       return;
     }
     const q = value.trim();
-    if (q.length < 2) {
+    // Link do map nie jest zapytaniem do geokodera — obsługuje go usePastedLink.
+    if (q.length < 2 || looksLikeMapsLink(q) || coordsFromMapsLink(q)) {
       setResults([]);
       return;
     }
@@ -48,7 +88,9 @@ export default function LocationAutocomplete({
 
   function pick(p: Place) {
     justPicked.current = true;
-    onChange(p.name);
+    // Zapisujemy etykietę Z MIASTEM — sama „Krupówki 1" w wypadzie nie mówi nic
+    // komuś, kto nie zna okolicy.
+    onChange([p.name, p.admin1].filter(Boolean).join(', '));
     onCoords({ lat: p.latitude, lon: p.longitude });
     setResults([]);
     setOpen(false);
@@ -67,12 +109,25 @@ export default function LocationAutocomplete({
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
-          onChange(e.target.value);
+          const next = e.target.value;
+          onChange(next);
           onCoords(null); // edycja unieważnia wcześniejszy wybór (i pogodę)
+          // Wklejenie zwykle wpada tu jako jedna zmiana — łapiemy je od razu,
+          // żeby użytkownik nie musiał nic zatwierdzać.
+          if (looksLikeMapsLink(next) || coordsFromMapsLink(next)) void usePastedLink(next);
+        }}
+        onPaste={(e) => {
+          const text = e.clipboardData.getData('text');
+          if (looksLikeMapsLink(text) || coordsFromMapsLink(text)) {
+            e.preventDefault();
+            onChange(text);
+            void usePastedLink(text);
+          }
         }}
         onFocus={() => results.length && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
       />
+      {pinning && <span className="loc-pinning">Odczytuję miejsce z linku…</span>}
       {open && results.length > 0 && (
         <ul className="loc-suggestions">
           {results.map((p, i) => (

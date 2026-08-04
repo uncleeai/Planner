@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { IconPin, IconChevronLeft, IconPencil } from '@/components/icons';
+import { canNavigate, openNavigation } from '@/lib/navigate';
 import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { parseImageFocus, DEFAULT_FOCUS } from '@/lib/eventImage';
 import type { EventRow } from '@/lib/types';
@@ -55,7 +56,27 @@ export default function EventHero({
       {(event.location || event.created_by || isPast) && (
         <div className="event-submeta">
           {event.location && (
-            <span><IconPin size={13} /> {event.location}</span>
+            // Miejsce jest klikalne: tap otwiera nawigację w mapach telefonu
+            // (Apple na iPhonie, Google gdzie indziej) — jak adres w kalendarzu.
+            // Adres liczymy dopiero w handlerze, bo zależy od systemu.
+            canNavigate({ lat: event.latitude, lon: event.longitude, place: event.location }) ? (
+              <button
+                type="button"
+                className="loc-nav"
+                onClick={() =>
+                  openNavigation({
+                    lat: event.latitude,
+                    lon: event.longitude,
+                    place: event.location,
+                  })
+                }
+              >
+                <IconPin size={13} /> {event.location}
+                <span className="loc-nav-go">Prowadź</span>
+              </button>
+            ) : (
+              <span><IconPin size={13} /> {event.location}</span>
+            )
           )}
           {event.location && event.created_by && <span className="sep">·</span>}
           {event.created_by && <span>host: {event.created_by}</span>}

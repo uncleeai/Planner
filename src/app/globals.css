@@ -2882,3 +2882,28 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
 
 /* Znaczek liczby zdjęć przy odbytym wypadzie (obok GG) */
 .photo-badge { margin-right: 6px; }
+
+/* Wskaźnik odczytu wklejonego linku do map (LocationAutocomplete). */
+.loc-pinning {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* Miejsce w hero jako wejście do nawigacji — wygląda jak reszta meta, ale
+   zdradza akcentem, że da się w nie tapnąć. */
+.loc-nav {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 0; border: none; background: none;
+  color: inherit; font: inherit;
+}
+.loc-nav .loc-nav-go {
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+.loc-nav:active { opacity: 0.7; }

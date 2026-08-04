@@ -74,7 +74,8 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, czat, ustalanie terminu
     │   ├── event/[id]/loading.tsx # Skeleton przejścia do wypadu
     │   ├── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
-    │   └── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
+    │   ├── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
+    │   └── api/maps-link/route.ts # Rozwijanie skróconych linków do map (whitelist hostów, ochrona przed SSRF)
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     │   ├── BootScreen.tsx        # Ekran startu: szkielet UI zamiast „Wczytuję…" (pokazywany dopiero po 250 ms)
@@ -111,7 +112,9 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── heroImage.ts          # Mapa emoji → zdjęcie tła karty hero (public/hero/*.jpg) + kategorie
         ├── heroCrops.ts          # Odczyt/zapis kadru hero per kategoria (tabela hero_crops)
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
-        ├── weather.ts            # Prognoza Open-Meteo na dzień wypadu + geokodowanie (cache w pamięci)
+        ├── weather.ts            # Prognoza Open-Meteo + szukanie miejsc przez Photon/OSM (adresy z numerem) + reverse
+        ├── mapsLink.ts           # Współrzędne z wklejonego linku do map / pary liczb (+testy)
+        ├── navigate.ts           # „Prowadź”: Mapy Apple na iPhonie, Google gdzie indziej (+testy)
         ├── calendar.ts           # Eksport ustalonego terminu do pliku .ics (Apple/Google Calendar)
         ├── markdown.tsx          # Mini-renderer markdownu opisu → elementy React (bez surowego HTML)
         ├── transition.tsx        # Animowane przejścia stron (forward/back) + useTransitionNavigate

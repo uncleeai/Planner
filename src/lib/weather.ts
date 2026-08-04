@@ -3,8 +3,10 @@
 // przeglądarki. Prognoza sięga ~16 dni w przód — dalej/po fakcie zwracamy null.
 
 export type Place = {
+  /** Etykieta główna: nazwa miejsca (POI) albo ulica z numerem. */
   name: string;
-  admin1: string | null; // województwo/region
+  /** Druga linia: miasto (+ dzielnica) — przy adresach to ona mówi „gdzie". */
+  admin1: string | null;
   country: string | null;
   latitude: number;
   longitude: number;
@@ -20,20 +22,40 @@ export type DayWeather = {
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<Place[]> {
   const q = query.trim();
   if (q.length < 2) return [];
+  // Photon (dane OpenStreetMap): w przeciwieństwie do geokodera Open-Meteo, który
+  // zna wyłącznie miejscowości, rozumie ULICE Z NUMEREM i punkty typu „hotel",
+  // „boisko" — a tego wymaga nawigacja pod konkretne miejsce, nie w okolicę.
+  // Bez klucza; Open-Meteo zostaje wyłącznie od prognozy pogody.
   const url =
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}` +
-    `&count=5&language=pl&format=json`;
+    `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=default`;
   try {
     const res = await fetch(url, { signal });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.results ?? []).map((r: Record<string, unknown>) => ({
-      name: r.name as string,
-      admin1: (r.admin1 as string) ?? null,
-      country: (r.country as string) ?? null,
-      latitude: r.latitude as number,
-      longitude: r.longitude as number,
-    }));
+    type Feature = {
+      properties?: Record<string, string | undefined>;
+      geometry?: { coordinates?: [number, number] };
+    };
+    return ((data.features ?? []) as Feature[])
+      .map((f) => {
+        const p = f.properties ?? {};
+        const coords = f.geometry?.coordinates;
+        if (!coords) return null;
+        const street = [p.street, p.housenumber].filter(Boolean).join(' ');
+        // Nazwa własna wygrywa (kościół, hotel, park); dla zwykłego adresu
+        // etykietą jest ulica z numerem, a gdy i jej brak — miejscowość.
+        const name = p.name || street || p.city || p.district || '';
+        if (!name) return null;
+        const where = [p.district, p.city].filter((v) => v && v !== name);
+        return {
+          name,
+          admin1: [...new Set(where)].join(', ') || p.state || null,
+          country: p.country ?? null,
+          latitude: coords[1],
+          longitude: coords[0],
+        } as Place;
+      })
+      .filter((p): p is Place => p !== null);
   } catch {
     return [];
   }
@@ -159,4 +181,30 @@ export function describeWeather(code: number): { emoji: string; label: string } 
   if (code === 85 || code === 86) return { emoji: '🌨️', label: 'Przelotny śnieg' };
   if (code >= 95) return { emoji: '⛈️', label: 'Burza' };
   return { emoji: '🌡️', label: 'Pogoda' };
+}
+
+// Odwrotne geokodowanie: punkt → czytelna nazwa. Używane po wklejeniu linku
+// z map — bez tego w polu miejsca zostałby goły link albo para liczb.
+export async function placeFromCoords(
+  lat: number,
+  lon: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&limit=1&lang=default`,
+      { signal },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const p = data?.features?.[0]?.properties as Record<string, string | undefined> | undefined;
+    if (!p) return null;
+    const street = [p.street, p.housenumber].filter(Boolean).join(' ');
+    const main = p.name || street || p.city || p.district;
+    if (!main) return null;
+    const city = p.city && p.city !== main ? p.city : null;
+    return [main, city].filter(Boolean).join(', ');
+  } catch {
+    return null;
+  }
 }
