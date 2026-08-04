@@ -1,4 +1,4 @@
-// Edge Function: cykliczne przypomnienia (pg_cron, np. co godzinę). Dwa przebiegi:
+// Edge Function: cykliczne przypomnienia (pg_cron, np. co godzinę). Trzy przebiegi:
 //  1. „Nie dałeś znać" — wypady starsze niż 24h z terminem w przyszłości; push do
 //     osób bez głosu (poza twórcą). Raz na wypad (stempel `reminded_at`).
 //  2. „Jutro gramy!" — wypady z klepniętym terminem startującym JUTRO (Europe/
@@ -6,6 +6,9 @@
 //     wypad (stempel `day_before_notified_at`). Klepnięty = confirmed_slot_id
 //     (ręczny LOCK IN) albo confirmed_notified_at (automat — stempel pusha GRAMY);
 //     dla automatu prowadzący slot liczony jak w getConfirmedSlot (types.ts).
+//  3. „Wrzuć zdjęcia" — dobę po zakończeniu wypadu (i nie później niż tydzień po);
+//     push do CAŁEJ paczki, też po 16:00. Raz na wypad (stempel
+//     `photos_prompted_at`), niezależnie od tego, czy galeria jest już pusta czy nie.
 //
 // Wdrożenie:
 //   supabase functions deploy notify-reminders --no-verify-jwt
@@ -30,6 +33,54 @@ const supabase = createClient(
 );
 
 type Sub = { endpoint: string; p256dh: string; auth: string; user_id: string | null };
+type SlotRow = { id: string; starts_at: string; all_day?: boolean | null; ends_at?: string | null };
+
+// Klepnięty slot wypadu: ręczny LOCK IN wprost, a przy automacie — prowadzący
+// (READY > MOŻE > wcześniejsza data), jak getConfirmedSlot w types.ts.
+function pickConfirmed(
+  slots: SlotRow[],
+  confirmedSlotId: string | null,
+  votes: { slot_id: string; availability: string }[],
+): SlotRow | undefined {
+  if (confirmedSlotId) {
+    const direct = slots.find((s) => s.id === confirmedSlotId);
+    if (direct) return direct;
+  }
+  let best: SlotRow | undefined;
+  let bestYes = 0;
+  let bestMaybe = 0;
+  for (const s of slots) {
+    const sv = votes.filter((v) => v.slot_id === s.id);
+    const yes = sv.filter((v) => v.availability === 'yes').length;
+    const maybe = sv.filter((v) => v.availability === 'maybe').length;
+    if (
+      yes > 0 &&
+      (!best || yes > bestYes || (yes === bestYes && maybe > bestMaybe) ||
+        (yes === bestYes && maybe === bestMaybe && s.starts_at < best.starts_at))
+    ) {
+      best = s;
+      bestYes = yes;
+      bestMaybe = maybe;
+    }
+  }
+  return best;
+}
+
+// Koniec wypadu w ms — jak slotEndMs w types.ts: zakres kończy się swoim „do",
+// całodniowy o północy następnego dnia, a zwykły termin +3h po starcie.
+function slotEndMs(slot: SlotRow): number {
+  if (slot.ends_at) {
+    const end = new Date(slot.ends_at);
+    if (slot.all_day) end.setHours(23, 59, 59, 999);
+    return end.getTime();
+  }
+  const start = new Date(slot.starts_at);
+  if (slot.all_day) {
+    start.setHours(23, 59, 59, 999);
+    return start.getTime();
+  }
+  return start.getTime() + 3 * 3600 * 1000;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -142,32 +193,11 @@ Deno.serve(async (req) => {
         .eq('event_id', ev.id);
       if (!slots || slots.length === 0) continue;
 
-      // Klepnięty slot: ręczny wprost; automat = prowadzący (READY > MOŻE > data).
-      let slot = ev.confirmed_slot_id
-        ? slots.find((s) => s.id === ev.confirmed_slot_id)
-        : undefined;
-      if (!slot) {
-        const { data: votes } = await supabase
-          .from('votes')
-          .select('slot_id, availability')
-          .eq('event_id', ev.id);
-        let bestYes = 0;
-        let bestMaybe = 0;
-        for (const s of slots) {
-          const sv = (votes ?? []).filter((v) => v.slot_id === s.id);
-          const yes = sv.filter((v) => v.availability === 'yes').length;
-          const maybe = sv.filter((v) => v.availability === 'maybe').length;
-          if (
-            yes > 0 &&
-            (!slot || yes > bestYes || (yes === bestYes && maybe > bestMaybe) ||
-              (yes === bestYes && maybe === bestMaybe && s.starts_at < slot.starts_at))
-          ) {
-            slot = s;
-            bestYes = yes;
-            bestMaybe = maybe;
-          }
-        }
-      }
+      const { data: votes } = await supabase
+        .from('votes')
+        .select('slot_id, availability')
+        .eq('event_id', ev.id);
+      const slot = pickConfirmed(slots as SlotRow[], ev.confirmed_slot_id, votes ?? []);
       if (!slot) continue;
 
       const startDay = new Date(slot.starts_at).toLocaleDateString('sv-SE', { timeZone: TZ });
@@ -210,6 +240,69 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ===== Przebieg 3: „Wrzuć zdjęcia" — doba po zakończeniu wypadu =====
+  // Push do całej paczki, raz na wypad (stempel `photos_prompted_at`). Wysyłamy
+  // niezależnie od tego, czy ktoś już coś wrzucił — reszta zwykle ma coś na
+  // telefonie. Okno godzinowe jak w przebiegu 2, żeby nie budzić nikogo w nocy:
+  // wypad kończący się nad ranem dostanie zaczepkę dopiero tego samego dnia po 16.
+  let photosSent = 0;
+  if (warsawHour >= 16) {
+    const { data: done } = await supabase
+      .from('events')
+      .select('id, title, confirmed_slot_id')
+      .is('photos_prompted_at', null)
+      .or('confirmed_slot_id.not.is.null,confirmed_notified_at.not.is.null');
+
+    for (const ev of done ?? []) {
+      const { data: slots } = await supabase
+        .from('slots')
+        .select('id, starts_at, ends_at, all_day')
+        .eq('event_id', ev.id);
+      if (!slots || slots.length === 0) continue;
+
+      const { data: votes } = await supabase
+        .from('votes')
+        .select('slot_id, availability')
+        .eq('event_id', ev.id);
+      const slot = pickConfirmed(slots as SlotRow[], ev.confirmed_slot_id, votes ?? []);
+      if (!slot) continue;
+
+      // Minęła doba od końca? Górna granica trzyma stare wypady poza zasięgiem,
+      // żeby po wdrożeniu nie poszła lawina zaczepek o dawno minione wyjazdy.
+      const since = now - slotEndMs(slot);
+      if (since < 24 * 3600 * 1000 || since > 7 * 24 * 3600 * 1000) continue;
+
+      const { data: stamped } = await supabase
+        .from('events')
+        .update({ photos_prompted_at: nowIso })
+        .eq('id', ev.id)
+        .is('photos_prompted_at', null)
+        .select('id')
+        .maybeSingle();
+      if (!stamped) continue;
+
+      const message = JSON.stringify({
+        title: `📸 Zdjęcia z: ${ev.title}`,
+        body: 'Masz coś fajnego na telefonie? Wrzuć do galerii wypadu.',
+        url: `/event/${ev.id}`,
+        tag: `photos-${ev.id}`,
+      });
+
+      for (const s of (subsAll ?? []) as Sub[]) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+            message,
+          );
+          photosSent++;
+        } catch (e) {
+          const code = (e as { statusCode?: number })?.statusCode;
+          if (code === 404 || code === 410) dead.push(s.endpoint);
+        }
+      }
+    }
+  }
+
   if (dead.length) await supabase.from('push_subscriptions').delete().in('endpoint', dead);
-  return json({ processed, sent, dayBeforeSent, removed: dead.length });
+  return json({ processed, sent, dayBeforeSent, photosSent, removed: dead.length });
 });

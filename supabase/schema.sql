@@ -66,6 +66,11 @@ alter table public.events
 alter table public.events
   add column if not exists day_before_notified_at timestamptz;
 
+-- Znacznik przypomnienia „wrzuć zdjęcia" (notify-reminders, przebieg 3) —
+-- wysyłane raz, dobę po zakończeniu wypadu, do całej paczki.
+alter table public.events
+  add column if not exists photos_prompted_at timestamptz;
+
 -- Zdjęcie w tle karty wypadu (opcjonalne) — publiczny URL z bucketu event-images.
 -- image_focus: punkt kadru dla object-position (np. „50% 30%"), ustawiany suwakami.
 alter table public.events

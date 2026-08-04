@@ -51,7 +51,7 @@ Guidance for AI assistants (and humans) working in this repository.
 │   ├── schema.sql                # Schemat bazy + RLS + publikacja Realtime
 │   └── functions/
 │       ├── notify-new-event/     # Edge Function: Web Push przy nowym wypadzie (Deno)
-│       ├── notify-reminders/     # Edge Function: cykl. push „nie dałeś znać" + „Jutro gramy!" (pg_cron)
+│       ├── notify-reminders/     # Edge Function: cykl. push „nie dałeś znać" + „Jutro gramy!" + „wrzuć zdjęcia" (pg_cron)
 │       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
 │       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
 │       ├── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)

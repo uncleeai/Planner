@@ -178,15 +178,21 @@ Konfiguracja push:
 Bez kroku 2 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`) przełącznik powiadomień się nie pokazuje —
 działa wtedy sam toast na żywo.
 
-### Przypomnienia (cykliczny push): „nie dałeś znać" + „Jutro gramy!"
+### Przypomnienia (cykliczny push): „nie dałeś znać", „Jutro gramy!", „wrzuć zdjęcia"
 
-Funkcja `notify-reminders` robi dwa przebiegi:
+Funkcja `notify-reminders` robi trzy przebiegi:
 - **„Nie dałeś znać"** — ~24h po utworzeniu wypadu push do osób bez głosu (raz na
   wypad, znacznik `events.reminded_at`).
 - **„Jutro gramy!"** — dzień przed klepniętym terminem (ręcznym lub automatem)
   push do **całej paczki**, wysyłany po 16:00 czasu polskiego (raz na wypad,
   znacznik `events.day_before_notified_at`; wymaga ponownego uruchomienia
   `schema.sql`).
+- **„Wrzuć zdjęcia"** — dobę po zakończeniu wypadu (i nie później niż tydzień po)
+  push do **całej paczki** z zaczepką o galerię, też po 16:00 (raz na wypad,
+  znacznik `events.photos_prompted_at`). Górna granica tygodnia sprawia, że po
+  wdrożeniu nie idzie lawina zaczepek o dawno minione wyjazdy; przy pierwszym
+  wdrożeniu warto dodatkowo ostemplować istniejące wypady:
+  `update public.events set photos_prompted_at = now() where photos_prompted_at is null;`
 
 1. **Uruchom `supabase/schema.sql`** — dodaje kolumnę `events.reminded_at`.
 2. **Wdróż funkcję:**
