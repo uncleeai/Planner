@@ -3,6 +3,8 @@
 // ZANIM cokolwiek się przełączyło — na komórce 2-3 s zamrożonego dashboardu. Z granicą
 // Next przełącza widok natychmiast (i prefetchuje shell trasy z wyprzedzeniem), a
 // właściwa strona i tak zwykle wchodzi z seedem z cache'a.
+import { LoadingSkeleton } from '@/components/BootScreen';
+
 export default function Loading() {
   return (
     <main className="glass-page">
@@ -10,7 +12,7 @@ export default function Loading() {
         <span className="back-btn-round" aria-hidden="true" />
         <span className="nav-label">Lobby</span>
       </div>
-      <p className="muted">Wczytuję…</p>
+      <LoadingSkeleton />
     </main>
   );
 }

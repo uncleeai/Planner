@@ -8,6 +8,7 @@ import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
 import { pingUser } from '@/lib/ping';
 import { haptic } from '@/lib/haptics';
 import { appAlert } from '@/components/Dialogs';
+import { LoadingSkeleton } from '@/components/BootScreen';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import type { Availability, EventRow, Slot, Vote, Profile, Comment } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
@@ -504,7 +505,7 @@ export default function Home() {
           Unmount przy zamknięciu = świeży szkic przy każdym otwarciu. */}
       {showForm && <CreatorSheet cropByEmoji={cropByEmoji} onClose={() => setShowForm(false)} />}
 
-      {loading && <p className="muted mt">Wczytuję…</p>}
+      {loading && <LoadingSkeleton />}
 
       {!loading && events.length === 0 && (
         <div className="empty-state mt" style={{ padding: '44px 24px', textAlign: 'center' }}>

@@ -12,6 +12,7 @@ import SlotRangeInput from '@/components/SlotRangeInput';
 import CreatorSheet from '@/components/CreatorSheet';
 import EventGallery from '@/components/EventGallery';
 import EventHero from '@/components/EventHero';
+import { LoadingSkeleton } from '@/components/BootScreen';
 import { DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { Markdown } from '@/lib/markdown';
@@ -719,7 +720,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return d <= 0 ? 'AFK OD DZIŚ' : d === 1 ? 'AFK OD WCZORAJ' : `AFK OD ${d} DNI`;
   }, [event?.created_at]);
 
-  if (loading) return <main className="glass-page"><p className="muted">Wczytuję…</p></main>;
+  if (loading) return <main className="glass-page"><LoadingSkeleton /></main>;
 
   if (notFound) {
     return (
