@@ -19,10 +19,12 @@ export function photoUrl(path: string): string {
   return `${R2_PUBLIC_BASE}/${path}`;
 }
 
-// Pliki są niezmienne (nazwa niesie znacznik czasu), więc mogą wisieć w cache
-// przeglądarki bez rewalidacji. Bez tego R2 nie odsyła żadnego Cache-Control
-// i każde wejście w wypad dopytywało serwer o każde zdjęcie.
-export const R2_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+// UWAGA: NIE wysyłamy przy PUT żadnych dodatkowych nagłówków (próbowaliśmy
+// Cache-Control, żeby R2 zapisało go przy obiekcie). Cache-Control nie jest
+// nagłówkiem „prostym", więc przeglądarka poprzedza wysyłkę preflightem CORS
+// do R2 — bucket go nie dopuszcza i całe wgrywanie pada na „Load failed".
+// Cache zdjęć da się ustawić po stronie Cloudflare (Cache Rules na własnej
+// domenie), bez dotykania tej ścieżki.
 
 export type EventPhoto = {
   id: string;
@@ -159,10 +161,7 @@ export async function uploadEventPhotos(
         const r = await fetch(slot.uploadUrl, {
           method: 'PUT',
           body,
-          // Nazwa pliku niesie znacznik czasu i nigdy się nie zmienia, więc plik
-          // może wisieć w cache przeglądarki na stałe. Nagłówek jest objęty
-          // podpisem (gallery-sign), więc musi iść dokładnie w tej postaci.
-          headers: { 'Content-Type': type, 'Cache-Control': R2_CACHE_CONTROL },
+          headers: { 'Content-Type': type },
           signal,
         });
         if (!r.ok) throw new Error(`Wysyłka do R2 padła (${r.status}).`);
