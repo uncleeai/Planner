@@ -5,17 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth, signOut } from '@/lib/auth';
+import { categorizeEvents, formatDateTime } from '@/lib/planner';
 import type { EventRow } from '@/lib/types';
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('pl-PL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export default function Home() {
   const router = useRouter();
@@ -23,6 +14,9 @@ export default function Home() {
 
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Moment odniesienia dla podziału na „nadchodzące"/„minione". Odświeżany przy
+  // każdym wczytaniu danych, żeby render pozostał czystą funkcją stanu.
+  const [now, setNow] = useState(() => Date.now());
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
@@ -37,6 +31,7 @@ export default function Home() {
       .select('*')
       .order('created_at', { ascending: false });
     setEvents((data ?? []) as EventRow[]);
+    setNow(Date.now());
     setLoading(false);
   }, []);
 
@@ -90,25 +85,7 @@ export default function Home() {
     router.push(`/event/${data.id}`);
   }
 
-  const { open, upcoming, past } = useMemo(() => {
-    const now = Date.now();
-    const open: EventRow[] = [];
-    const upcoming: EventRow[] = [];
-    const past: EventRow[] = [];
-
-    for (const ev of events) {
-      if (!ev.confirmed_at) {
-        open.push(ev);
-      } else if (new Date(ev.confirmed_at).getTime() >= now) {
-        upcoming.push(ev);
-      } else {
-        past.push(ev);
-      }
-    }
-    upcoming.sort((a, b) => new Date(a.confirmed_at!).getTime() - new Date(b.confirmed_at!).getTime());
-    past.sort((a, b) => new Date(b.confirmed_at!).getTime() - new Date(a.confirmed_at!).getTime());
-    return { open, upcoming, past };
-  }, [events]);
+  const { open, upcoming, past } = useMemo(() => categorizeEvents(events, now), [events, now]);
 
   return (
     <main>
@@ -195,7 +172,7 @@ export default function Home() {
       {loading && <p className="muted mt">Wczytuję…</p>}
 
       {!loading && events.length === 0 && (
-        <p className="muted mt">Brak wypadów. Kliknij „+ Nowy wypad", żeby zaproponować pierwszy.</p>
+        <p className="muted mt">{'Brak wypadów. Kliknij „+ Nowy wypad", żeby zaproponować pierwszy.'}</p>
       )}
 
       <Timeline title="Do ustalenia" events={open} />
@@ -218,7 +195,7 @@ function Timeline({ title, events, muted }: { title: string; events: EventRow[];
           </div>
           <div className="event-card-status">
             {ev.confirmed_at ? (
-              <span className="badge">{formatDate(ev.confirmed_at)}</span>
+              <span className="badge">{formatDateTime(ev.confirmed_at)}</span>
             ) : (
               <span className="badge badge-open">Zbieramy terminy</span>
             )}

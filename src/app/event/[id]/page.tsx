@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
+import {
+  computeSlotStats,
+  formatDateTime,
+  isOrganizer as isEventOrganizer,
+  maxYesCount,
+  missingVoterNames,
+  participantNames,
+} from '@/lib/planner';
 import type { Availability, EventRow, Profile, Slot, Vote } from '@/lib/types';
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
@@ -12,16 +20,6 @@ const CHOICES: { value: Availability; label: string; cls: string }[] = [
   { value: 'maybe', label: 'Może', cls: 'active-maybe' },
   { value: 'no', label: 'Nie', cls: 'active-no' },
 ];
-
-function formatSlot(iso: string): string {
-  return new Date(iso).toLocaleString('pl-PL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
@@ -168,32 +166,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     }
   }
 
-  const stats = useMemo(() => {
-    return slots.map((slot) => {
-      const slotVotes = votes.filter((v) => v.slot_id === slot.id);
-      return {
-        slot,
-        votes: slotVotes,
-        yes: slotVotes.filter((v) => v.availability === 'yes').length,
-        maybe: slotVotes.filter((v) => v.availability === 'maybe').length,
-        no: slotVotes.filter((v) => v.availability === 'no').length,
-        mine: slotVotes.find((v) => v.user_id === userId)?.availability,
-      };
-    });
-  }, [slots, votes, userId]);
+  const stats = useMemo(() => computeSlotStats(slots, votes, userId), [slots, votes, userId]);
 
-  const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
+  const maxYes = useMemo(() => maxYesCount(stats), [stats]);
 
-  const participants = useMemo(
-    () => Array.from(new Set(votes.map((v) => v.participant_name))),
-    [votes],
-  );
+  const participants = useMemo(() => participantNames(votes), [votes]);
 
   // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie.
-  const missingVoters = useMemo(() => {
-    const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
-    return members.filter((m) => !voted.has(m.id)).map((m) => m.display_name);
-  }, [members, votes]);
+  const missingVoters = useMemo(() => missingVoterNames(members, votes), [members, votes]);
 
   if (loading) return <main><p className="muted">Wczytuję…</p></main>;
 
@@ -207,7 +187,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  const isOrganizer = !event?.created_by_user_id || event.created_by_user_id === userId;
+  const isOrganizer = isEventOrganizer(event, userId);
 
   return (
     <main>
@@ -217,7 +197,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {event?.created_by && <p className="small muted">Organizuje: {event.created_by}</p>}
 
       {event?.confirmed_at && (
-        <div className="confirmed-banner">✅ Ustalono: {formatSlot(event.confirmed_at)}</div>
+        <div className="confirmed-banner">✅ Ustalono: {formatDateTime(event.confirmed_at)}</div>
       )}
 
       <div className="row mt">
@@ -269,7 +249,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             className={`slot${isConfirmed ? ' confirmed' : isBest ? ' winner' : ''}`}
           >
             <div className="slot-head">
-              <span className="slot-date">{formatSlot(slot.starts_at)}</span>
+              <span className="slot-date">{formatDateTime(slot.starts_at)}</span>
               {isConfirmed ? (
                 <span className="badge">ustalony</span>
               ) : (
