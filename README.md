@@ -55,6 +55,13 @@ Bez kroków 1–4 strona się otworzy, ale pokaże baner z prośbą o konfigurac
 - `npm run dev` — serwer deweloperski.
 - `npm run build` — build produkcyjny.
 - `npm start` — uruchomienie buildu produkcyjnego.
+- `npm run lint` — ESLint (konfiguracja Next).
+- `npm run test` — testy jednostkowe logiki (Vitest); `npm run test:watch` w trybie ciągłym.
+- `npm run check` — lint + testy + build, czyli wszystko przed wypchnięciem zmian.
+
+Testy pokrywają czystą logikę z `src/lib/planner.ts`: podział wypadów na
+„do ustalenia / nadchodzące / minione", zliczanie głosów przy terminach,
+listę osób, które jeszcze nie zagłosowały, i uprawnienia organizatora.
 
 ## Jak to działa
 
@@ -125,10 +132,12 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
   dochodzi allowlista e-maili.
 - **Migawki nazw.** Nazwę wyświetlaną zapisujemy przy głosie/wypadzie w chwili akcji;
   zmiana nazwy nie aktualizuje wstecz starych wpisów.
-- **`npm audit`** zgłasza jedną podatność *moderate* w pakiecie `postcss`
-  (zależność pośrednia, używana tylko przy budowaniu CSS — nie dotyczy runtime).
-  Podpowiadany „fix" downgrade'uje Next do prehistorycznej wersji, więc go **nie**
-  stosujemy.
+- **Testujemy logikę, nie widok.** Nie ma renderera testowego ani testów E2E —
+  komponenty sprawdzamy klikaniem. Dlatego logika ma mieszkać w
+  `src/lib/planner.ts`, a nie w `page.tsx`.
+- **`npm audit`** powinien pokazywać zero podatności. Jeśli coś się pojawi,
+  najpierw sprawdź, czy pomaga podbicie `next` do najnowszej wersji 16.x —
+  większość zgłoszeń to zależności pośrednie Nexta.
 
 ## Pomysły na dalej (poza MVP)
 

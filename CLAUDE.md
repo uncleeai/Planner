@@ -34,6 +34,8 @@ Guidance for AI assistants (and humans) working in this repository.
 ├── README.md                     # Instrukcja uruchomienia i wdrożenia
 ├── package.json                  # Skrypty i zależności
 ├── next.config.mjs               # Konfiguracja Next.js
+├── eslint.config.mjs             # ESLint (flat config) na bazie eslint-config-next
+├── vitest.config.mts             # Vitest: alias @/*, stała strefa czasowa testów
 ├── vercel.json                   # Vercel Cron: codzienny ping keepalive bazy
 ├── tsconfig.json                 # Konfiguracja TypeScript (alias @/* → src/*)
 ├── .env.example                  # Wzór zmiennych środowiskowych (skopiuj do .env.local)
@@ -54,6 +56,8 @@ Guidance for AI assistants (and humans) working in this repository.
     └── lib/
         ├── supabaseClient.ts     # Klient Supabase + flaga isSupabaseConfigured
         ├── auth.tsx              # AuthProvider (logowanie e-mail/OTP, nazwa) + hook useAuth
+        ├── planner.ts            # Czysta logika: podział wypadów, liczenie głosów, formatowanie dat
+        ├── planner.test.ts       # Testy jednostkowe logiki (Vitest)
         └── types.ts              # Typy: EventRow, Slot, Vote, Availability
 ```
 
@@ -115,9 +119,16 @@ przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodno
 - **Konfiguracja:** skopiuj `.env.example` do `.env.local` i uzupełnij
   `NEXT_PUBLIC_SUPABASE_URL` oraz `NEXT_PUBLIC_SUPABASE_ANON_KEY`; uruchom
   `supabase/schema.sql` w panelu Supabase. Pełna instrukcja w `README.md`.
-- **Testy/lint:** brak zautomatyzowanych testów i konfiguracji lintera w tym
-  szkielecie. `next build` weryfikuje typy TypeScript. Po zmianach uruchom
-  `npm run build` jako minimalny sanity check.
+- **Lint:** `npm run lint` (ESLint 9, flat config + `eslint-config-next`).
+- **Testy:** `npm run test` (Vitest, jednorazowo) lub `npm run test:watch`.
+- **Wszystko naraz:** `npm run check` = lint + testy + build. Uruchom to po
+  każdej zmianie — to minimalny warunek „gotowe".
+- Testy obejmują czystą logikę z `src/lib/planner.ts` (podział wypadów na
+  osi czasu, liczenie głosów, „kto jeszcze nie zagłosował"). Komponenty React
+  nie są testowane — nie ma tu renderera testowego.
+- `react-hooks/set-state-in-effect` jest świadomie zdegradowane do
+  ostrzeżenia (`eslint.config.mjs`): apka celowo pobiera dane w `useEffect`,
+  bo nie ma warstwy serwerowej.
 
 ## Conventions
 
@@ -132,6 +143,13 @@ przed podszywaniem. Stare rekordy bez właściciela (`null`) zostają dla zgodno
   opakowuje apkę, a strony pobierają `{ userId, displayName }` hookiem `useAuth()`
   (gwarantowane, bo bramka renderuje dzieci dopiero po zalogowaniu i ustawieniu nazwy).
   Nie czytaj sesji bezpośrednio w stronach.
+- **Logika w `src/lib/planner.ts`, nie w komponentach** — wszystko, co da się
+  policzyć bez Reacta i bez Supabase (sortowanie, zliczanie głosów,
+  formatowanie dat), trzymaj tam i dopisz test w `planner.test.ts`. Strony mają
+  zostać cienkie: pobranie danych + widok.
+- **Render bez `Date.now()`** — moment odniesienia trzymaj w stanie (zob. `now`
+  w `src/app/page.tsx`) i odświeżaj przy wczytaniu danych; wywołanie
+  `Date.now()` w trakcie renderu łamie reguły Reacta i wywala lint.
 - **Teksty UI po polsku** — to apka dla polskojęzycznych znajomych autora.
 - **Style** dopisuj do `src/app/globals.css`, korzystając z istniejących zmiennych
   CSS (`--primary`, `--yes`, `--maybe`, `--no` itd.); brak biblioteki UI.
