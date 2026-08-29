@@ -308,6 +308,10 @@ Dane pojawią się po pierwszych wejściach (z niewielkim opóźnieniem).
 
 ## Pomysły na dalej (poza MVP)
 
+- **„Planuj" — burza mózgów przed dużym wyjazdem.** Osobny byt na dashboardzie,
+  w którym każdy wrzuca propozycję kierunku (link, zdjęcie, kilka zdań), paczka daje
+  kciuki, a zwycięska propozycja jednym tapem staje się normalnym wypadem z terminami.
+  Szkic i pytania otwarte: [`docs/pomysly/planuj.md`](docs/pomysly/planuj.md).
 - **Rozbudowane powiadomienia / przypomnienia.** Np. „za tydzień wyjazd" i „jutro
   wyjazd" liczone od `confirmed_at` — Supabase Scheduled Function (pg_cron) raz dziennie
   sprawdza nadchodzące ustalone wypady i wysyła push przez ten sam mechanizm VAPID.
