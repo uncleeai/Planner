@@ -380,10 +380,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const compose = el.querySelector<HTMLElement>('.chat-compose');
     const pin = peek.querySelector('.chat-peek-input')?.getBoundingClientRect();
     if (compose && pin) {
-      const cb = compose.getBoundingClientRect();
-      const dx = pin.left - cb.left - 12;
-      const dy = pin.top - cb.top - 10;
-      anims.push(compose.animate(flip([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }]), o));
+      // Tylko w pionie: pasek jest na całą szerokość, pole w karcie węższe — przesunięcie
+      // w bok wypychało przycisk wysyłki za prawą krawędź. Linia nad paskiem (też na
+      // całą szerokość) znika na czas lotu.
+      const dy = pin.top - compose.getBoundingClientRect().top - 10;
+      // Pełna szerokość vs węższe pole w karcie: przenikanie przy karcie (pole z karty
+      // prześwituje spod przygaszonej strony), więc nie widać skoku szerokości.
+      anims.push(
+        compose.animate(
+          inn
+            ? [{ transform: `translateY(${dy}px)`, opacity: 0 }, { opacity: 1, offset: 0.3 }, { transform: 'none', opacity: 1 }]
+            : [{ transform: 'none', opacity: 1 }, { opacity: 1, offset: 0.7 }, { transform: `translateY(${dy}px)`, opacity: 0 }],
+          o,
+        ),
+      );
+      compose.style.borderTopColor = 'transparent';
     }
     const top = el.querySelector('.chat-top');
     if (top) {
@@ -417,6 +428,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         for (const a of [frame, ...anims]) a.cancel();
         ghost.remove();
         el.style.background = '';
+        if (compose) compose.style.borderTopColor = '';
       }
     });
   }
