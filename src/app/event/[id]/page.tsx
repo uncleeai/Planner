@@ -209,6 +209,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatNearBottomRef = useRef(true);
   const chatCountRef = useRef(0);
+  const chatPeekRef = useRef<HTMLButtonElement>(null);
+  const chatZoomRef = useRef(false); // otwarte tapnięciem w kartę → animacja „wlotu"
+  const chatClosingRef = useRef(false);
   // Kiedy ostatnio widziałeś czat — licznik „nowych" na karcie czatu.
   const [chatSeenAt, setChatSeenAt] = useState(() => getChatSeen(eventId));
 
@@ -288,11 +291,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     const sync = () => {
       const open = new URLSearchParams(window.location.search).has('czat');
-      if (!open) {
-        chatPushedRef.current = false;
-        setChatSeenAt(Date.now());
-      }
-      setChatOpen(open);
+      const apply = () => {
+        chatClosingRef.current = false;
+        if (!open) {
+          chatPushedRef.current = false;
+          setChatSeenAt(Date.now());
+        }
+        setChatOpen(open);
+      };
+      // Systemowe „wstecz" (Android) też wylatuje z powrotem do karty; zamknięcie
+      // strzałką animuje się samo przed history.back(), więc drugi raz nie.
+      if (!open && chatRef.current && !chatClosingRef.current) animateChat('out', apply);
+      else apply();
     };
     if (new URLSearchParams(window.location.search).has('czat')) setChatOpen(true);
     window.addEventListener('popstate', sync);
@@ -304,18 +314,75 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setWhoFor(null);
     window.history.pushState(null, '', `${window.location.pathname}?czat`);
     chatPushedRef.current = true;
+    chatZoomRef.current = true;
     setChatOpen(true);
   }
 
   function closeChat() {
-    // Wejście prosto z linku/pusha nie ma wpisu pod spodem — wtedy podmieniamy URL.
-    if (chatPushedRef.current) {
-      window.history.back();
+    if (chatClosingRef.current) return;
+    chatClosingRef.current = true;
+    animateChat('out', () => {
+      // Wejście prosto z linku/pusha nie ma wpisu pod spodem — wtedy podmieniamy URL.
+      if (chatPushedRef.current) {
+        window.history.back();
+        return;
+      }
+      chatClosingRef.current = false;
+      window.history.replaceState(null, '', window.location.pathname);
+      setChatOpen(false);
+      setChatSeenAt(Date.now());
+    });
+  }
+
+  // „Wlot" w czat: ekran czatu rozrasta się z karty (clip-path od jej prostokąta
+  // do pełnego ekranu), treść czatu nadlatuje z oddali, a strona pod spodem
+  // najeżdża na kamerę — jak przelot przez okno. Wyjście = to samo wstecz.
+  // Bez karty w kadrze (wejście z pusha) albo przy ograniczonym ruchu: bez tego.
+  function animateChat(dir: 'in' | 'out', done?: () => void) {
+    const el = chatRef.current;
+    const card = chatPeekRef.current?.getBoundingClientRect();
+    const page = chatPeekRef.current?.closest('main');
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!el || !card || !page || still || card.bottom < 0 || card.top > window.innerHeight) {
+      done?.();
       return;
     }
-    window.history.replaceState(null, '', window.location.pathname);
-    setChatOpen(false);
-    setChatSeenAt(Date.now());
+    const box = el.getBoundingClientRect();
+    const from = `inset(${card.top - box.top}px ${box.right - card.right}px ${box.bottom - card.bottom}px ${card.left - box.left}px round 12px)`;
+    const full = 'inset(0px 0px 0px 0px round 0px)';
+    const inn = dir === 'in';
+    const opts: KeyframeAnimationOptions = {
+      duration: inn ? 420 : 300,
+      easing: inn ? 'cubic-bezier(0.22, 1, 0.36, 1)' : 'cubic-bezier(0.4, 0, 0.2, 1)',
+      fill: 'forwards',
+    };
+    const flip = <T,>(k: T[]) => (inn ? k : [...k].reverse());
+    el.style.animation = 'none';
+    // Na wyjściu okno gaśnie pod sam koniec — inaczej tło czatu w kształcie karty
+    // wisiałoby nad nią przez klatkę, zanim popstate zdejmie ekran.
+    const main = el.animate(
+      inn
+        ? [{ clipPath: from, opacity: 0.6 }, { opacity: 1, offset: 0.3 }, { clipPath: full, opacity: 1 }]
+        : [{ clipPath: full, opacity: 1 }, { opacity: 1, offset: 0.75 }, { clipPath: from, opacity: 0 }],
+      opts,
+    );
+    const parts = Array.from(el.children)
+      .filter((c) => !c.classList.contains('tap-catcher'))
+      .map((c) => c.animate(flip([{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'none' }]), opts));
+    const pb = page.getBoundingClientRect();
+    page.style.transformOrigin = `${card.left + card.width / 2 - pb.left}px ${card.top + card.height / 2 - pb.top}px`;
+    const pageAnim = page.animate(
+      flip([{ transform: 'none', opacity: 1 }, { transform: 'scale(1.12)', opacity: 0.35 }]),
+      { ...opts, fill: 'none' },
+    );
+    main.onfinish = () => {
+      pageAnim.cancel();
+      done?.();
+      // Zostawione „forwards" trzymałyby clip-path i transform na zawsze (transform
+      // robi z listy osobny kontekst warstw — picker reakcji lądowałby pod warstwą
+      // tap-catchera). Na wejściu zdejmij; na wyjściu ekran i tak znika.
+      if (inn) for (const a of [main, ...parts]) a.cancel();
+    };
   }
 
   // Otwarty czat: strona pod spodem stoi, Escape zamyka, a wysokość idzie za
@@ -353,6 +420,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   // Nowa wiadomość: zjedź na dół, jeśli byłeś przy dole albo to twoja
   // (czytając starsze, nie wyrywamy cię w dół). Otwarcie = od razu najnowsze.
+  useLayoutEffect(() => {
+    if (chatOpen && chatZoomRef.current) {
+      chatZoomRef.current = false;
+      animateChat('in');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatOpen]);
+
   useLayoutEffect(() => {
     const sc = chatScrollRef.current;
     if (!chatOpen || !sc) {
@@ -611,9 +686,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function deleteComment(id: string) {
-    if (!(await appConfirm('Usunąć komentarz?', { confirmLabel: 'Usuń', danger: true }))) return;
-    setComments((prev) => prev.filter((c) => c.id !== id));
-    const { error } = await supabase.from('comments').delete().eq('id', id);
+    if (!(await appConfirm('Usunąć wiadomość?', { confirmLabel: 'Usuń', danger: true }))) return;
+    // Nie znika z wątku — zostaje „Wiadomość usunięta", żeby odpowiedzi pod nią miały sens.
+    const deleted_at = new Date().toISOString();
+    setComments((prev) => prev.map((c) => (c.id === id ? { ...c, body: '', deleted_at } : c)));
+    setReactions((prev) => prev.filter((r) => r.comment_id !== id));
+    const { error } = await supabase.rpc('delete_comment', { p_id: id });
     if (error) load();
   }
 
@@ -846,8 +924,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       }),
     [comments],
   );
+  // Karta czatu pomija usunięte — „wiadomość usunięta" w zajawce to szum.
+  const liveComments = comments.filter((c) => !c.deleted_at);
   const unreadCount = comments.filter(
-    (c) => c.user_id !== userId && Date.parse(c.created_at) > chatSeenAt,
+    (c) => c.user_id !== userId && !c.deleted_at && Date.parse(c.created_at) > chatSeenAt,
   ).length;
 
   // Uczestnicy, którzy oddali jakikolwiek głos — z awatarami (do stosu na górze).
@@ -1175,21 +1255,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         {/* Licznik jak „4/4 DAŁO ZNAĆ" przy terminach: nowe = akcent, inaczej wyciszony. */}
         <div className="rail">
           <div className="section-label">Czat</div>
-          {comments.length > 0 && (
+          {liveComments.length > 0 && (
             <span className={`chip${unreadCount > 0 ? ' hot' : ' quiet'}`}>
               {unreadCount > 0
                 ? `${unreadCount} ${plural(unreadCount, 'nowa', 'nowe', 'nowych')}`
-                : `${comments.length} ${plural(comments.length, 'wiadomość', 'wiadomości', 'wiadomości')}`}
+                : `${liveComments.length} ${plural(liveComments.length, 'wiadomość', 'wiadomości', 'wiadomości')}`}
             </span>
           )}
         </div>
         {/* Zajawka zamiast całego wątku — strona wypadu nie rośnie z każdą
             wiadomością. Tap = czat na pełnym ekranie. */}
-        <button type="button" className="chat-peek" onClick={openChat}>
-          {comments.length === 0 ? (
+        <button type="button" className="chat-peek" ref={chatPeekRef} onClick={openChat}>
+          {liveComments.length === 0 ? (
             <span className="chat-peek-line muted">Cisza. Napisz coś pierwszy.</span>
           ) : (
-            comments.slice(-2).map((c) => {
+            liveComments.slice(-2).map((c) => {
               const prof = c.user_id ? profileById.get(c.user_id) : undefined;
               const name = prof?.display_name ?? c.author_name;
               return (
@@ -1241,8 +1321,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               const prof = c.user_id ? profileById.get(c.user_id) : undefined;
               const name = prof?.display_name ?? c.author_name;
               const mine = c.user_id === userId;
-              const saved = !c.id.startsWith('optimistic'); // optymistyczny nie ma jeszcze id z bazy
-              const canDel = c.user_id === userId || isOrganizer;
+              const deleted = !!c.deleted_at;
+              // optymistyczny nie ma jeszcze id z bazy; usunięta nie ma już akcji
+              const saved = !c.id.startsWith('optimistic') && !deleted;
+              const canDel = !deleted && (c.user_id === userId || isOrganizer);
               const canEdit = saved && c.user_id === userId;
               const groups = saved ? reactionsByComment.get(c.id) ?? [] : [];
               const myEmoji = saved
@@ -1321,7 +1403,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         </button>
                       </form>
                     ) : (
-                      <p className="comment-text">{c.body}</p>
+                      <p className={`comment-text${deleted ? ' deleted' : ''}`}>
+                        {deleted ? 'Wiadomość usunięta' : c.body}
+                      </p>
                     )}
                     </div>
                     {/* Long-press: reakcje, a przy swoich/organizatorze też edycja

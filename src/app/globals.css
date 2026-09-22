@@ -1269,6 +1269,11 @@ img.avatar { display: inline-block; }
   color: var(--text);
 }
 .comment.mine:not(.first) .comment-text { border-top-right-radius: 6px; }
+.comment .comment-text.deleted,
+.comment.mine .comment-text.deleted {
+  background: none; border: 1px dashed var(--border-strong);
+  color: var(--muted); font-style: italic;
+}
 .comment.mine:not(.last) .comment-text { border-bottom-right-radius: 6px; }
 .comment-form { display: flex; gap: 8px; }
 .comment-form input, .comment-form textarea { flex: 1; min-width: 0; }

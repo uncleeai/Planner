@@ -419,7 +419,7 @@ export default function Home() {
   const unreadByEvent = useMemo(() => {
     const latest = new Map<string, number>();
     for (const c of recentComments) {
-      if (c.user_id === userId) continue;
+      if (c.user_id === userId || c.deleted_at) continue;
       const t = new Date(c.created_at).getTime();
       if (t > (latest.get(c.event_id) ?? 0)) latest.set(c.event_id, t);
     }

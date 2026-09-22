@@ -175,6 +175,10 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (portal, `?czat` w historii — „wstecz" zamyka; push o komentarzu linkuje z `?czat`).
   Dymki (moje po prawej), serie jednej osoby (< 5 min) dzielą awatar/imię/godzinę,
   separatory dni. Znacznik „przeczytane" (`chatSeen`) stawia dopiero otwarty czat.
+  Wejście/wyjście: ekran rośnie z karty (clip-path, WAAPI), strona pod spodem najeżdża.
+  **Usuwanie miękkie:** RPC `delete_comment` (security definer: autor/organizator/admin)
+  czyści `body` i stawia `deleted_at` + kasuje reakcje; w wątku zostaje „Wiadomość
+  usunięta", karta czatu i kropki nieprzeczytanych pomijają usunięte.
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
   tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.

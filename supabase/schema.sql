@@ -144,6 +144,9 @@ create table if not exists public.comments (
   created_at  timestamptz not null default now()
 );
 create index if not exists comments_event_id_idx on public.comments(event_id);
+-- Usunięcie wiadomości = „Wiadomość usunięta" w wątku zamiast dziury w rozmowie:
+-- stempel + wyczyszczona treść (funkcja delete_comment niżej).
+alter table public.comments add column if not exists deleted_at timestamptz;
 
 -- Profile użytkownika = lista „paczki" (kto kiedykolwiek się zalogował i ustawił nazwę).
 -- Pozwala policzyć „kto jeszcze nie zagłosował", bo klient z kluczem anon nie ma
@@ -289,7 +292,8 @@ create policy "comments read"   on public.comments for select to authenticated u
 create policy "comments insert" on public.comments for insert to authenticated
   with check (user_id = auth.uid());
 create policy "comments update" on public.comments for update to authenticated
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = auth.uid() and deleted_at is null)
+  with check (user_id = auth.uid() and deleted_at is null);
 create policy "comments delete" on public.comments for delete to authenticated
   using (
     user_id = auth.uid()
@@ -299,6 +303,32 @@ create policy "comments delete" on public.comments for delete to authenticated
       where e.id = comments.event_id and e.created_by_user_id = auth.uid()
     )
   );
+
+-- Usuwanie wiadomości (miękkie): autor, organizator wypadu albo admin. Security
+-- definer, bo organizator nie ma prawa UPDATE cudzego komentarza (edytuje tylko autor),
+-- a tu wolno mu wyłącznie wyczyścić treść i postawić stempel. Reakcje lecą razem z nią.
+create or replace function public.delete_comment(p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.comments c
+    left join public.events e on e.id = c.event_id
+    where c.id = p_id
+      and (c.user_id = auth.uid() or e.created_by_user_id = auth.uid() or public.is_admin())
+  ) then
+    raise exception 'Brak uprawnień do usunięcia tej wiadomości';
+  end if;
+  update public.comments set body = '', deleted_at = now()
+    where id = p_id and deleted_at is null;
+  delete from public.comment_reactions where comment_id = p_id;
+end;
+$$;
+revoke all on function public.delete_comment(uuid) from public, anon;
+grant execute on function public.delete_comment(uuid) to authenticated;
 
 -- Reakcje emoji na komentarze (styl Messengera): JEDNA reakcja na osobę per
 -- komentarz — wybór innej emoji podmienia poprzednią (upsert), tap w tę samą

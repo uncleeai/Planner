@@ -122,6 +122,8 @@ export type Comment = {
   author_name: string;
   body: string;
   created_at: string;
+  // Usunięta = zostaje w wątku jako „Wiadomość usunięta" (treść wyczyszczona w bazie).
+  deleted_at?: string | null;
 };
 
 // Reakcja emoji na komentarz — klucz (comment_id, user_id, emoji).
