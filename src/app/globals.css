@@ -1170,6 +1170,12 @@ img.avatar { display: inline-block; }
 @keyframes chat-in {
   from { transform: translateX(28%); opacity: 0; }
 }
+/* Tło okna czatu na czas animacji wejścia/wyjścia (rośnie z karty) — pod treścią. */
+.chat-ghost {
+  position: absolute; inset: 0; z-index: -1;
+  background: var(--bg); transform-origin: 0 0;
+  border-radius: 12px; pointer-events: none;
+}
 .chat-top {
   display: flex; align-items: center; gap: 10px; flex-shrink: 0;
   padding:

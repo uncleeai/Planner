@@ -356,16 +356,23 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const o: KeyframeAnimationOptions = { duration: T, easing, fill: 'both' };
     const flip = <K,>(k: K[]) => (inn ? k : [...k].reverse());
     const box = el.getBoundingClientRect();
-    const clipCard = `inset(${card.top - box.top}px ${box.right - card.right}px ${box.bottom - card.bottom}px ${card.left - box.left}px round 12px)`;
-    const clipFull = 'inset(0px 0px 0px 0px round 0px)';
-
+    // Rośnie tylko TŁO okna (osobna warstwa skalowana z prostokąta karty), a nie
+    // przycięty ekran — dzięki temu pasek pisania leci po wierzchu i jest widoczny
+    // całą drogę, a animacja to sam transform (kompozytor, bez przeliczeń co klatkę).
+    const ghost = document.createElement('div');
+    ghost.className = 'chat-ghost';
+    el.prepend(ghost);
     el.style.animation = 'none';
+    el.style.background = 'transparent';
+    const sx = card.width / box.width;
+    const sy = card.height / box.height;
+    const cardT = `translate(${card.left - box.left}px, ${card.top - box.top}px) scale(${sx}, ${sy})`;
     const anims: Animation[] = [];
-    // Na wyjściu okno gaśnie pod sam koniec, żeby nie zostało pustym prostokątem nad kartą.
-    const frame = el.animate(
+    // Na wyjściu tło gaśnie pod koniec, żeby nie zostało pustym prostokątem nad kartą.
+    const frame = ghost.animate(
       inn
-        ? [{ clipPath: clipCard }, { clipPath: clipFull }]
-        : [{ clipPath: clipFull, opacity: 1 }, { opacity: 1, offset: 0.8 }, { clipPath: clipCard, opacity: 0 }],
+        ? [{ transform: cardT, opacity: 0.6 }, { opacity: 1, offset: 0.25 }, { transform: 'none', opacity: 1 }]
+        : [{ transform: 'none', opacity: 1 }, { opacity: 1, offset: 0.8 }, { transform: cardT, opacity: 0 }],
       o,
     );
     anims.push(page.animate(flip([{ opacity: 1 }, { opacity: 0.4 }]), { ...o, fill: 'none' }));
@@ -384,7 +391,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         top.animate(flip([{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }]), {
           ...o,
           duration: inn ? 380 : 200,
-          delay: inn ? 140 : 0,
+          delay: inn ? 200 : 0,
         }),
       );
     }
@@ -406,7 +413,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       // Zostawione animacje trzymałyby clip-path/transform na zawsze (transform robi
       // osobny kontekst warstw — picker reakcji lądowałby pod tap-catcherem).
       // Na wejściu zdejmij; na wyjściu ekran i tak zaraz znika.
-      if (inn) for (const a of [frame, ...anims]) a.cancel();
+      if (inn) {
+        for (const a of [frame, ...anims]) a.cancel();
+        ghost.remove();
+        el.style.background = '';
+      }
     });
   }
 

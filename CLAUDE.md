@@ -175,7 +175,8 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (portal, `?czat` w historii — „wstecz" zamyka; push o komentarzu linkuje z `?czat`).
   Dymki (moje po prawej), serie jednej osoby (< 5 min) dzielą awatar/imię/godzinę,
   separatory dni. Znacznik „przeczytane" (`chatSeen`) stawia dopiero otwarty czat.
-  Wejście/wyjście „karta się rozkłada" (WAAPI): ekran rośnie z karty (clip-path), pole
+  Wejście/wyjście „karta się rozkłada" (WAAPI): tło okna (.chat-ghost) rośnie z karty
+  transformem — bez clip-path, który ucinał treść w locie — pole
   pisania zjeżdża z karty na dół, wiadomości wskakują kaskadą od dołu, strona przygasa.
   **Usuwanie miękkie:** RPC `delete_comment` (security definer: autor/organizator/admin)
   czyści `body` i stawia `deleted_at` + kasuje reakcje; w wątku zostaje „Wiadomość
