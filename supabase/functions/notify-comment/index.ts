@@ -92,7 +92,8 @@ Deno.serve(async (req) => {
   const message = JSON.stringify({
     title: `${comment.author_name} · ${event.title}`,
     body: preview(comment.body ?? ''),
-    url: `/event/${event.id}`,
+    // ?czat — tap w powiadomienie otwiera od razu rozmowę, nie samą stronę wypadu.
+    url: `/event/${event.id}?czat`,
     // Wspólny tag dla całego wypadu: kolejna wiadomość PODMIENIA poprzednią na
     // ekranie blokady, zamiast budować stos przy ożywionej wymianie zdań.
     tag: `chat-${event.id}`,

@@ -1125,17 +1125,115 @@ img.avatar { display: inline-block; }
 }
 .gallery-empty { margin: 0 0 10px; }
 
-/* Komentarze pod wypadem */
-.comments-card h2 { margin-bottom: 14px; }
-.comment-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
-.comment { position: relative; touch-action: pan-y; }
+/* Czat: na stronie wypadu tylko zajawka (.chat-peek), rozmowa na pełnym ekranie
+   (.chat-screen, portal do body) — strona nie rośnie z każdą wiadomością. */
+.chat-peek {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  padding: 14px; text-align: left;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-weight: 400; letter-spacing: 0;
+}
+@media (hover: hover) {
+  .chat-peek:hover { background: var(--card); border-color: var(--border-strong); }
+}
+.chat-peek:active { transform: scale(0.99); }
+.chat-peek-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.chat-peek-stack { display: flex; padding-left: 6px; }
+.chat-peek-stack .avatar { margin-left: -6px; }
+.chat-peek-count {
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.chat-peek-count b { color: var(--accent); }
+.chat-peek-line { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: 0.9rem; min-width: 0; }
+.chat-peek-line > span:last-child {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: rgba(255, 255, 255, 0.85);
+}
+.chat-peek-line b { font-weight: 600; color: var(--text); }
+.chat-peek-input {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 10px; padding: 8px 8px 8px 15px;
+  background: var(--card-2); border: 1px solid var(--border); border-radius: 999px;
+  color: var(--muted); font-size: 0.95rem;
+}
+.chat-peek-input i {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink);
+}
+
+.chat-screen {
+  position: fixed; top: 0; left: 0; right: 0; height: 100%; z-index: 100;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chat-screen { animation: chat-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+}
+@keyframes chat-in {
+  from { transform: translateX(28%); opacity: 0; }
+}
+.chat-top {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  padding:
+    calc(10px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right))
+    10px calc(10px + env(safe-area-inset-left));
+  border-bottom: 1px solid var(--border);
+}
+.chat-back {
+  width: 38px; height: 38px; padding: 0; flex-shrink: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--card-2); color: var(--text);
+}
+.chat-title { display: flex; flex-direction: column; min-width: 0; }
+.chat-title b { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-title span {
+  font-family: var(--mono); font-size: 0.64rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.chat-scroll {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column;
+  padding: 8px calc(12px + env(safe-area-inset-right)) 12px calc(12px + env(safe-area-inset-left));
+  scrollbar-width: none;
+}
+.chat-scroll::-webkit-scrollbar { display: none; }
+/* Mało wiadomości → przyklejone do dołu, nad polem pisania (jak w komunikatorach). */
+.chat-scroll > * { margin-top: auto; }
+.chat-empty { text-align: center; margin-bottom: 8px; }
+.chat-day {
+  align-self: center; padding: 14px 0 6px;
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--muted);
+}
+.chat-compose {
+  flex-shrink: 0; align-items: flex-end;
+  padding:
+    10px calc(12px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+  border-top: 1px solid var(--border);
+}
+.chat-compose textarea {
+  min-height: 0; max-height: 140px; resize: none;
+  padding: 9px 15px; border-radius: 21px; line-height: 1.4;
+}
+.comment-form.chat-compose .send { width: 42px; height: 42px; border-radius: 50%; }
+
+/* Wiadomości: dymki, moje po prawej. Seria jednej osoby dzieli awatar/imię/godzinę,
+   a narożniki od strony serii się „sklejają". */
+.comment-list { display: flex; flex-direction: column; }
+.comment { position: relative; touch-action: pan-y; margin-top: 2px; }
+.comment.first { margin-top: 10px; }
 /* Swipe-to-delete (jak iOS Mail): treść rzędu jeździ w lewo, odsłaniając
    przycisk „Usuń" pod spodem. Pozycją w trakcie gestu steruje JS (inline),
    stan otwarty utrwala transform z Reacta; tranzycja robi doślizg. */
 .comment-swipe {
-  display: flex; gap: 10px; align-items: flex-start;
+  display: flex; gap: 8px; align-items: flex-end;
   transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
+.comment.mine .comment-swipe { justify-content: flex-end; }
+.comment.editing .comment-line > form { flex: 1; }
 .comment-swipe-del {
   position: absolute; top: 2px; bottom: 2px; right: 0; width: 64px;
   border: none; border-radius: var(--radius-sm);
@@ -1144,58 +1242,58 @@ img.avatar { display: inline-block; }
   opacity: 0; pointer-events: none;
   transition: opacity 0.2s;
 }
-/* Na dotyku usuwanie robi swipe — ✕ w nagłówku tylko dla myszy. */
-@media (pointer: coarse) {
-  .comment-del { display: none; }
+/* Cudze: [awatar 28 + 8 odstępu] + dymek; imię, reakcje i godzina wcięte o tyle samo. */
+.comment-body {
+  display: flex; flex-direction: column; align-items: flex-start;
+  min-width: 0; max-width: calc(78% + 36px);
 }
-.comment-body { flex: 1; min-width: 0; }
-.comment-head { display: flex; align-items: center; gap: 8px; }
-.comment-author { font-weight: 600; font-size: 0.9rem; }
-.comment-time { font-size: 0.75rem; color: var(--muted); }
-/* Ołówek edycji — zaraz przy godzinie dodania; ✕ zostaje przy prawej krawędzi. */
-.comment-edit-btn {
-  display: inline-flex; align-items: center;
-  background: none; border: none;
-  color: var(--muted); padding: 2px 4px;
-  cursor: pointer; opacity: 0.55;
-}
-@media (hover: hover) {
-  .comment-edit-btn:hover { opacity: 1; }
-}
-.comment-del {
-  margin-left: auto; background: none; border: none;
-  color: var(--muted); font-size: 0.8rem; padding: 2px 6px;
-  cursor: pointer; opacity: 0.55;
-}
-@media (hover: hover) {
-  .comment-del:hover { color: var(--no); opacity: 1; }
+.comment.mine .comment-body { align-items: flex-end; max-width: 78%; }
+.comment.editing .comment-body { flex: 1; max-width: 100%; align-items: stretch; }
+.comment-line { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.comment-av { width: 28px; flex-shrink: 0; display: flex; }
+.comment-author { font-size: 0.72rem; font-weight: 600; color: var(--muted); margin: 0 0 3px 48px; }
+.comment:not(.mine) .reactions,
+.comment:not(.mine) .comment-time { margin-left: 44px; }
+.comment-time {
+  margin: 3px 8px 0;
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--muted);
 }
 .comment-text {
-  margin: 2px 0 0; font-size: 0.92rem; line-height: 1.45;
-  color: rgba(255, 255, 255, 0.85);
+  margin: 0; padding: 7px 13px;
+  background: var(--card-2); border: 1px solid var(--border); border-radius: 18px;
+  font-size: 0.94rem; line-height: 1.4; color: rgba(255, 255, 255, 0.9);
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
+.comment:not(.mine):not(.first) .comment-text { border-top-left-radius: 6px; }
+.comment:not(.mine):not(.last) .comment-text { border-bottom-left-radius: 6px; }
+.comment.mine .comment-text {
+  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  color: var(--text);
+}
+.comment.mine:not(.first) .comment-text { border-top-right-radius: 6px; }
+.comment.mine:not(.last) .comment-text { border-bottom-right-radius: 6px; }
 .comment-form { display: flex; gap: 8px; }
-.comment-form input { flex: 1; min-width: 0; }
+.comment-form input, .comment-form textarea { flex: 1; min-width: 0; }
 .comment-form button { flex-shrink: 0; }
-.comment-form.comment-edit { margin-top: 4px; }
 .comment-form.comment-edit input { padding: 8px 12px; font-size: 0.92rem; }
 .comment-form.comment-edit .send { width: 38px; height: 38px; font-size: 0.95rem; }
 
 /* Reakcje na komentarze (styl Messengera): przytrzymanie dymka otwiera picker
    nad komentarzem; chipy pod komentarzem pokazują kto co dał (tap = lista). */
-.comment { position: relative; }
 .reactions {
   position: relative;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-  margin-top: 6px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  margin: -5px 6px 0; z-index: 1;
 }
+.comment.mine .reactions { justify-content: flex-end; }
 .reaction-chip {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 9px; min-height: 26px;
-  font-family: var(--mono); font-size: 0.8rem; line-height: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px 7px; min-height: 22px;
+  font-family: var(--mono); font-size: 0.74rem; line-height: 1;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
@@ -1208,9 +1306,9 @@ img.avatar { display: inline-block; }
   .reaction-chip:hover { border-color: rgba(255, 255, 255, 0.3); }
 }
 .reaction-picker {
-  position: absolute; left: 34px; bottom: calc(100% - 4px); z-index: 60;
+  position: absolute; left: 0; bottom: calc(100% - 4px); z-index: 60;
   display: flex; gap: 2px; padding: 5px 7px;
-  background: rgba(20, 23, 26, 0.97);
+  background: #14171a;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -1222,6 +1320,10 @@ img.avatar { display: inline-block; }
 @keyframes picker-pop {
   from { opacity: 0; transform: scale(0.7); }
 }
+.comment.mine .reaction-picker { left: auto; right: 0; transform-origin: right bottom; }
+.picker-sep { width: 1px; align-self: stretch; margin: 4px 3px; background: rgba(255, 255, 255, 0.14); }
+.reaction-picker .picker-act { display: grid; place-items: center; color: var(--muted); font-size: 0.95rem; }
+.reaction-picker .picker-act.danger { color: var(--no); }
 .reaction-picker button {
   background: none; border: none; padding: 6px 7px;
   font-size: 1.15rem; line-height: 1; cursor: pointer; border-radius: 999px;
@@ -1235,13 +1337,15 @@ img.avatar { display: inline-block; }
 /* Lista „kto zareagował" — po tapnięciu w chipy. */
 .who-pop {
   position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 60;
+  white-space: nowrap;
   display: flex; flex-direction: column; gap: 5px;
   min-width: 130px; padding: 8px 12px;
-  background: rgba(20, 23, 26, 0.97);
+  background: #14171a;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
+.comment.mine .who-pop { left: auto; right: 0; }
 .who-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   font-size: 0.82rem;

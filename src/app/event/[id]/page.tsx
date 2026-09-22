@@ -1,6 +1,7 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
@@ -24,7 +25,7 @@ import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import { notifyComment } from '@/lib/notifyComment';
-import { markChatSeen } from '@/lib/chatSeen';
+import { getChatSeen, markChatSeen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { appAlert, appConfirm } from '@/components/Dialogs';
 
@@ -74,18 +75,57 @@ function longPressHandlers(fire: () => void) {
     onPointerLeave: cancel,
     onContextMenu: (e: React.MouseEvent) => {
       e.preventDefault();
+      // Prawy klik zaczął też odliczanie long-pressa, a puszczenie przycisku trafia
+      // już w warstwę nad pickerem — bez tego picker otwierałby się drugi raz.
+      cancel();
       fire();
     },
   };
 }
 
 function formatCommentTime(iso: string): string {
-  return new Date(iso).toLocaleString('pl-PL', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Separator dnia w czacie: „DZIŚ" / „WCZORAJ" / „WT 16 WRZ" (+ rok, gdy nie bieżący).
+function chatDayLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const days = Math.round(
+    (new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000,
+  );
+  if (days === 0) return 'DZIŚ';
+  if (days === 1) return 'WCZORAJ';
+  return d
+    .toLocaleDateString('pl-PL', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+    })
+    .replace(/[.,]/g, '')
+    .toUpperCase();
+}
+
+// Seria wiadomości jednej osoby (ten sam dzień, odstępy < 5 min) = jeden awatar,
+// jedno imię, jedna godzina — jak w Messengerze.
+const CHAT_GROUP_GAP_MS = 5 * 60 * 1000;
+function sameChatGroup(a: Comment | undefined, b: Comment | undefined): boolean {
+  return (
+    !!a &&
+    !!b &&
+    (a.user_id ?? a.author_name) === (b.user_id ?? b.author_name) &&
+    Math.abs(Date.parse(b.created_at) - Date.parse(a.created_at)) < CHAT_GROUP_GAP_MS &&
+    new Date(a.created_at).toDateString() === new Date(b.created_at).toDateString()
+  );
+}
+
+// 1 wiadomość / 2 nowe / 5 nowych — polska odmiana po liczebniku.
+function plural(n: number, one: string, few: string, many: string): string {
+  if (n === 1) return one;
+  const d = n % 10;
+  const t = n % 100;
+  return d >= 2 && d <= 4 && (t < 12 || t > 14) ? few : many;
 }
 
 // Termin w nagłówku slotu: jednodniowy dostaje „liść daty" (liść niesie dzień
@@ -160,6 +200,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
   const [editing, setEditing] = useState(false);
 
+  // Czat na pełnym ekranie (nad stroną wypadu). Siedzi pod `?czat` w historii,
+  // więc systemowe „wstecz" zamyka czat zamiast wychodzić z wypadu, a push
+  // o komentarzu otwiera od razu rozmowę.
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatPushedRef = useRef(false);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const chatNearBottomRef = useRef(true);
+  const chatCountRef = useRef(0);
+  // Kiedy ostatnio widziałeś czat — licznik „nowych" na karcie czatu.
+  const [chatSeenAt, setChatSeenAt] = useState(() => getChatSeen(eventId));
+
   // Wiadomości nowsze niż moment wejścia na stronę dostają animację wjazdu
   // (comment-fresh w CSS); historia z pierwszego fetchu wchodzi bez animacji.
   const mountTsRef = useRef(Date.now());
@@ -226,11 +278,99 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setLoading(false);
   }, [eventId, userId, displayName]);
 
-  // Widzisz czat = przeczytane: znacznik przy każdej zmianie listy komentarzy
-  // (mount + dosypka z realtime przy otwartej stronie).
+  // Otwarty czat = przeczytane: znacznik przy każdej zmianie listy komentarzy
+  // (otwarcie + dosypka z realtime). Sama strona wypadu już nie odznacza —
+  // karta czatu pokazuje ile przyszło nowych.
   useEffect(() => {
-    markChatSeen(eventId);
-  }, [eventId, comments]);
+    if (chatOpen) markChatSeen(eventId);
+  }, [eventId, comments, chatOpen]);
+
+  useEffect(() => {
+    const sync = () => {
+      const open = new URLSearchParams(window.location.search).has('czat');
+      if (!open) {
+        chatPushedRef.current = false;
+        setChatSeenAt(Date.now());
+      }
+      setChatOpen(open);
+    };
+    if (new URLSearchParams(window.location.search).has('czat')) setChatOpen(true);
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
+
+  function openChat() {
+    setPickerFor(null);
+    setWhoFor(null);
+    window.history.pushState(null, '', `${window.location.pathname}?czat`);
+    chatPushedRef.current = true;
+    setChatOpen(true);
+  }
+
+  function closeChat() {
+    // Wejście prosto z linku/pusha nie ma wpisu pod spodem — wtedy podmieniamy URL.
+    if (chatPushedRef.current) {
+      window.history.back();
+      return;
+    }
+    window.history.replaceState(null, '', window.location.pathname);
+    setChatOpen(false);
+    setChatSeenAt(Date.now());
+  }
+
+  // Otwarty czat: strona pod spodem stoi, Escape zamyka, a wysokość idzie za
+  // visualViewport — przy klawiaturze (iOS) pole pisania zostaje nad nią.
+  useEffect(() => {
+    if (!chatOpen) return;
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      // Escape w polu edycji wiadomości tylko anuluje edycję.
+      if (e.key === 'Escape' && !(e.target as HTMLElement).closest?.('.comment-edit')) closeChat();
+    };
+    window.addEventListener('keydown', onKey);
+    const vv = window.visualViewport;
+    const fit = () => {
+      const el = chatRef.current;
+      const sc = chatScrollRef.current;
+      if (!vv || !el) return;
+      el.style.height = `${vv.height}px`;
+      el.style.top = `${vv.offsetTop}px`;
+      if (sc && chatNearBottomRef.current) sc.scrollTop = sc.scrollHeight;
+    };
+    fit();
+    vv?.addEventListener('resize', fit);
+    vv?.addEventListener('scroll', fit);
+    return () => {
+      document.documentElement.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+      vv?.removeEventListener('resize', fit);
+      vv?.removeEventListener('scroll', fit);
+    };
+    // closeChat czyta tylko refy i settery — stabilny w praktyce.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatOpen]);
+
+  // Nowa wiadomość: zjedź na dół, jeśli byłeś przy dole albo to twoja
+  // (czytając starsze, nie wyrywamy cię w dół). Otwarcie = od razu najnowsze.
+  useLayoutEffect(() => {
+    const sc = chatScrollRef.current;
+    if (!chatOpen || !sc) {
+      chatCountRef.current = 0;
+      return;
+    }
+    const opening = chatCountRef.current === 0;
+    const grew = comments.length > chatCountRef.current;
+    chatCountRef.current = comments.length;
+    if (!grew) return;
+    const lastMine = comments[comments.length - 1]?.user_id === userId;
+    if (opening) {
+      sc.scrollTop = sc.scrollHeight;
+      chatNearBottomRef.current = true;
+    } else if (lastMine || chatNearBottomRef.current) {
+      sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
+    }
+  }, [chatOpen, comments, userId]);
 
   // Seria zmian z realtime (własny głos + cudze + reconnect) sklejana w jeden load()
   // zamiast osobnego 5-zapytaniowego pobrania na każdy wiersz — inaczej burst zapychał
@@ -443,6 +583,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const body = newComment.trim();
     if (!body) return;
     setNewComment('');
+    const ta = (e.currentTarget as HTMLFormElement).querySelector('textarea');
+    if (ta) ta.style.height = '';
     // Optymistycznie pokaż od razu; load() z realtime zastąpi listę prawdą z bazy.
     const optimistic: Comment = {
       id: `optimistic-${Date.now()}`,
@@ -688,6 +830,25 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     for (const arr of m.values()) arr.sort((a, b) => order(a.emoji) - order(b.emoji));
     return m;
   }, [reactions, userId]);
+
+  // Wiersze czatu: separator dnia + gdzie seria się zaczyna/kończy.
+  const chatRows = useMemo(
+    () =>
+      comments.map((c, i) => {
+        const prev = comments[i - 1];
+        const day = chatDayLabel(c.created_at);
+        return {
+          c,
+          day: !prev || chatDayLabel(prev.created_at) !== day ? day : null,
+          first: !sameChatGroup(prev, c),
+          last: !sameChatGroup(c, comments[i + 1]),
+        };
+      }),
+    [comments],
+  );
+  const unreadCount = comments.filter(
+    (c) => c.user_id !== userId && Date.parse(c.created_at) > chatSeenAt,
+  ).length;
 
   // Uczestnicy, którzy oddali jakikolwiek głos — z awatarami (do stosu na górze).
   const participantsPeople = useMemo<Person[]>(() => {
@@ -1012,13 +1173,88 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <section className="ev-section">
         <div className="section-label">Czat</div>
-        {comments.length === 0 ? (
-          <p className="small muted">Cisza. Napisz coś pierwszy.</p>
-        ) : (
-          <div className="comment-list">
-            {comments.map((c) => {
+        {/* Zajawka zamiast całego wątku — strona wypadu nie rośnie z każdą
+            wiadomością. Tap = czat na pełnym ekranie. */}
+        <button type="button" className="chat-peek" onClick={openChat}>
+          {comments.length > 0 && (
+            <span className="chat-peek-head">
+              <span className="chat-peek-stack">
+                {[...new Map(comments.map((c) => [c.user_id ?? c.author_name, c])).values()]
+                  .slice(-4)
+                  .map((c) => {
+                    const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+                    const name = prof?.display_name ?? c.author_name;
+                    return <Avatar key={c.id} name={name} avatar={prof?.avatar ?? null} size={22} />;
+                  })}
+              </span>
+              <span className="chat-peek-count">
+                {comments.length} {plural(comments.length, 'wiadomość', 'wiadomości', 'wiadomości')}
+                {unreadCount > 0 && (
+                  <>
+                    {' · '}
+                    <b>
+                      {unreadCount} {plural(unreadCount, 'nowa', 'nowe', 'nowych')}
+                    </b>
+                  </>
+                )}
+              </span>
+            </span>
+          )}
+          {comments.length === 0 ? (
+            <span className="chat-peek-line muted">Cisza. Napisz coś pierwszy.</span>
+          ) : (
+            comments.slice(-2).map((c) => {
               const prof = c.user_id ? profileById.get(c.user_id) : undefined;
               const name = prof?.display_name ?? c.author_name;
+              return (
+                <span key={c.id} className="chat-peek-line">
+                  <Avatar name={name} avatar={prof?.avatar ?? null} size={22} />
+                  <span>
+                    <b>{c.user_id === userId ? 'Ty' : name}:</b> {c.body}
+                  </span>
+                </span>
+              );
+            })
+          )}
+          <span className="chat-peek-input">
+            Napisz coś…
+            <i aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+            </i>
+          </span>
+        </button>
+      </section>
+
+      {chatOpen && createPortal(
+        <div className="chat-screen" ref={chatRef} role="dialog" aria-modal="true" aria-label="Czat">
+          <header className="chat-top">
+            <button type="button" className="chat-back" aria-label="Wróć" onClick={closeChat}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <div className="chat-title">
+              <b>{event?.emoji ? `${event.emoji} ` : ''}{event?.title}</b>
+              <span>
+                Czat{memberCount > 0 ? ` · ${memberCount} ${plural(memberCount, 'osoba', 'osoby', 'osób')}` : ''}
+              </span>
+            </div>
+          </header>
+
+          <div
+            className="chat-scroll"
+            ref={chatScrollRef}
+            onScroll={(e) => {
+              const sc = e.currentTarget;
+              chatNearBottomRef.current = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
+            }}
+          >
+            {comments.length === 0 ? (
+              <p className="chat-empty small muted">Cisza. Napisz coś pierwszy.</p>
+            ) : (
+          <div className="comment-list">
+            {chatRows.map(({ c, day, first, last }) => {
+              const prof = c.user_id ? profileById.get(c.user_id) : undefined;
+              const name = prof?.display_name ?? c.author_name;
+              const mine = c.user_id === userId;
               const saved = !c.id.startsWith('optimistic'); // optymistyczny nie ma jeszcze id z bazy
               const canDel = c.user_id === userId || isOrganizer;
               const canEdit = saved && c.user_id === userId;
@@ -1026,18 +1262,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               const myEmoji = saved
                 ? reactions.find((r) => r.comment_id === c.id && r.user_id === userId)?.emoji ?? null
                 : null;
-              const pressable = saved && editingCommentId !== c.id;
+              const isEditing = editingCommentId === c.id;
+              const pressable = saved && !isEditing;
               return (
+                <Fragment key={c.id}>
+                {day && <div className="chat-day">{day}</div>}
                 <div
-                  key={c.id}
-                  className={`comment${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}${pressable ? ' pressable' : ''}`}
+                  className={`comment${mine ? ' mine' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${isEditing ? ' editing' : ''}${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}${pressable ? ' pressable' : ''}`}
                   {...(pressable
                     ? longPressHandlers(() => {
                         setWhoFor(null);
                         setPickerFor(c.id);
                       })
                     : {})}
-                  {...(canDel && saved && editingCommentId !== c.id
+                  {...(canDel && saved && !isEditing
                     ? {
                         // saved: świeży (optymistyczny) wpis zaraz dostanie nowe
                         // id i nowy element DOM — swipe w tym oknie łapałby
@@ -1071,33 +1309,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                       if (swipedCommentId === c.id) setSwipedCommentId(null);
                     }}
                   >
-                  <Avatar name={name} avatar={prof?.avatar ?? null} size={30} />
                   <div className="comment-body">
-                    <div className="comment-head">
-                      <span className="comment-author">{name}</span>
-                      <span className="comment-time">{formatCommentTime(c.created_at)}</span>
-                      {canEdit && editingCommentId !== c.id && (
-                        <button
-                          type="button"
-                          className="comment-edit-btn"
-                          aria-label="Edytuj komentarz"
-                          onClick={() => startCommentEdit(c)}
-                        >
-                          <IconPencil size={12} />
-                        </button>
-                      )}
-                      {canDel && (
-                        <button
-                          type="button"
-                          className="comment-del"
-                          aria-label="Usuń komentarz"
-                          onClick={() => deleteComment(c.id)}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                    {editingCommentId === c.id ? (
+                    {first && !mine && <span className="comment-author">{name}</span>}
+                    <div className="comment-line">
+                    {/* Awatar przy ostatnim dymku serii; wyżej pusty placeholder trzyma wcięcie. */}
+                    {!mine && (
+                      <span className="comment-av">
+                        {last && <Avatar name={name} avatar={prof?.avatar ?? null} size={28} />}
+                      </span>
+                    )}
+                    {isEditing ? (
                       <form className="comment-form comment-edit" onSubmit={(e) => saveCommentEdit(e, c.id)}>
                         <input
                           type="text"
@@ -1116,6 +1337,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     ) : (
                       <p className="comment-text">{c.body}</p>
                     )}
+                    </div>
+                    {/* Long-press: reakcje, a przy swoich/organizatorze też edycja
+                        i usuwanie (zamiast ikonek przy każdej wiadomości). */}
                     {pickerFor === c.id && (
                       <span className="reaction-picker" onPointerDown={(e) => e.stopPropagation()}>
                         {REACTION_EMOJIS.map((e) => (
@@ -1128,9 +1352,36 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                             {e}
                           </button>
                         ))}
+                        {(canEdit || canDel) && <span className="picker-sep" aria-hidden="true" />}
+                        {canEdit && (
+                          <button
+                            type="button"
+                            className="picker-act"
+                            aria-label="Edytuj wiadomość"
+                            onClick={() => {
+                              setPickerFor(null);
+                              startCommentEdit(c);
+                            }}
+                          >
+                            <IconPencil size={15} />
+                          </button>
+                        )}
+                        {canDel && (
+                          <button
+                            type="button"
+                            className="picker-act danger"
+                            aria-label="Usuń wiadomość"
+                            onClick={() => {
+                              setPickerFor(null);
+                              deleteComment(c.id);
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
                       </span>
                     )}
-                    {groups.length > 0 && editingCommentId !== c.id && (
+                    {groups.length > 0 && !isEditing && (
                       <div className="reactions">
                         {groups.map((g) => (
                           <button
@@ -1159,26 +1410,61 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         )}
                       </div>
                     )}
+                    {last && !isEditing && (
+                      <span className="comment-time" title={new Date(c.created_at).toLocaleString('pl-PL')}>
+                        {formatCommentTime(c.created_at)}
+                      </span>
+                    )}
                   </div>
                   </div>
                 </div>
+                </Fragment>
               );
             })}
           </div>
-        )}
-        <form className="comment-form" onSubmit={addComment}>
-          <input
-            type="text"
-            placeholder="Napisz coś…"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            maxLength={500}
-          />
-          <button type="submit" className="send" disabled={!newComment.trim()} aria-label="Wyślij">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
-          </button>
-        </form>
-      </section>
+            )}
+          </div>
+
+          <form className="comment-form chat-compose" onSubmit={addComment}>
+            <textarea
+              rows={1}
+              placeholder="Napisz coś…"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onInput={(e) => {
+                // Pole rośnie z treścią (do limitu z CSS), zamiast przewijać jedną linię.
+                const ta = e.currentTarget;
+                ta.style.height = 'auto';
+                ta.style.height = `${ta.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                // Klawiatura fizyczna: Enter wysyła, Shift+Enter = nowa linia.
+                // Na telefonie Enter to zwykła nowa linia, wysyła strzałka.
+                if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(hover: hover)').matches) {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
+              maxLength={500}
+            />
+            <button type="submit" className="send" disabled={!newComment.trim()} aria-label="Wyślij">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+            </button>
+          </form>
+
+          {/* Tap poza pickerem/listą reakcji zamyka je (przezroczysta warstwa pod spodem). */}
+          {(pickerFor || whoFor) && (
+            <div
+              className="tap-catcher"
+              onClick={() => {
+                setPickerFor(null);
+                setWhoFor(null);
+              }}
+            />
+          )}
+        </div>,
+        document.body,
+      )}
 
       {!isPast && <EventGallery eventId={eventId} members={members} isOrganizer={isOrganizer} />}
 
@@ -1190,16 +1476,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </div>
       )}
 
-      {/* Tap poza pickerem/listą reakcji zamyka je (przezroczysta warstwa pod spodem). */}
-      {(pickerFor || whoFor) && (
-        <div
-          className="tap-catcher"
-          onClick={() => {
-            setPickerFor(null);
-            setWhoFor(null);
-          }}
-        />
-      )}
     </main>
   );
 }

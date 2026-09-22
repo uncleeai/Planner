@@ -71,7 +71,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── page.tsx              # Strona główna = dashboard: hero + rozkład wypadów + „Nowe lobby"
     │   ├── error.tsx             # Granica błędów stron (komunikat w skórce apki + retry)
     │   ├── global-error.tsx      # Awaryjny ekran, gdy wysypie się sam root layout
-    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, czat, ustalanie terminu
+    │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, czat (pełny ekran), ustalanie terminu
     │   ├── event/[id]/loading.tsx # Skeleton przejścia do wypadu
     │   ├── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     │   └── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
@@ -171,12 +171,16 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   zalogowani, wrzuca do kosza/usuwa autor, organizator albo admin.
 - **comments** — komentarze pod wypadem (koordynacja): `event_id` + `user_id` (konto)
   + `author_name` (migawka) + `body`. RLS: każdy zalogowany czyta i dodaje swój; edytuje
-  tylko autor; usuwa autor, organizator albo admin. Realtime + wątek pod terminami na
-  stronie wypadu.
+  tylko autor; usuwa autor, organizator albo admin. Realtime. UI: na stronie wypadu
+  tylko karta-zajawka (2 ostatnie + licznik nowych), rozmowa na pełnym ekranie
+  (portal, `?czat` w historii — „wstecz" zamyka; push o komentarzu linkuje z `?czat`).
+  Dymki (moje po prawej), serie jednej osoby (< 5 min) dzielą awatar/imię/godzinę,
+  separatory dni. Znacznik „przeczytane" (`chatSeen`) stawia dopiero otwarty czat.
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
   tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
-  UX: long-press komentarza otwiera picker; tap w chipy pokazuje kto co dał.
+  UX: long-press komentarza otwiera picker (+ edycja/usuwanie przy uprawnieniach);
+  tap w chipy pokazuje kto co dał.
   RLS: czytają wszyscy zalogowani, każdy zarządza tylko swoimi. Uwaga na Realtime:
   subskrypcja BEZ filtra (filtry działają tylko na INSERT/UPDATE, a zdjęcie reakcji to
   DELETE). Zestaw emoji: `REACTION_EMOJIS` na stronie wypadu.
