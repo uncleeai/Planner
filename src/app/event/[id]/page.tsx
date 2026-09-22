@@ -334,55 +334,80 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     });
   }
 
-  // „Wlot" w czat: ekran czatu rozrasta się z karty (clip-path od jej prostokąta
-  // do pełnego ekranu), treść czatu nadlatuje z oddali, a strona pod spodem
-  // najeżdża na kamerę — jak przelot przez okno. Wyjście = to samo wstecz.
+  // Wejście w czat = „karta się rozkłada": ekran czatu rośnie z prostokąta karty
+  // (clip-path), pole „Napisz coś…" z karty zjeżdża na dół w pole pisania, nagłówek
+  // spływa z góry, a ostatnie wiadomości wskakują po kolei od dołu. Strona pod spodem
+  // tylko przygasa. Wyjście = to samo wstecz, szybciej i bez kaskady.
   // Bez karty w kadrze (wejście z pusha) albo przy ograniczonym ruchu: bez tego.
   function animateChat(dir: 'in' | 'out', done?: () => void) {
     const el = chatRef.current;
-    const card = chatPeekRef.current?.getBoundingClientRect();
-    const page = chatPeekRef.current?.closest('main');
+    const peek = chatPeekRef.current;
+    const card = peek?.getBoundingClientRect();
+    const page = peek?.closest('main');
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!el || !card || !page || still || card.bottom < 0 || card.top > window.innerHeight) {
+    if (!el || !peek || !card || !page || still || card.bottom < 0 || card.top > window.innerHeight) {
       done?.();
       return;
     }
-    const box = el.getBoundingClientRect();
-    const from = `inset(${card.top - box.top}px ${box.right - card.right}px ${box.bottom - card.bottom}px ${card.left - box.left}px round 12px)`;
-    const full = 'inset(0px 0px 0px 0px round 0px)';
     const inn = dir === 'in';
-    const opts: KeyframeAnimationOptions = {
-      duration: inn ? 420 : 300,
-      easing: inn ? 'cubic-bezier(0.22, 1, 0.36, 1)' : 'cubic-bezier(0.4, 0, 0.2, 1)',
-      fill: 'forwards',
-    };
-    const flip = <T,>(k: T[]) => (inn ? k : [...k].reverse());
+    // Krzywa arkuszy iOS: szybki start, długie miękkie hamowanie.
+    const easing = 'cubic-bezier(0.32, 0.72, 0, 1)';
+    const T = inn ? 520 : 340;
+    const o: KeyframeAnimationOptions = { duration: T, easing, fill: 'both' };
+    const flip = <K,>(k: K[]) => (inn ? k : [...k].reverse());
+    const box = el.getBoundingClientRect();
+    const clipCard = `inset(${card.top - box.top}px ${box.right - card.right}px ${box.bottom - card.bottom}px ${card.left - box.left}px round 12px)`;
+    const clipFull = 'inset(0px 0px 0px 0px round 0px)';
+
     el.style.animation = 'none';
-    // Na wyjściu okno gaśnie pod sam koniec — inaczej tło czatu w kształcie karty
-    // wisiałoby nad nią przez klatkę, zanim popstate zdejmie ekran.
-    const main = el.animate(
+    const anims: Animation[] = [];
+    // Na wyjściu okno gaśnie pod sam koniec, żeby nie zostało pustym prostokątem nad kartą.
+    const frame = el.animate(
       inn
-        ? [{ clipPath: from, opacity: 0.6 }, { opacity: 1, offset: 0.3 }, { clipPath: full, opacity: 1 }]
-        : [{ clipPath: full, opacity: 1 }, { opacity: 1, offset: 0.75 }, { clipPath: from, opacity: 0 }],
-      opts,
+        ? [{ clipPath: clipCard }, { clipPath: clipFull }]
+        : [{ clipPath: clipFull, opacity: 1 }, { opacity: 1, offset: 0.8 }, { clipPath: clipCard, opacity: 0 }],
+      o,
     );
-    const parts = Array.from(el.children)
-      .filter((c) => !c.classList.contains('tap-catcher'))
-      .map((c) => c.animate(flip([{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'none' }]), opts));
-    const pb = page.getBoundingClientRect();
-    page.style.transformOrigin = `${card.left + card.width / 2 - pb.left}px ${card.top + card.height / 2 - pb.top}px`;
-    const pageAnim = page.animate(
-      flip([{ transform: 'none', opacity: 1 }, { transform: 'scale(1.12)', opacity: 0.35 }]),
-      { ...opts, fill: 'none' },
-    );
-    main.onfinish = () => {
-      pageAnim.cancel();
+    anims.push(page.animate(flip([{ opacity: 1 }, { opacity: 0.4 }]), { ...o, fill: 'none' }));
+
+    const compose = el.querySelector<HTMLElement>('.chat-compose');
+    const pin = peek.querySelector('.chat-peek-input')?.getBoundingClientRect();
+    if (compose && pin) {
+      const cb = compose.getBoundingClientRect();
+      const dx = pin.left - cb.left - 12;
+      const dy = pin.top - cb.top - 10;
+      anims.push(compose.animate(flip([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }]), o));
+    }
+    const top = el.querySelector('.chat-top');
+    if (top) {
+      anims.push(
+        top.animate(flip([{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }]), {
+          ...o,
+          duration: inn ? 380 : 200,
+          delay: inn ? 140 : 0,
+        }),
+      );
+    }
+    // Kaskada tylko dla ostatnich wierszy — reszta i tak jest poza ekranem.
+    const rows = Array.from(el.querySelectorAll('.comment-list > *, .chat-empty')).slice(-10).reverse();
+    rows.forEach((r, i) => {
+      anims.push(
+        r.animate(flip([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }]), {
+          ...o,
+          duration: inn ? 380 : 180,
+          delay: inn ? 120 + i * 35 : 0,
+        }),
+      );
+    });
+
+    // Kaskada wiadomości kończy się później niż okno — czekamy na wszystko.
+    Promise.all([frame, ...anims].map((x) => x.finished.catch(() => {}))).then(() => {
       done?.();
-      // Zostawione „forwards" trzymałyby clip-path i transform na zawsze (transform
-      // robi z listy osobny kontekst warstw — picker reakcji lądowałby pod warstwą
-      // tap-catchera). Na wejściu zdejmij; na wyjściu ekran i tak znika.
-      if (inn) for (const a of [main, ...parts]) a.cancel();
-    };
+      // Zostawione animacje trzymałyby clip-path/transform na zawsze (transform robi
+      // osobny kontekst warstw — picker reakcji lądowałby pod tap-catcherem).
+      // Na wejściu zdejmij; na wyjściu ekran i tak zaraz znika.
+      if (inn) for (const a of [frame, ...anims]) a.cancel();
+    });
   }
 
   // Otwarty czat: strona pod spodem stoi, Escape zamyka, a wysokość idzie za
