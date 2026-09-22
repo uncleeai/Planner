@@ -1137,20 +1137,16 @@ img.avatar { display: inline-block; }
   .chat-peek:hover { background: var(--card); border-color: var(--border-strong); }
 }
 .chat-peek:active { transform: scale(0.99); }
-.chat-peek-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-.chat-peek-stack { display: flex; padding-left: 6px; }
-.chat-peek-stack .avatar { margin-left: -6px; }
-.chat-peek-count {
-  font-family: var(--mono); font-size: 0.66rem; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-}
-.chat-peek-count b { color: var(--accent); }
-.chat-peek-line { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: 0.9rem; min-width: 0; }
+.chip.quiet { color: var(--muted); border: 1px solid var(--border-strong); text-transform: uppercase; }
+.chip.hot { text-transform: uppercase; }
+.chat-peek-line { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 0.9rem; min-width: 0; }
 .chat-peek-line > span:last-child {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: rgba(255, 255, 255, 0.85);
 }
 .chat-peek-line b { font-weight: 600; color: var(--text); }
+/* Awatary w karcie: obwódka zamiast koloru karty, żeby emoji nie zlewało się z tłem. */
+.chat-peek-line .avatar { border-color: var(--border-strong); border-width: 1px; }
 .chat-peek-input {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   margin-top: 10px; padding: 8px 8px 8px 15px;
@@ -2320,51 +2316,6 @@ button.solid-danger { background: var(--no); color: #fff; }
 .crop-ctl output {
   font-family: var(--mono); font-size: 0.74rem; color: var(--muted);
   text-align: right; font-variant-numeric: tabular-nums;
-}
-
-/* ===== Jednorazowa notka „lekki redesign" (RedesignNotice) =====
-   Karta i tło jadą na klasach modala (overlayFadeIn + modalFocusIn); tu tylko
-   treść. Emoji wskakuje z opóźnieniem na sprężynie — pojedynczy akcent po tym,
-   jak karta się wyostrzy (one-shot przy otwarciu, jak blury modala). */
-.rn-emoji {
-  display: block;
-  font-size: 46px;
-  line-height: 1;
-  margin: 4px auto 10px;
-  animation: rnPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
-}
-@keyframes rnPop {
-  from { opacity: 0; transform: scale(0.4) rotate(-14deg); }
-  to { opacity: 1; transform: none; }
-}
-.rn-title { margin: 0 0 8px; font-size: 1.15rem; font-weight: 700; }
-.rn-msg { margin: 0 0 14px; font-size: 0.9rem; line-height: 1.45; color: var(--muted); }
-.rn-steps {
-  display: grid;
-  gap: 8px;
-  margin: 0 0 18px;
-  padding: 0;
-  list-style: none;
-  text-align: left;
-}
-.rn-steps li {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  background: var(--card-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  font-size: 0.86rem;
-  line-height: 1.42;
-}
-.rn-num {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  padding-top: 2px;
 }
 
 /* ===== Puste lobby (dashboard bez nadchodzących wypadów) =====

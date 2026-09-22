@@ -1172,34 +1172,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       </section>
 
       <section className="ev-section">
-        <div className="section-label">Czat</div>
+        {/* Licznik jak „4/4 DAŁO ZNAĆ" przy terminach: nowe = akcent, inaczej wyciszony. */}
+        <div className="rail">
+          <div className="section-label">Czat</div>
+          {comments.length > 0 && (
+            <span className={`chip${unreadCount > 0 ? ' hot' : ' quiet'}`}>
+              {unreadCount > 0
+                ? `${unreadCount} ${plural(unreadCount, 'nowa', 'nowe', 'nowych')}`
+                : `${comments.length} ${plural(comments.length, 'wiadomość', 'wiadomości', 'wiadomości')}`}
+            </span>
+          )}
+        </div>
         {/* Zajawka zamiast całego wątku — strona wypadu nie rośnie z każdą
             wiadomością. Tap = czat na pełnym ekranie. */}
         <button type="button" className="chat-peek" onClick={openChat}>
-          {comments.length > 0 && (
-            <span className="chat-peek-head">
-              <span className="chat-peek-stack">
-                {[...new Map(comments.map((c) => [c.user_id ?? c.author_name, c])).values()]
-                  .slice(-4)
-                  .map((c) => {
-                    const prof = c.user_id ? profileById.get(c.user_id) : undefined;
-                    const name = prof?.display_name ?? c.author_name;
-                    return <Avatar key={c.id} name={name} avatar={prof?.avatar ?? null} size={22} />;
-                  })}
-              </span>
-              <span className="chat-peek-count">
-                {comments.length} {plural(comments.length, 'wiadomość', 'wiadomości', 'wiadomości')}
-                {unreadCount > 0 && (
-                  <>
-                    {' · '}
-                    <b>
-                      {unreadCount} {plural(unreadCount, 'nowa', 'nowe', 'nowych')}
-                    </b>
-                  </>
-                )}
-              </span>
-            </span>
-          )}
           {comments.length === 0 ? (
             <span className="chat-peek-line muted">Cisza. Napisz coś pierwszy.</span>
           ) : (
@@ -1208,7 +1194,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               const name = prof?.display_name ?? c.author_name;
               return (
                 <span key={c.id} className="chat-peek-line">
-                  <Avatar name={name} avatar={prof?.avatar ?? null} size={22} />
+                  <Avatar name={name} avatar={prof?.avatar ?? null} size={26} />
                   <span>
                     <b>{c.user_id === userId ? 'Ty' : name}:</b> {c.body}
                   </span>

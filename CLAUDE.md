@@ -86,7 +86,6 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── CreatorSheet.tsx      # Pełnoekranowy kreator „Nowe lobby" (karta = formularz, child-sheety)
     │   ├── ChildSheet.tsx        # Mały bottom sheet nad kreatorem (termin/miejsce/opis)
     │   ├── SlotRangeInput.tsx    # Wspólny input terminu: data + „Cały dzień" + link daty końca
-    │   ├── RedesignNotice.tsx    # Jednorazowa notka po redesignie (localStorage)
     │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
     │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
     │   ├── WeatherModal.tsx      # Prognoza godzinowa na dzień wypadu (tap w kafelek pogody w hero)

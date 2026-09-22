@@ -6,7 +6,6 @@ import { AuthProvider } from '@/lib/auth';
 import { TransitionProvider } from '@/lib/transition';
 import GlassBackground from '@/components/GlassBackground';
 import { DialogHost } from '@/components/Dialogs';
-import RedesignNotice from '@/components/RedesignNotice';
 import { ACCENT_BOOT_SCRIPT } from '@/lib/accent';
 import './globals.css';
 
@@ -54,7 +53,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TransitionProvider>
             <AuthProvider>
               {/* Za bramką logowania — notka nie zasłania ekranu logowania. */}
-              <RedesignNotice />
               {children}
             </AuthProvider>
           </TransitionProvider>
