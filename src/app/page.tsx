@@ -444,7 +444,8 @@ export default function Home() {
   // ostatniej wiadomości z czatu — ekran z jednym lobby nie wygląda na pusty.
   const heroPeek = useMemo(() => {
     if (!heroId || ahead.length > 0) return null;
-    const c = recentComments.find((cm) => cm.event_id === heroId);
+    // Usunięta wiadomość to pusty dymek — zajawka bierze ostatnią żywą.
+    const c = recentComments.find((cm) => cm.event_id === heroId && !cm.deleted_at);
     if (!c) return null;
     const prof = c.user_id ? profileById.get(c.user_id) : undefined;
     return {
