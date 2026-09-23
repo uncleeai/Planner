@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { lookup } from 'node:dns/promises';
-import { isPrivateAddress, parsePreview } from '@/lib/linkPreview';
+import { isPrivateAddress, parsePreview, type LinkPreview } from '@/lib/linkPreview';
 
 // Podgląd linku z czatu (karta jak w iMessage): serwer pobiera stronę i czyta jej
 // znaczniki Open Graph — przeglądarka nie może (CORS). Zabezpieczenia, bo to
@@ -9,6 +9,7 @@ import { isPrivateAddress, parsePreview } from '@/lib/linkPreview';
 // - tylko http/https na porcie domyślnym, adres musi rozwiązywać się na PUBLICZNE IP
 //   (bez sieci wewnętrznej / metadanych chmury), każde przekierowanie sprawdzane od nowa,
 // - limit czasu i rozmiaru; czytamy do og:image (zwykle <head>, YouTube ma je w <body>).
+// Gdy strona nas odetnie (antybot) — druga próba przez Microlink (zob. niżej).
 // Wynik cache'uje przeglądarka (dzień) + pamięć klienta, więc stronę pobieramy rzadko.
 export const dynamic = 'force-dynamic';
 
@@ -68,11 +69,25 @@ export async function GET(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Zły adres.' }, { status: 400 });
   }
+  // Adres wewnętrzny odrzucamy od razu — nie idzie ani do nas, ani do Microlinka.
+  if (!(await isAllowed(url))) return NextResponse.json({ error: 'Adres niedozwolony.' }, { status: 400 });
 
+  const preview = (await ownPreview(url)) ?? (await microlinkPreview(url));
+  // Pusty wynik NIE idzie do cache przeglądarki — inaczej po poprawce parsera
+  // (albo gdy strona chwilowo nie odda znaczników) link zostawał bez karty na dobę.
+  if (!preview) return NextResponse.json({ error: 'Brak podglądu.' }, { status: 404 });
+  return NextResponse.json(preview, { headers: { 'Cache-Control': 'private, max-age=86400' } });
+}
+
+const hasContent = (p: LinkPreview) => (p.title || p.image ? p : null);
+
+// Nasze pobranie strony (serwer Vercela).
+async function ownPreview(start: URL): Promise<LinkPreview | null> {
+  let url = start;
   try {
     let res: Response | null = null;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      if (!(await isAllowed(url))) return NextResponse.json({ error: 'Adres niedozwolony.' }, { status: 400 });
+      if (!(await isAllowed(url))) return null;
       res = await fetch(url, {
         redirect: 'manual',
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -87,17 +102,34 @@ export async function GET(req: Request) {
       url = new URL(next, url);
       res = null;
     }
-    if (!res || !res.ok || !(res.headers.get('content-type') ?? '').includes('html')) {
-      return NextResponse.json({ error: 'Brak podglądu.' }, { status: 404 });
-    }
-    const preview = parsePreview(await readHead(res), url.href);
-    // Pusty wynik NIE idzie do cache przeglądarki — inaczej po poprawce parsera
-    // (albo gdy strona chwilowo nie odda znaczników) link zostawał bez karty na dobę.
-    if (!preview.title && !preview.image) {
-      return NextResponse.json({ error: 'Brak podglądu.' }, { status: 404 });
-    }
-    return NextResponse.json(preview, { headers: { 'Cache-Control': 'private, max-age=86400' } });
+    if (!res || !res.ok || !(res.headers.get('content-type') ?? '').includes('html')) return null;
+    return hasContent(parsePreview(await readHead(res), url.href));
   } catch {
-    return NextResponse.json({ error: 'Brak podglądu.' }, { status: 404 });
+    return null;
+  }
+}
+
+// Zapas: strony za ochroną antybotową (Cloudflare „challenge" — np. Fragrantica)
+// odcinają serwery z centrów danych, więc pytamy Microlink (darmowe ~50 zapytań/dzień
+// bez klucza; idzie tylko sam adres linku). Booking i tak nie przejdzie (plan PRO).
+async function microlinkPreview(url: URL): Promise<LinkPreview | null> {
+  try {
+    const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url.href)}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (j?.status !== 'success' || !j.data) return null;
+    const d = j.data;
+    const img = typeof d.image?.url === 'string' && /^https?:\/\//i.test(d.image.url) ? d.image.url : null;
+    return hasContent({
+      url: url.href,
+      title: typeof d.title === 'string' ? d.title.slice(0, 200) : null,
+      description: typeof d.description === 'string' ? d.description.slice(0, 300) : null,
+      image: img,
+      site: typeof d.publisher === 'string' ? d.publisher : null,
+    });
+  } catch {
+    return null;
   }
 }
