@@ -796,6 +796,29 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     }
   }
 
+  // „Zapisz" w podglądzie zdjęcia: arkusz udostępniania z plikiem (iOS: „Zachowaj
+  // obraz"), a gdy się nie da (brak Web Share z plikami / CORS) — zdjęcie w nowej
+  // karcie, skąd da się je zapisać przytrzymaniem.
+  async function savePhoto(url: string) {
+    try {
+      const blob = await (await fetch(url)).blob();
+      const file = new File([blob], `wypad-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    } catch (err) {
+      // Anulowany arkusz to nie błąd.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+
   async function deleteComment(id: string) {
     if (!(await appConfirm('Usunąć wiadomość?', { confirmLabel: 'Usuń', danger: true }))) return;
     // Nie znika z wątku — zostaje „Wiadomość usunięta", żeby odpowiedzi pod nią miały sens.
@@ -1691,8 +1714,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
           {photoView && (
             <div className="photo-view" role="dialog" aria-label="Zdjęcie" onClick={() => setPhotoView(null)}>
+              {/* Przytrzymanie zdjęcia = natywne menu iOS („Zachowaj w Zdjęciach",
+                  Udostępnij) — w pełnym ekranie przywracamy callout wyłączony globalnie. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={photoView} alt="" />
+              <button
+                type="button"
+                className="photo-save"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  savePhoto(photoView);
+                }}
+              >
+                Zapisz
+              </button>
             </div>
           )}
 

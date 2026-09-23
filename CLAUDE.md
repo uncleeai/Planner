@@ -192,7 +192,8 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   (`image_path` podgląd 2048 px + `image_thumb_path` 640 px + `image_w/h`, `body` może
   być puste). Upload jak galeria (`uploadChatPhoto` w `gallery.ts` → `/api/gallery-sign`
   ze `scope: 'chat'` → R2 pod `<event_id>/chat/…`), bez oryginału. Optymistycznie z `blob:`.
-  Tap = pełny ekran. Push/zajawki: „📷 Zdjęcie". Pliki usuniętych zdjęć zostają w R2
+  Tap = pełny ekran (tam przytrzymanie = natywne menu iOS z zapisem do Zdjęć, bo callout
+  jest wyłączony globalnie; przycisk „Zapisz" = Web Share z plikiem). Push/zajawki: „📷 Zdjęcie". Pliki usuniętych zdjęć zostają w R2
   (brak GC dla czatu — do dorobienia, gdy będzie potrzeba).
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),

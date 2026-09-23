@@ -1298,7 +1298,17 @@ img.avatar { display: inline-block; }
   display: grid; place-items: center; padding: 12px;
   background: rgba(0, 0, 0, 0.92);
 }
-.photo-view img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.photo-view img {
+  max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;
+  -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto;
+}
+.photo-save {
+  position: absolute; right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  padding: 10px 18px; border-radius: 999px;
+  background: rgba(20, 23, 26, 0.85); color: var(--text); border: 1px solid var(--border-strong);
+  font-size: 0.9rem;
+}
 
 /* Linki w dymku + karta podglądu pod nim (LinkCard). */
 .comment-text a { color: inherit; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
