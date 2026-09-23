@@ -1230,23 +1230,10 @@ img.avatar { display: inline-block; }
 .comment-list { display: flex; flex-direction: column; }
 .comment { position: relative; touch-action: pan-y; margin-top: 2px; }
 .comment.first { margin-top: 10px; }
-/* Swipe-to-delete (jak iOS Mail): treść rzędu jeździ w lewo, odsłaniając
-   przycisk „Usuń" pod spodem. Pozycją w trakcie gestu steruje JS (inline),
-   stan otwarty utrwala transform z Reacta; tranzycja robi doślizg. */
-.comment-swipe {
-  display: flex; gap: 8px; align-items: flex-end;
-  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* Rząd wiadomości (nazwa klasy z czasów swipe-to-delete, którego już nie ma). */
+.comment-swipe { display: flex; gap: 8px; align-items: flex-end; }
 .comment.mine .comment-swipe { justify-content: flex-end; }
 .comment.editing .comment-line > form { flex: 1; }
-.comment-swipe-del {
-  position: absolute; top: 2px; bottom: 2px; right: 0; width: 64px;
-  border: none; border-radius: var(--radius-sm);
-  background: var(--no); color: #fff;
-  font-size: 0.78rem; font-weight: 700;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.2s;
-}
 /* Cudze: [awatar 28 + 8 odstępu] + dymek; imię, reakcje i godzina wcięte o tyle samo. */
 .comment-body {
   display: flex; flex-direction: column; align-items: flex-start;
@@ -1381,8 +1368,6 @@ img.avatar { display: inline-block; }
   font-size: 0.82rem;
 }
 .who-row b { font-weight: 600; }
-/* Przezroczysta warstwa łapiąca tap poza pickerem/listą. */
-.tap-catcher { position: fixed; inset: 0; z-index: 50; }
 
 /* Toast „nowy wypad" — pływający baner na dole, klik otwiera wypad. */
 .toast {
