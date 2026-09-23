@@ -1196,6 +1196,9 @@ img.avatar { display: inline-block; }
 }
 .chat-scroll {
   flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  /* Dół trzymamy sami (ResizeObserver) — natywne kotwiczenie przewijania przesuwało
+     widok przy doczytaniu karty linku i gubiło ostatnią wiadomość. */
+  overflow-anchor: none;
   display: flex; flex-direction: column;
   padding: 8px calc(12px + env(safe-area-inset-right)) 12px calc(12px + env(safe-area-inset-left));
   scrollbar-width: none;

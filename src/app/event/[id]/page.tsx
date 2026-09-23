@@ -474,9 +474,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
     // closeChat czyta tylko refy i settery — stabilny w praktyce. `loading`: wejście
     // z linku (?czat) otwiera czat, zanim strona się wczyta — ekranu jeszcze nie ma,
-    // więc podpinamy się ponownie po wczytaniu.
+    // więc podpinamy się ponownie po wczytaniu; hasComments: lista zastępuje „Cisza…".
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatOpen, loading]);
+  }, [chatOpen, loading, comments.length > 0]);
 
   // Nowa wiadomość: zjedź na dół, jeśli byłeś przy dole albo to twoja
   // (czytając starsze, nie wyrywamy cię w dół). Otwarcie = od razu najnowsze.
