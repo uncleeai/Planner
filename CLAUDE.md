@@ -187,7 +187,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   **Linki:** klikalne w dymku (też bez protokołu: „x.pl", znane końcówki; długie skracane
   w tekście przez `shortLink`); pierwszy link dostaje kartę podglądu (`LinkCard` →
   `/api/link-preview`, cache: pamięć klienta + HTTP na dzień, bez tabeli w bazie).
-  Strony blokujące boty (Booking, Allegro, Instagram) = sam link bez karty.
+  Gdy strona odetnie serwer (antybot, np. Cloudflare na Fragrantice) — druga próba przez
+  Microlink (darmowe ~50/dzień, bez klucza; wychodzi tylko adres linku). Booking/Allegro
+  i tak nie przejdą = sam link bez karty.
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
   tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
