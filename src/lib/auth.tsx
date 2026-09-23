@@ -10,6 +10,7 @@ import BootScreen from '@/components/BootScreen';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 import { resyncPushSubscription } from '@/lib/push';
 import { isAdminEmail } from '@/lib/admin';
+import WhatsNew, { WHATS_NEW_ID } from '@/components/WhatsNew';
 import type { EventRow } from '@/lib/types';
 
 type AuthCtx = { userId: string; displayName: string; avatar: string; isAdmin: boolean };
@@ -95,6 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={{ userId: session.user.id, displayName, avatar, isAdmin }}>
       <NewEventToast userId={session.user.id} />
       {children}
+      {/* „Co nowego" raz na konto — znacznik w user_metadata (zob. WhatsNew). */}
+      {meta.whats_new !== WHATS_NEW_ID && <WhatsNew />}
     </Ctx.Provider>
   );
 }

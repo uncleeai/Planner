@@ -92,6 +92,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
     │   ├── WeatherModal.tsx      # Prognoza godzinowa na dzień wypadu (tap w kafelek pogody w hero)
     │   ├── Dialogs.tsx           # appAlert/appConfirm + DialogHost (zamiast natywnych alertów)
+    │   ├── WhatsNew.tsx          # „Co nowego" (karty) raz na konto — znacznik `whats_new` w user_metadata, nie localStorage
     │   ├── GlassBackground.tsx   # Tło „frosted glass" pod całą apką
     │   ├── HeroCropEditor.tsx    # Admin: kadrowanie zdjęć hero per kategoria (zoom+pozycja)
     │   └── icons.tsx             # Lekkie ikony inline SVG (kalendarz, zegar, pin, pogoda…)
