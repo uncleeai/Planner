@@ -147,6 +147,13 @@ create index if not exists comments_event_id_idx on public.comments(event_id);
 -- Usunięcie wiadomości = „Wiadomość usunięta" w wątku zamiast dziury w rozmowie:
 -- stempel + wyczyszczona treść (funkcja delete_comment niżej).
 alter table public.comments add column if not exists deleted_at timestamptz;
+-- Zdjęcie w wiadomości (klucze w R2 pod <event_id>/chat/…, jak galeria przez gallery-sign):
+-- podgląd na pełny ekran + miniatura do dymka + proporcje, żeby dymek nie skakał przy
+-- ładowaniu. body może być puste (samo zdjęcie).
+alter table public.comments add column if not exists image_path text;
+alter table public.comments add column if not exists image_thumb_path text;
+alter table public.comments add column if not exists image_w int;
+alter table public.comments add column if not exists image_h int;
 
 -- Profile użytkownika = lista „paczki" (kto kiedykolwiek się zalogował i ustawił nazwę).
 -- Pozwala policzyć „kto jeszcze nie zagłosował", bo klient z kluczem anon nie ma

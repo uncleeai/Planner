@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
 import type { Availability, Comment, EventRow, Profile, Reaction, Slot, Vote } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
-import { IconCalendarPlus, IconPencil } from '@/components/icons';
+import { IconCalendarPlus, IconCamera, IconPencil } from '@/components/icons';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import CreatorSheet from '@/components/CreatorSheet';
 import EventGallery from '@/components/EventGallery';
@@ -30,6 +30,7 @@ import { notifyComment } from '@/lib/notifyComment';
 import { getChatSeen, markChatSeen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { appAlert, appConfirm } from '@/components/Dialogs';
+import { photoUrl, uploadChatPhoto } from '@/lib/gallery';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
@@ -197,6 +198,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   // Komentarz z otwartym pickerem reakcji (long-press) / z listą „kto zareagował" (tap w chipy).
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+
+  // Zdjęcie z czatu na pełnym ekranie (URL podglądu) + ukryty input wyboru zdjęć.
+  const [photoView, setPhotoView] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [whoFor, setWhoFor] = useState<string | null>(null);
 
   // Edycja wypadu (nazwa / miejsce / opis) — dla organizatora lub admina.
@@ -443,7 +448,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     document.documentElement.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       // Escape w polu edycji wiadomości tylko anuluje edycję.
-      if (e.key === 'Escape' && !(e.target as HTMLElement).closest?.('.comment-edit')) closeChat();
+      if (e.key !== 'Escape' || (e.target as HTMLElement).closest?.('.comment-edit')) return;
+      // Najpierw zamyka otwarte zdjęcie, dopiero potem cały czat.
+      if (document.querySelector('.photo-view')) setPhotoView(null);
+      else closeChat();
     };
     window.addEventListener('keydown', onKey);
     const vv = window.visualViewport;
@@ -741,6 +749,47 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       return;
     }
     if (saved) notifyComment(saved.id);
+  }
+
+  // Zdjęcia do czatu: każde to osobna wiadomość (pierwsze bierze podpis z pola pisania).
+  // Optymistycznie od razu w wątku z lokalnego pliku (blob:), przygaszone do końca wysyłki.
+  async function sendPhotos(files: File[]) {
+    let caption = newComment.trim();
+    if (caption) setNewComment('');
+    for (const file of files) {
+      const local = URL.createObjectURL(file);
+      const tmpId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const body = caption;
+      caption = '';
+      setComments((prev) => [
+        ...prev,
+        {
+          id: tmpId,
+          event_id: eventId,
+          user_id: userId,
+          author_name: displayName,
+          body,
+          created_at: new Date().toISOString(),
+          image_path: local,
+          image_thumb_path: local,
+        },
+      ]);
+      try {
+        const img = await uploadChatPhoto(eventId, file);
+        const { data: saved, error } = await supabase
+          .from('comments')
+          .insert({ event_id: eventId, user_id: userId, author_name: displayName, body, ...img })
+          .select('id')
+          .single();
+        if (error) throw new Error(error.message);
+        if (saved) notifyComment(saved.id);
+      } catch (err) {
+        setComments((prev) => prev.filter((c) => c.id !== tmpId));
+        if (body) setNewComment(body);
+        appAlert('Zdjęcie nie poszło', err instanceof Error ? err.message : 'Nieznany błąd.');
+      }
+      URL.revokeObjectURL(local);
+    }
   }
 
   async function deleteComment(id: string) {
@@ -1334,7 +1383,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <span key={c.id} className="chat-peek-line">
                   <Avatar name={name} avatar={prof?.avatar ?? null} size={26} />
                   <span>
-                    <b>{c.user_id === userId ? 'Ty' : name}:</b> {c.body}
+                    <b>{c.user_id === userId ? 'Ty' : name}:</b> {c.body || (c.image_path ? '📷 Zdjęcie' : '')}
                   </span>
                 </span>
               );
@@ -1383,7 +1432,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               // optymistyczny nie ma jeszcze id z bazy; usunięta nie ma już akcji
               const saved = !c.id.startsWith('optimistic') && !deleted;
               const canDel = !deleted && (c.user_id === userId || isOrganizer);
-              const canEdit = saved && c.user_id === userId;
+              // Samo zdjęcie nie ma czego edytować (podpis da się poprawić, gdy jest).
+              const canEdit = saved && c.user_id === userId && !!c.body;
               const groups = saved ? reactionsByComment.get(c.id) ?? [] : [];
               const myEmoji = saved
                 ? reactions.find((r) => r.comment_id === c.id && r.user_id === userId)?.emoji ?? null
@@ -1461,6 +1511,27 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         </button>
                       </form>
                     ) : (
+                      <div className="comment-media">
+                      {!deleted && c.image_thumb_path && (
+                        <button
+                          type="button"
+                          className={`comment-img${c.id.startsWith('optimistic') ? ' uploading' : ''}`}
+                          style={c.image_w && c.image_h ? { aspectRatio: `${c.image_w} / ${c.image_h}` } : undefined}
+                          aria-label="Pokaż zdjęcie"
+                          onClick={() => {
+                            const p = c.image_path ?? c.image_thumb_path!;
+                            setPhotoView(p.startsWith('blob:') ? p : photoUrl(p));
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={c.image_thumb_path.startsWith('blob:') ? c.image_thumb_path : photoUrl(c.image_thumb_path)}
+                            alt=""
+                            loading="lazy"
+                          />
+                        </button>
+                      )}
+                      {(deleted || c.body) && (
                       <p className={`comment-text${deleted ? ' deleted' : ''}`}>
                         {deleted
                           ? 'Wiadomość usunięta'
@@ -1474,6 +1545,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                               ),
                             )}
                       </p>
+                      )}
+                      </div>
                     )}
                     </div>
                     {/* Pierwszy link w wiadomości → karta z podglądem (jak w iMessage). */}
@@ -1566,6 +1639,26 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           <form className="comment-form chat-compose" onSubmit={addComment}>
+            <button
+              type="button"
+              className="chat-attach"
+              aria-label="Dodaj zdjęcie"
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <IconCamera size={20} />
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => {
+                const files = Array.from(e.currentTarget.files ?? []);
+                e.currentTarget.value = '';
+                if (files.length) sendPhotos(files);
+              }}
+            />
             <textarea
               rows={1}
               placeholder="Napisz coś…"
@@ -1591,6 +1684,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
             </button>
           </form>
+
+          {photoView && (
+            <div className="photo-view" role="dialog" aria-label="Zdjęcie" onClick={() => setPhotoView(null)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoView} alt="" />
+            </div>
+          )}
 
           {/* Tap poza pickerem/listą reakcji zamyka je (przezroczysta warstwa pod spodem). */}
           {(pickerFor || whoFor) && (

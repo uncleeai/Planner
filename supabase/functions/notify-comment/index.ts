@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
 
   const { data: comment } = await supabase
     .from('comments')
-    .select('id, event_id, user_id, author_name, body')
+    .select('id, event_id, user_id, author_name, body, image_path')
     .eq('id', commentId)
     .maybeSingle();
   if (!comment) return json({ error: 'Nie ma takiego komentarza.' }, 404);
@@ -91,7 +91,8 @@ Deno.serve(async (req) => {
 
   const message = JSON.stringify({
     title: `${comment.author_name} · ${event.title}`,
-    body: preview(comment.body ?? ''),
+    // Samo zdjęcie (bez podpisu) → „📷 Zdjęcie" zamiast pustego powiadomienia.
+    body: preview(comment.body || (comment.image_path ? '📷 Zdjęcie' : '')),
     // ?czat — tap w powiadomienie otwiera od razu rozmowę, nie samą stronę wypadu.
     url: `/event/${event.id}?czat`,
     // Wspólny tag dla całego wypadu: kolejna wiadomość PODMIENIA poprzednią na

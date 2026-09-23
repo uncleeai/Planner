@@ -2,7 +2,8 @@
 // Cloudflare R2 (presigned PUT, SigV4 przez aws4fetch). Klient NIGDY nie widzi
 // kluczy R2; funkcja (verify JWT = tylko zalogowana paczka) buduje ścieżki
 // server-side: <event_id>/<uid>-<ts>-<i>[-orig].<ext> i zwraca URL-e ważne 10 min.
-// Body: { event_id, files: [{ ext: 'jpg'|'heic'|..., kind: 'thumb'|'preview'|'original' }] }.
+// Body: { event_id, files: [{ ext: 'jpg'|'heic'|..., kind: 'thumb'|'preview'|'original' }], scope? }.
+// scope: 'chat' → zdjęcia z czatu lądują pod <event_id>/chat/… (osobno od galerii).
 // Podpis obejmuje Cache-Control — klient musi wysłać ten sam nagłówek przy PUT.
 //
 // Wdrożenie: supabase functions deploy sign-photo-upload  (DOMYŚLNIE verify JWT)
@@ -62,13 +63,14 @@ Deno.serve(async (req) => {
   if (!eventId || !UUID.test(eventId)) return json({ error: 'event_id jest wymagane' }, 400);
   if (files.length === 0 || files.length > 40) return json({ error: 'files: 1–40 pozycji' }, 400);
 
+  const prefix = body?.scope === 'chat' ? `${eventId}/chat` : eventId;
   const ts = Date.now();
   const out: { path: string; uploadUrl: string }[] = [];
   for (let i = 0; i < files.length; i++) {
     const ext = SAFE_EXT.test(files[i].ext ?? '') ? files[i].ext : 'jpg';
     const suffix =
       files[i].kind === 'original' ? '-orig' : files[i].kind === 'thumb' ? '-thumb' : '';
-    const path = `${eventId}/${uid}-${ts}-${i}${suffix}.${ext}`;
+    const path = `${prefix}/${uid}-${ts}-${i}${suffix}.${ext}`;
     const url = new URL(`${ENDPOINT}/${BUCKET}/${path}`);
     url.searchParams.set('X-Amz-Expires', '600');
     // Cache-Control wchodzi do podpisu, więc klient MUSI wysłać go przy PUT

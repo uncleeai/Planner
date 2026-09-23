@@ -124,6 +124,11 @@ export type Comment = {
   created_at: string;
   // Usunięta = zostaje w wątku jako „Wiadomość usunięta" (treść wyczyszczona w bazie).
   deleted_at?: string | null;
+  // Zdjęcie w wiadomości (klucze w R2) + proporcje do rezerwacji miejsca w dymku.
+  image_path?: string | null;
+  image_thumb_path?: string | null;
+  image_w?: number | null;
+  image_h?: number | null;
 };
 
 // Reakcja emoji na komentarz — klucz (comment_id, user_id, emoji).

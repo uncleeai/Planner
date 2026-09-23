@@ -82,6 +82,55 @@ async function makeScaled(file: File, MAX: number, quality: number): Promise<Blo
   );
 }
 
+type Upload = { path: string; uploadUrl: string };
+
+// Podpis wysyłki (presigned PUT-y do R2) — wspólny dla galerii i czatu.
+// Idziemy przez WŁASNY origin apki (/api/gallery-sign), a serwer forwarduje
+// do Edge Function. Same-origin = brak CORS/preflightu i nie jest to żądanie
+// third-party, więc blokery treści / iCloud Private Relay / kaprysy preflightu
+// na iOS Safari nie ubijają wysyłki — goły fetch prosto do *.supabase.co padał
+// „Load failed" i nie docierał nawet do Supabase.
+async function signUploads(
+  eventId: string,
+  manifest: { ext: string; kind: string }[],
+  signal?: AbortSignal,
+  scope?: 'chat',
+): Promise<Upload[]> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  if (!token) throw new Error('Podpis wysyłki: brak sesji (zaloguj się ponownie).');
+  let signRes: Response;
+  try {
+    signRes = await fetch('/api/gallery-sign', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+      },
+      body: JSON.stringify({ event_id: eventId, files: manifest, scope }),
+      signal,
+    });
+  } catch (err) {
+    throw new Error(
+      `Podpis wysyłki: sieć odrzuciła żądanie (${err instanceof Error ? err.message : '?'}).`,
+    );
+  }
+  if (!signRes.ok) {
+    const detail = await signRes.text().catch(() => '');
+    throw new Error(`Podpis wysyłki: HTTP ${signRes.status} ${detail.slice(0, 140)}`);
+  }
+  const data = await signRes.json();
+  const uploads: Upload[] = data?.uploads ?? [];
+  if (uploads.length !== manifest.length) throw new Error('Zła odpowiedź podpisu wysyłki.');
+  return uploads;
+}
+
+async function putToR2(slot: Upload, body: Blob, type: string, signal?: AbortSignal): Promise<void> {
+  const r = await fetch(slot.uploadUrl, { method: 'PUT', body, headers: { 'Content-Type': type }, signal });
+  if (!r.ok) throw new Error(`Wysyłka do R2 padła (${r.status}).`);
+}
+
 const PREVIEW_MAX = 2048;
 const THUMB_MAX = 400;
 
@@ -123,56 +172,16 @@ export async function uploadEventPhotos(
             ...(thumb ? [{ ext: 'jpg', kind: 'thumb' }] : []),
           ]
         : [{ ext: extOf(file), kind: 'original' }];
-      const { data: sess } = await supabase.auth.getSession();
-      const token = sess.session?.access_token;
-      if (!token) throw new Error('Podpis wysyłki: brak sesji (zaloguj się ponownie).');
-      // Idziemy przez WŁASNY origin apki (/api/gallery-sign), a serwer forwarduje
-      // do Edge Function. Same-origin = brak CORS/preflightu i nie jest to żądanie
-      // third-party, więc blokery treści / iCloud Private Relay / kaprysy preflightu
-      // na iOS Safari nie ubijają wysyłki — goły fetch prosto do *.supabase.co padał
-      // „Load failed" i nie docierał nawet do Supabase.
-      let signRes: Response;
-      try {
-        signRes = await fetch('/api/gallery-sign', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
-          },
-          body: JSON.stringify({ event_id: eventId, files: manifest }),
-          signal,
-        });
-      } catch (err) {
-        throw new Error(
-          `Podpis wysyłki: sieć odrzuciła żądanie (${err instanceof Error ? err.message : '?'}).`,
-        );
-      }
-      if (!signRes.ok) {
-        const detail = await signRes.text().catch(() => '');
-        throw new Error(`Podpis wysyłki: HTTP ${signRes.status} ${detail.slice(0, 140)}`);
-      }
-      const data = await signRes.json();
-      const uploads: { path: string; uploadUrl: string }[] = data?.uploads ?? [];
-      if (uploads.length !== manifest.length) throw new Error('Zła odpowiedź podpisu wysyłki.');
+      const uploads = await signUploads(eventId, manifest, signal);
 
       // 3) PUT-y do R2.
-      const put = async (slot: { uploadUrl: string }, body: Blob, type: string) => {
-        const r = await fetch(slot.uploadUrl, {
-          method: 'PUT',
-          body,
-          headers: { 'Content-Type': type },
-          signal,
-        });
-        if (!r.ok) throw new Error(`Wysyłka do R2 padła (${r.status}).`);
-      };
       const previewSlot = preview ? uploads[0] : null;
       const originalSlot = preview ? uploads[1] : uploads[0];
       const thumbSlot = preview && thumb ? uploads[2] : null;
       await Promise.all([
-        ...(preview && previewSlot ? [put(previewSlot, preview, 'image/jpeg')] : []),
-        ...(thumb && thumbSlot ? [put(thumbSlot, thumb, 'image/jpeg')] : []),
-        put(originalSlot, file, file.type || 'application/octet-stream'),
+        ...(preview && previewSlot ? [putToR2(previewSlot, preview, 'image/jpeg', signal)] : []),
+        ...(thumb && thumbSlot ? [putToR2(thumbSlot, thumb, 'image/jpeg', signal)] : []),
+        putToR2(originalSlot, file, file.type || 'application/octet-stream', signal),
       ]);
 
       // 4) Wiersz metadanych.
@@ -207,4 +216,26 @@ export async function deleteEventPhoto(photo: EventPhoto): Promise<void> {
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', photo.id);
   if (error) throw new Error(error.message);
+}
+
+// Zdjęcie do czatu: tylko podgląd 2048 px (pełny ekran) + miniatura 640 px (dymek),
+// bez oryginału — jak w Messengerze. Pliki pod <event_id>/chat/…; zwraca pola do
+// wiersza comments (proporcje rezerwują miejsce w dymku przed wczytaniem).
+export type ChatImage = { image_path: string; image_thumb_path: string; image_w: number; image_h: number };
+
+export async function uploadChatPhoto(eventId: string, file: File): Promise<ChatImage> {
+  const preview = await makeScaled(file, PREVIEW_MAX, 0.85);
+  const thumb = await makeScaled(file, 640, 0.78);
+  const dims = await createImageBitmap(thumb);
+  const [pSlot, tSlot] = await signUploads(
+    eventId,
+    [
+      { ext: 'jpg', kind: 'preview' },
+      { ext: 'jpg', kind: 'thumb' },
+    ],
+    undefined,
+    'chat',
+  );
+  await Promise.all([putToR2(pSlot, preview, 'image/jpeg'), putToR2(tSlot, thumb, 'image/jpeg')]);
+  return { image_path: pSlot.path, image_thumb_path: tSlot.path, image_w: dims.width, image_h: dims.height };
 }
