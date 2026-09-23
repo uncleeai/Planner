@@ -16,4 +16,5 @@ jak w iMessage / Messengerze — np. link do domku z Booking, restauracji, mapy.
   (obrazek + tytuł + domena), tap otwiera link. Linki w samym tekście klikalne.
 - **Obrazek** przez `<img>` z `referrerPolicy="no-referrer"` + `loading="lazy"`.
 
-Status: do zrobienia po wypuszczeniu nowego czatu.
+Status: zrobione na branchu `claude/chat-links` (bez tabeli-cache — wystarcza cache
+przeglądarki + pamięć klienta).

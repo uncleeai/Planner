@@ -13,6 +13,8 @@ import SlotRangeInput from '@/components/SlotRangeInput';
 import CreatorSheet from '@/components/CreatorSheet';
 import EventGallery from '@/components/EventGallery';
 import EventHero from '@/components/EventHero';
+import LinkCard from '@/components/LinkCard';
+import { firstUrl, splitLinks } from '@/lib/linkPreview';
 import { LoadingSkeleton } from '@/components/BootScreen';
 import { DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
@@ -456,7 +458,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     fit();
     vv?.addEventListener('resize', fit);
     vv?.addEventListener('scroll', fit);
+    // Treść dorasta po otwarciu (karty podglądu linków, obrazki) — kto był przy dole,
+    // zostaje przy dole, zamiast patrzeć, jak najnowsze wiadomości uciekają pod pasek.
+    const sc = chatScrollRef.current;
+    const ro = new ResizeObserver(() => {
+      if (sc && chatNearBottomRef.current) sc.scrollTop = sc.scrollHeight;
+    });
+    if (sc?.firstElementChild) ro.observe(sc.firstElementChild);
     return () => {
+      ro.disconnect();
       document.documentElement.style.overflow = prevOverflow;
       window.removeEventListener('keydown', onKey);
       vv?.removeEventListener('resize', fit);
@@ -1452,10 +1462,22 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                       </form>
                     ) : (
                       <p className={`comment-text${deleted ? ' deleted' : ''}`}>
-                        {deleted ? 'Wiadomość usunięta' : c.body}
+                        {deleted
+                          ? 'Wiadomość usunięta'
+                          : splitLinks(c.body).map((part, i) =>
+                              part.href ? (
+                                <a key={i} href={part.href} target="_blank" rel="noopener noreferrer">
+                                  {part.text}
+                                </a>
+                              ) : (
+                                part.text
+                              ),
+                            )}
                       </p>
                     )}
                     </div>
+                    {/* Pierwszy link w wiadomości → karta z podglądem (jak w iMessage). */}
+                    {!deleted && !isEditing && firstUrl(c.body) && <LinkCard url={firstUrl(c.body)!} />}
                     {/* Long-press: reakcje, a przy swoich/organizatorze też edycja
                         i usuwanie (zamiast ikonek przy każdej wiadomości). */}
                     {pickerFor === c.id && (

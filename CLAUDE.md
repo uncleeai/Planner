@@ -74,13 +74,15 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── event/[id]/page.tsx   # Strona wypadu: terminy, głosowanie, czat (pełny ekran), ustalanie terminu
     │   ├── event/[id]/loading.tsx # Skeleton przejścia do wypadu
     │   ├── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
-    │   └── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
+    │   ├── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
+    │   └── api/link-preview/route.ts # Podgląd linku z czatu: pobiera stronę, czyta Open Graph (tylko zalogowani, bez adresów prywatnych)
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
     │   ├── BootScreen.tsx        # Ekran startu: szkielet UI zamiast „Wczytuję…" (pokazywany dopiero po 250 ms)
     │   ├── EmojiCarousel.tsx     # Wybór emoji wypadu: zapętlona karuzela ze snapem (ramka na środku) + kafelek własnego emoji
     │   ├── EventHero.tsx         # Hero strony wypadu: zdjęcie full-bleed + tytuł/meta pod nim (fallback tekstowy bez zdjęcia)
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
+    │   ├── LinkCard.tsx          # Karta podglądu linku pod dymkiem czatu (obrazek + tytuł + domena)
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
     │   ├── CreatorSheet.tsx      # Pełnoekranowy kreator „Nowe lobby" (karta = formularz, child-sheety)
@@ -117,6 +119,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── dataCache.ts          # Cache danych w pamięci: dashboard ↔ strona wypadu bez „Wczytuję…"
         ├── eventPrefetch.ts      # Prefetch danych wypadu na pointerdown (przed nawigacją)
         ├── chatSeen.ts           # Lokalny znacznik „przeczytane" czatu (kropki nieprzeczytanych)
+        ├── linkPreview.ts        # Linki w czacie: wykrywanie URL, parsowanie Open Graph, blokada adresów prywatnych (+ testy)
         ├── haptics.ts            # Haptic tick przy gestach (vibrate; iOS: trik z <input switch>)
         └── types.ts              # Typy + logika statusu wypadu (EventRow, Slot, Vote, Profile…) (+ testy)
 ```
@@ -181,6 +184,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   **Usuwanie miękkie:** RPC `delete_comment` (security definer: autor/organizator/admin)
   czyści `body` i stawia `deleted_at` + kasuje reakcje; w wątku zostaje „Wiadomość
   usunięta", karta czatu i kropki nieprzeczytanych pomijają usunięte.
+  **Linki:** klikalne w dymku; pierwszy link dostaje kartę podglądu (`LinkCard` →
+  `/api/link-preview`, cache: pamięć klienta + HTTP na dzień, bez tabeli w bazie).
+  Strony blokujące boty (Booking, Allegro, Instagram) = sam link bez karty.
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
   tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
@@ -237,7 +243,8 @@ i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql
   (`types.test.ts`: reguły klepania terminu/prowadzącego, końce zakresów,
   formaty dat; `slotInput.test.ts`: budowanie slotu z pól Od/Do/Godzina;
   `emoji.test.ts`: sanityzacja własnego emoji — litery/spacje odrzucone, flagi
-  i sekwencje ZWJ w całości).
+  i sekwencje ZWJ w całości; `linkPreview.test.ts`: wycinanie linków z tekstu,
+  Open Graph, blokada adresów prywatnych).
   Odpalane z `TZ=Europe/Warsaw` dla powtarzalności dat. Brak testów UI/E2E —
   zachowanie sprawdzamy na preview. Lint: brak konfiguracji.
 - **Sanity check:** `next build` weryfikuje typy TypeScript (strict). Po
