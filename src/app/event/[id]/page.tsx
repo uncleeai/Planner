@@ -408,17 +408,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         }),
       );
     }
-    // Kaskada tylko dla ostatnich wierszy — reszta i tak jest poza ekranem.
-    const rows = Array.from(el.querySelectorAll('.comment-list > *, .chat-empty')).slice(-10).reverse();
-    rows.forEach((r, i) => {
-      anims.push(
-        r.animate(flip([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }]), {
-          ...o,
-          duration: inn ? 380 : 180,
-          delay: inn ? 120 + i * 35 : 0,
-        }),
-      );
-    });
+    if (inn) {
+      // Kaskada tylko dla ostatnich wierszy — reszta i tak jest poza ekranem.
+      const rows = Array.from(el.querySelectorAll('.comment-list > *, .chat-empty')).slice(-10).reverse();
+      rows.forEach((r, i) => {
+        anims.push(
+          r.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], {
+            ...o,
+            duration: 380,
+            delay: 120 + i * 35,
+          }),
+        );
+      });
+    } else {
+      // Wyjście: CAŁA lista gaśnie od razu — wcześniej gasło tylko 10 ostatnich
+      // wierszy, a starsze wisiały nad stroną, gdy tło już się zwinęło.
+      const list = el.querySelector('.chat-scroll');
+      if (list) anims.push(list.animate([{ opacity: 1 }, { opacity: 0 }], { ...o, duration: 160 }));
+    }
 
     // Kaskada wiadomości kończy się później niż okno — czekamy na wszystko.
     Promise.all([frame, ...anims].map((x) => x.finished.catch(() => {}))).then(() => {
