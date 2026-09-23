@@ -14,7 +14,7 @@ import CreatorSheet from '@/components/CreatorSheet';
 import EventGallery from '@/components/EventGallery';
 import EventHero from '@/components/EventHero';
 import LinkCard from '@/components/LinkCard';
-import { firstUrl, splitLinks } from '@/lib/linkPreview';
+import { firstUrl, shortLink, splitLinks } from '@/lib/linkPreview';
 import { LoadingSkeleton } from '@/components/BootScreen';
 import { DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
@@ -1469,7 +1469,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                           : splitLinks(c.body).map((part, i) =>
                               part.href ? (
                                 <a key={i} href={part.href} target="_blank" rel="noopener noreferrer">
-                                  {part.text}
+                                  {shortLink(part.text)}
                                 </a>
                               ) : (
                                 part.text

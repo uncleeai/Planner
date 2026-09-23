@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { firstUrl, isPrivateAddress, parsePreview, splitLinks } from './linkPreview';
+import { firstUrl, isPrivateAddress, parsePreview, shortLink, splitLinks } from './linkPreview';
 
 describe('splitLinks / firstUrl', () => {
   it('wycina link ze zdania bez końcowej interpunkcji', () => {
@@ -17,11 +17,34 @@ describe('splitLinks / firstUrl', () => {
 
   it('bez linku: jeden kawałek tekstu i brak URL', () => {
     expect(splitLinks('siema')).toEqual([{ text: 'siema' }]);
-    expect(firstUrl('www.x.pl bez protokołu')).toBeNull();
+    expect(firstUrl('koniec.Teraz i foto.jpg oraz 3.14')).toBeNull();
   });
 
   it('bierze pierwszy z kilku', () => {
     expect(firstUrl('a http://a.pl b https://b.pl')).toBe('http://a.pl');
+  });
+
+  it('łapie adresy bez protokołu (jak iMessage), dopisuje https', () => {
+    expect(splitLinks('wejdź na vidsrc.sbs.')).toEqual([
+      { text: 'wejdź na ' },
+      { text: 'vidsrc.sbs', href: 'https://vidsrc.sbs' },
+      { text: '.' },
+    ]);
+    expect(firstUrl('www.x.pl/a?b=1 bez protokołu')).toBe('https://www.x.pl/a?b=1');
+    expect(firstUrl('youtube.com/@SERHITO_SH0TY')).toBe('https://youtube.com/@SERHITO_SH0TY');
+  });
+
+  it('nie robi linku z maila', () => {
+    expect(firstUrl('pisz na ktos@wp.pl')).toBeNull();
+  });
+});
+
+describe('shortLink', () => {
+  it('krótki zostaje, długi traci protokół/www i dostaje wielokropek', () => {
+    expect(shortLink('vidsrc.sbs')).toBe('vidsrc.sbs');
+    const long = 'https://www.booking.com/searchresults.pl.html?ss=Mazury&checkin=2026-09-23';
+    expect(shortLink(long)).toBe('booking.com/searchresults.pl.html?ss=Ma…');
+    expect(shortLink(long).length).toBe(40);
   });
 });
 

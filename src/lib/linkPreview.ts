@@ -13,7 +13,16 @@ export type LinkPreview = {
 // http(s)://… do białego znaku; końcowa interpunkcja zdania („zobacz x.pl.") nie
 // należy do linku. Nawias zamykający zostaje tylko do pary z otwierającym
 // (Wikipedia: …/Foo_(bar)), nadmiarowe to nawias zdania.
-const URL_RE = /https?:\/\/[^\s<>"]+/gi;
+// Jak iMessage łapiemy też adresy bez protokołu („vidsrc.sbs", „www.x.pl/a") — ale tylko
+// ze znaną końcówką, żeby „koniec.Teraz" czy „foto.jpg" nie robiły się linkami, i nie
+// w środku maila (ktoś@x.pl).
+const TLDS =
+  'pl|com|net|org|eu|io|app|dev|co|me|tv|gg|info|biz|xyz|sbs|online|site|store|shop|' +
+  'de|uk|fr|it|es|cz|sk|ua|us|ai|be|nl|at|ch|se|no|fi|dk|link|page|news|blog|travel|ly|to|fm|gl';
+const URL_RE = new RegExp(
+  `https?:\\/\\/[^\\s<>"]+|(?<![@\\w.\\/-])(?:[a-z0-9-]+\\.)+(?:${TLDS})(?![\\w-])(?:[/?#][^\\s<>"]*)?`,
+  'gi',
+);
 
 function trimUrl(raw: string): string {
   let u = raw.replace(/[.,;:!?'"»]+$/, '');
@@ -23,6 +32,7 @@ function trimUrl(raw: string): string {
 }
 
 // Tekst pocięty na kawałki: zwykły tekst i linki (do renderowania klikalnych <a>).
+// text = jak napisano, href = z protokołem (bez niego dopisujemy https://).
 export function splitLinks(text: string): { text: string; href?: string }[] {
   const out: { text: string; href?: string }[] = [];
   let last = 0;
@@ -30,11 +40,19 @@ export function splitLinks(text: string): { text: string; href?: string }[] {
     const url = trimUrl(m[0]);
     const start = m.index ?? 0;
     if (start > last) out.push({ text: text.slice(last, start) });
-    out.push({ text: url, href: url });
+    out.push({ text: url, href: /^https?:\/\//i.test(url) ? url : `https://${url}` });
     last = start + url.length;
   }
   if (last < text.length) out.push({ text: text.slice(last) });
   return out;
+}
+
+// Długi link w dymku (Booking z kilometrem parametrów) skracamy do „domena/ścieżka…" —
+// pełny adres zostaje w href.
+export function shortLink(text: string, max = 40): string {
+  if (text.length <= max) return text;
+  const bare = text.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  return bare.length <= max ? bare : `${bare.slice(0, max - 1)}…`;
 }
 
 export function firstUrl(text: string): string | null {
