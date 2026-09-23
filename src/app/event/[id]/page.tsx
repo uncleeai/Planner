@@ -210,6 +210,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const chatRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatNearBottomRef = useRef(true);
+  // Czy użytkownik sam ruszył listę (palec/kółko). Dopiero wtedy zdarzenia przewijania
+  // mogą „odkleić" czat od dołu — inaczej spóźnione zdarzenie po doczytaniu karty linku
+  // albo zdjęcia (iOS) uznawało, że przewinąłeś w górę, i czat zostawał w połowie.
+  const chatUserScrollRef = useRef(false);
   const chatCountRef = useRef(0);
   const chatPeekRef = useRef<HTMLButtonElement>(null);
   const chatZoomRef = useRef(false); // otwarte tapnięciem w kartę → animacja „wlotu"
@@ -511,6 +515,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (opening) {
       sc.scrollTop = sc.scrollHeight;
       chatNearBottomRef.current = true;
+      chatUserScrollRef.current = false;
     } else if (lastMine || chatNearBottomRef.current) {
       sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
     }
@@ -1378,8 +1383,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             className="chat-scroll"
             ref={chatScrollRef}
             onScroll={(e) => {
+              if (!chatUserScrollRef.current) return;
               const sc = e.currentTarget;
               chatNearBottomRef.current = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
+            }}
+            onTouchMove={() => {
+              chatUserScrollRef.current = true;
+            }}
+            onWheel={() => {
+              chatUserScrollRef.current = true;
             }}
           >
             {comments.length === 0 ? (
