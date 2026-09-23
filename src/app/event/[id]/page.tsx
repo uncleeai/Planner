@@ -84,6 +84,78 @@ function longPressHandlers(fire: () => void) {
   };
 }
 
+// Warstwa przytrzymania jak w iMessage: kopia dymka ląduje nad przygaszonym czatem
+// dokładnie w swoim miejscu (oryginał w liście na ten czas znika), a gdy pod nią nie
+// ma miejsca na menu — podjeżdża do góry i lekko rośnie. Lista się nie rusza.
+function ReactionLayer({
+  sourceId,
+  rowClass,
+  picker,
+  menu,
+}: {
+  sourceId: string;
+  rowClass: string;
+  picker: React.ReactNode;
+  menu: React.ReactNode;
+}) {
+  const layerRef = useRef<HTMLDivElement>(null);
+  const floatRef = useRef<HTMLDivElement>(null);
+  const cloneHostRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [lift, setLift] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const src = document.querySelector<HTMLElement>(`[data-cid="${sourceId}"] > .comment-swipe .comment-line`);
+    const layer = layerRef.current;
+    if (!src || !layer) return;
+    const r = src.getBoundingClientRect();
+    const base = layer.getBoundingClientRect();
+    setPos({ top: r.top - base.top, left: r.left - base.left, width: r.width });
+    const clone = src.cloneNode(true) as HTMLElement;
+    cloneHostRef.current?.append(clone);
+    return () => clone.remove();
+  }, [sourceId]);
+
+  // Ile podjechać: menu musi zmieścić się nad polem pisania, pasek reakcji pod nagłówkiem.
+  useLayoutEffect(() => {
+    const f = floatRef.current;
+    const screen = layerRef.current?.parentElement;
+    if (!pos || !f || !screen) return;
+    const top = screen.querySelector('.chat-top')?.getBoundingClientRect().bottom ?? 0;
+    const bottom = screen.querySelector('.chat-compose')?.getBoundingClientRect().top ?? window.innerHeight;
+    const menuH = f.querySelector<HTMLElement>('.msg-menu')?.offsetHeight ?? 0;
+    const pickH = f.querySelector<HTMLElement>('.reaction-picker')?.offsetHeight ?? 0;
+    const fr = f.getBoundingClientRect();
+    let s = Math.min(0, bottom - 12 - (fr.bottom + 8 + menuH));
+    const pickTop = fr.top + s - 8 - pickH;
+    if (pickTop < top + 12) s += top + 12 - pickTop;
+    const id = requestAnimationFrame(() => setLift(s));
+    return () => cancelAnimationFrame(id);
+  }, [pos]);
+
+  return (
+    <div className="rx-layer" ref={layerRef}>
+      <div className="rx-dim" aria-hidden="true" />
+      {/* Zawsze w DOM (kopia dymka wchodzi do cloneHost w pierwszym efekcie); widoczne od pomiaru. */}
+      <div
+        ref={floatRef}
+        className={`rx-float ${rowClass}`}
+        style={{
+          top: pos?.top,
+          left: pos?.left,
+          width: pos?.width,
+          visibility: pos ? undefined : 'hidden',
+          transform: lift === null ? undefined : `translateY(${lift}px) scale(1.03)`,
+        }}
+      >
+        <div ref={cloneHostRef} />
+        {pos && picker}
+        {pos && menu}
+      </div>
+    </div>
+  );
+}
+
 function formatCommentTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
 }
@@ -1400,7 +1472,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             </div>
           </header>
 
-          {pickerFor && <div className="rx-dim" aria-hidden="true" />}
           <div
             className="chat-scroll"
             ref={chatScrollRef}
@@ -1440,6 +1511,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <Fragment key={c.id}>
                 {day && <div className="chat-day">{day}</div>}
                 <div
+                  data-cid={c.id}
                   className={`comment${mine ? ' mine' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${isEditing ? ' editing' : ''}${pickerFor === c.id ? ' lifted' : ''}${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}${pressable ? ' pressable' : ''}`}
                   {...(pressable
                     ? longPressHandlers(() => {
@@ -1516,10 +1588,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     </div>
                     {/* Pierwszy link w wiadomości → karta z podglądem (jak w iMessage). */}
                     {!deleted && !isEditing && firstUrl(c.body) && <LinkCard url={firstUrl(c.body)!} />}
-                    {/* Long-press jak w iMessage: tło przygasa, dymek się podnosi, nad nim
-                        wyskakuje pasek reakcji (emotki po kolei), pod nim menu akcji. */}
-                    {pickerFor === c.id && (
-                      <>
+                    {/* Long-press jak w iMessage — warstwa nad czatem (zob. ReactionLayer). */}
+                    {pickerFor === c.id &&
+                      chatRef.current &&
+                      createPortal(
+                        <ReactionLayer
+                          sourceId={c.id}
+                          rowClass={`comment${mine ? ' mine' : ''}${first ? ' first' : ''}${last ? ' last' : ''}`}
+                          picker={
                         <span className="reaction-picker" onPointerDown={(e) => e.stopPropagation()}>
                           {REACTION_EMOJIS.map((e, i) => (
                             <button
@@ -1533,18 +1609,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                             </button>
                           ))}
                         </span>
+                          }
+                          menu={
                         <span
                           className="msg-menu"
                           onPointerDown={(e) => e.stopPropagation()}
-                          ref={(el) => {
-                            // Menu pod ostatnią wiadomością wystaje za dół listy — przewiń do niego.
-                            // Raz na otwarcie (ref wołany jest przy każdym renderze).
-                            if (el && !el.dataset.shown) {
-                              el.dataset.shown = '1';
-                              // Po animacji wejścia — w trakcie menu jest pomniejszone i przewijało za mało.
-                              setTimeout(() => el.isConnected && el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 300);
-                            }
-                          }}
                         >
                           {c.body && (
                             <button
@@ -1581,8 +1650,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                             </button>
                           )}
                         </span>
-                      </>
-                    )}
+                          }
+                        />,
+                        chatRef.current,
+                      )}
                     {groups.length > 0 && !isEditing && (
                       <div className="reactions">
                         {groups.map((g) => (

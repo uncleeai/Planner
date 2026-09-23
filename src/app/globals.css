@@ -1355,7 +1355,7 @@ img.avatar { display: inline-block; }
   .reaction-chip:hover { border-color: rgba(255, 255, 255, 0.3); }
 }
 .reaction-picker {
-  position: absolute; left: 0; bottom: calc(100% - 4px); z-index: 60;
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 1;
   display: flex; gap: 2px; padding: 5px 7px;
   background: #1c1f24;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1377,16 +1377,12 @@ img.avatar { display: inline-block; }
 
 /* Menu akcji pod dymkiem (jak menu kontekstowe iOS): Kopiuj / Edytuj / Usuń. */
 .msg-menu {
-  position: absolute; top: calc(100% + 6px); left: 36px; z-index: 60;
+  position: absolute; top: calc(100% + 8px); left: 36px; z-index: 1;
   display: flex; flex-direction: column; min-width: 190px;
   background: #1c1f24; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   transform-origin: 20% 0;
-  scroll-margin-bottom: 14px;
 }
-/* Zapas pod menu, żeby przy ostatniej wiadomości nie dotykało pola pisania
-   (pusty element poszerza obszar przewijania listy). */
-.msg-menu::after { content: ''; position: absolute; top: 100%; left: 0; width: 1px; height: 14px; }
 .comment.mine .msg-menu { left: auto; right: 0; transform-origin: 80% 0; }
 .msg-menu:empty { display: none; }
 .msg-menu button {
@@ -1396,27 +1392,30 @@ img.avatar { display: inline-block; }
 }
 .msg-menu button + button { border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .msg-menu button.danger { color: var(--no); }
-/* Bez overflow:hidden (uciąłby zapas ::after) — narożniki podświetlenia z przycisków. */
+/* Narożniki podświetlenia z przycisków (menu bez overflow:hidden — cień zostaje ostry). */
 .msg-menu button:first-child { border-radius: 14px 14px 0 0; }
 .msg-menu button:last-child { border-radius: 0 0 14px 14px; }
 .msg-menu button:only-child { border-radius: 14px; }
 .msg-menu button:active { background: rgba(255, 255, 255, 0.06); transform: none; }
 
-/* Przygaszenie czatu pod podniesionym dymkiem — tylko wizualne (bez blokady
-   przewijania; zamyka dotknięcie obok). */
-.rx-dim { position: fixed; inset: 0; z-index: 55; background: rgba(0, 0, 0, 0.5); pointer-events: none; }
-.comment.lifted { z-index: 60; }
+/* Warstwa przytrzymania (ReactionLayer): przygaszenie + kopia dymka, która podjeżdża,
+   gdy pod nią brak miejsca na menu. Oryginał w liście na ten czas znika. Dotknięcie
+   przygaszenia zamyka (nasłuch pointerdown na dokumencie). */
+.rx-layer { position: absolute; inset: 0; z-index: 70; }
+.rx-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); }
+.rx-float { position: absolute; transform-origin: 0 50%; }
+.rx-float.mine { transform-origin: 100% 50%; }
+.rx-float .comment-line { margin: 0; }
+.comment.lifted > .comment-swipe .comment-line { visibility: hidden; }
 
 @media (prefers-reduced-motion: no-preference) {
   .rx-dim { animation: rx-dim 0.18s ease-out; }
-  .comment.lifted .comment-line { animation: rx-lift 0.34s cubic-bezier(0.2, 1.5, 0.4, 1) both; transform-origin: 0 100%; }
-  .comment.mine.lifted .comment-line { transform-origin: 100% 100%; }
+  .rx-float { transition: transform 0.42s cubic-bezier(0.2, 1.25, 0.3, 1); }
   .reaction-picker { animation: rx-pop 0.34s cubic-bezier(0.2, 1.45, 0.4, 1) both; }
   .reaction-picker button { animation: rx-emoji 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both; animation-delay: calc(70ms + var(--i, 0) * 25ms); }
   .msg-menu { animation: rx-menu 0.24s cubic-bezier(0.2, 1, 0.3, 1) both; animation-delay: 40ms; }
 }
 @keyframes rx-dim { from { opacity: 0; } }
-@keyframes rx-lift { to { transform: scale(1.03); } }
 @keyframes rx-pop { from { opacity: 0; transform: translateY(12px) scale(0.35); } }
 @keyframes rx-emoji { from { opacity: 0; transform: translateY(8px) scale(0.3); } }
 @keyframes rx-menu { from { opacity: 0; transform: translateY(-8px) scale(0.85); } }
