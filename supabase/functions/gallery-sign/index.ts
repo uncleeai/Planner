@@ -1,10 +1,15 @@
 // Edge Function: gallery-sign (dawniej sign-photo-upload — nazwa bez „photo-upload", bo listy content blockerów w Safari ucinały ścieżkę) — podpisuje uploady zdjęć galerii do
 // Cloudflare R2 (presigned PUT, SigV4 przez aws4fetch). Klient NIGDY nie widzi
 // kluczy R2; funkcja (verify JWT = tylko zalogowana paczka) buduje ścieżki
-// server-side: <event_id>/<uid>-<ts>-<i>[-orig].<ext> i zwraca URL-e ważne 10 min.
+// server-side: <event_id>/<uid>-<ts>-<i>[-orig|-thumb].<ext> i zwraca URL-e ważne 10 min.
 // Body: { event_id, files: [{ ext: 'jpg'|'heic'|..., kind: 'thumb'|'preview'|'original' }], scope? }.
 // scope: 'chat' → zdjęcia z czatu lądują pod <event_id>/chat/… (osobno od galerii).
-// Podpis obejmuje Cache-Control — klient musi wysłać ten sam nagłówek przy PUT.
+//
+// UWAGA — Żadnych dodatkowych nagłówków w podpisie. Próba podpisania Cache-Control
+// (żeby R2 zapisało go przy obiekcie) składa się na dwa problemy: klient musi wysłać
+// go co do znaku, a sam nagłówek nie jest „prosty", więc przeglądarka robi preflight
+// CORS do R2 — bucket go nie dopuszcza i cała wysyłka pada na „Load failed".
+// Cache można ustawić po stronie Cloudflare (Cache Rules na własnej domenie).
 //
 // Wdrożenie: supabase functions deploy sign-photo-upload  (DOMYŚLNIE verify JWT)
 // Sekrety: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
@@ -73,16 +78,9 @@ Deno.serve(async (req) => {
     const path = `${prefix}/${uid}-${ts}-${i}${suffix}.${ext}`;
     const url = new URL(`${ENDPOINT}/${BUCKET}/${path}`);
     url.searchParams.set('X-Amz-Expires', '600');
-    // Cache-Control wchodzi do podpisu, więc klient MUSI wysłać go przy PUT
-    // dokładnie w tej postaci (zob. R2_CACHE_CONTROL w src/lib/gallery.ts).
-    // Pliki są niezmienne — nazwa niesie znacznik czasu.
-    const signed = await r2.sign(
-      new Request(url, {
-        method: 'PUT',
-        headers: { 'Cache-Control': 'public, max-age=31536000, immutable' },
-      }),
-      { aws: { signQuery: true } },
-    );
+    const signed = await r2.sign(new Request(url, { method: 'PUT' }), {
+      aws: { signQuery: true },
+    });
     out.push({ path, uploadUrl: signed.url });
   }
 
