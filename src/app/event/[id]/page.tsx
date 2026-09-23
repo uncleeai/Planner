@@ -424,7 +424,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       // Wyjście: CAŁA lista gaśnie od razu — wcześniej gasło tylko 10 ostatnich
       // wierszy, a starsze wisiały nad stroną, gdy tło już się zwinęło.
       const list = el.querySelector('.chat-scroll');
-      if (list) anims.push(list.animate([{ opacity: 1 }, { opacity: 0 }], { ...o, duration: 160 }));
+      if (list) anims.push(list.animate([{ opacity: 1 }, { opacity: 0 }], { ...o, duration: 90 }));
     }
 
     // Kaskada wiadomości kończy się później niż okno — czekamy na wszystko.
