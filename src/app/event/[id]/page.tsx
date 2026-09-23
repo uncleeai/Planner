@@ -357,6 +357,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const T = inn ? 520 : 340;
     const o: KeyframeAnimationOptions = { duration: T, easing, fill: 'both' };
     const flip = <K,>(k: K[]) => (inn ? k : [...k].reverse());
+    // Najpierw wyłącz CSS-owy wjazd z boku (chat-in), DOPIERO potem mierz — inaczej
+    // pomiar łapał ekran przesunięty o 28% i tło startowało obok karty, doganiając ją.
+    el.style.animation = 'none';
     const box = el.getBoundingClientRect();
     // Rośnie tylko TŁO okna (osobna warstwa skalowana z prostokąta karty), a nie
     // przycięty ekran — dzięki temu pasek pisania leci po wierzchu i jest widoczny
@@ -364,7 +367,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const ghost = document.createElement('div');
     ghost.className = 'chat-ghost';
     el.prepend(ghost);
-    el.style.animation = 'none';
     el.style.background = 'transparent';
     const sx = card.width / box.width;
     const sy = card.height / box.height;
