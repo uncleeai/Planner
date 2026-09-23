@@ -96,8 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={{ userId: session.user.id, displayName, avatar, isAdmin }}>
       <NewEventToast userId={session.user.id} />
       {children}
-      {/* „Co nowego" raz na konto — znacznik w user_metadata (zob. WhatsNew). */}
-      {meta.whats_new !== WHATS_NEW_ID && <WhatsNew />}
+      {/* „Co nowego" raz na konto — znacznik w user_metadata (zob. WhatsNew).
+          ?whatsnew w adresie wymusza pokazanie (podgląd przy zmianach treści). */}
+      {(meta.whats_new !== WHATS_NEW_ID || new URLSearchParams(window.location.search).has('whatsnew')) && (
+        <WhatsNew />
+      )}
     </Ctx.Provider>
   );
 }
