@@ -46,8 +46,6 @@ const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😎', '🤙', '💀
 // Przytrzymanie (long-press) komentarza otwiera picker reakcji — jak w iMessage/
 // Messengerze. Ruch palca > 12px (scroll) anuluje; prawy klik na desktopie też otwiera.
 const LONG_PRESS_MS = 450;
-// Szerokość odsłanianego przycisku „Usuń" (swipe-to-delete) + margines.
-const SWIPE_DEL_W = 76;
 function longPressHandlers(fire: () => void) {
   let timer = 0;
   let sx = 0;
@@ -442,7 +440,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     Promise.all([frame, ...anims].map((x) => x.finished.catch(() => {}))).then(() => {
       done?.();
       // Zostawione animacje trzymałyby clip-path/transform na zawsze (transform robi
-      // osobny kontekst warstw — picker reakcji lądowałby pod tap-catcherem).
+      // osobny kontekst warstw i psułby warstwy pickera reakcji).
       // Na wejściu zdejmij; na wyjściu ekran i tak zaraz znika.
       if (inn) {
         for (const a of [frame, ...anims]) a.cancel();
@@ -843,70 +841,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (error) load();
   }
 
-  // Swipe-to-delete komentarza (jak iOS Mail): przeciągnięcie w lewo odsłania
-  // przycisk „Usuń". Na dotyku zastępuje ✕ z nagłówka (desktop zostaje przy ✕).
-  // Rozpoznanie intencji: poziomy ruch = swipe, pionowy = scroll; poziomy ruch
-  // >12px sam anuluje long-press reakcji, więc gesty się nie gryzą.
-  const [swipedCommentId, setSwipedCommentId] = useState<string | null>(null);
-  const swipeDragRef = useRef<{
-    id: string; x: number; y: number;
-    el: HTMLElement; btn: HTMLElement | null;
-    base: number; horiz: boolean | null; pos: number;
-  } | null>(null);
-
-  function commentSwipeStart(c: Comment, e: React.TouchEvent<HTMLDivElement>) {
-    if (swipedCommentId && swipedCommentId !== c.id) setSwipedCommentId(null);
-    const el = e.currentTarget.querySelector<HTMLElement>('.comment-swipe');
-    if (!el) return;
-    const base = swipedCommentId === c.id ? -SWIPE_DEL_W : 0;
-    swipeDragRef.current = {
-      id: c.id,
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-      el,
-      btn: e.currentTarget.querySelector<HTMLElement>('.comment-swipe-del'),
-      base,
-      horiz: null,
-      pos: base,
+  // Otwarty picker reakcji / lista „kto zareagował": dotknięcie gdziekolwiek obok
+  // zamyka — bez zasłony na cały ekran, która blokowała przewijanie, dopóki się jej
+  // nie tapnęło.
+  useEffect(() => {
+    if (!pickerFor && !whoFor) return;
+    const close = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest?.('.reaction-picker, .who-pop, .reaction-chip')) return;
+      setPickerFor(null);
+      setWhoFor(null);
     };
-  }
-  function commentSwipeMove(e: React.TouchEvent) {
-    const d = swipeDragRef.current;
-    if (!d) return;
-    const dx = e.touches[0].clientX - d.x;
-    const dy = e.touches[0].clientY - d.y;
-    if (d.horiz === null) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      d.horiz = Math.abs(dx) > Math.abs(dy);
-    }
-    if (!d.horiz) return;
-    let pos = d.base + dx;
-    if (pos < -SWIPE_DEL_W) pos = -SWIPE_DEL_W + (pos + SWIPE_DEL_W) * 0.25; // opór za przyciskiem
-    pos = Math.min(0, pos);
-    d.pos = pos;
-    d.el.style.transition = 'none';
-    d.el.style.transform = `translateX(${pos}px)`;
-    if (d.btn) {
-      d.btn.style.transition = 'none';
-      d.btn.style.opacity = String(Math.min(1, -pos / SWIPE_DEL_W));
-    }
-  }
-  function commentSwipeEnd() {
-    const d = swipeDragRef.current;
-    swipeDragRef.current = null;
-    if (!d || !d.horiz) return;
-    const open = d.pos < -SWIPE_DEL_W / 2;
-    // Inline od razu na wartość docelową (tranzycja CSS robi doślizg); stan
-    // Reacta tylko utrwala wynik — bez skoku między klatkami.
-    d.el.style.transition = '';
-    d.el.style.transform = open ? `translateX(${-SWIPE_DEL_W}px)` : '';
-    if (d.btn) {
-      d.btn.style.transition = '';
-      d.btn.style.opacity = open ? '1' : '';
-    }
-    if (open && swipedCommentId !== d.id) haptic();
-    setSwipedCommentId(open ? d.id : null);
-  }
+    document.addEventListener('pointerdown', close, true);
+    return () => document.removeEventListener('pointerdown', close, true);
+  }, [pickerFor, whoFor]);
 
   function startCommentEdit(c: Comment) {
     setEditCommentText(c.body);
@@ -1499,40 +1446,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         setPickerFor(c.id);
                       })
                     : {})}
-                  {...(canDel && saved && !isEditing
-                    ? {
-                        // saved: świeży (optymistyczny) wpis zaraz dostanie nowe
-                        // id i nowy element DOM — swipe w tym oknie łapałby
-                        // znikający element (wizualny skok).
-                        onTouchStart: (e: React.TouchEvent<HTMLDivElement>) => commentSwipeStart(c, e),
-                        onTouchMove: commentSwipeMove,
-                        onTouchEnd: commentSwipeEnd,
-                        onTouchCancel: commentSwipeEnd,
-                      }
-                    : {})}
                 >
-                  {canDel && (
-                    <button
-                      type="button"
-                      className="comment-swipe-del"
-                      tabIndex={-1}
-                      aria-hidden={swipedCommentId !== c.id}
-                      style={swipedCommentId === c.id ? { opacity: 1, pointerEvents: 'auto' } : undefined}
-                      onClick={() => {
-                        setSwipedCommentId(null);
-                        deleteComment(c.id);
-                      }}
-                    >
-                      Usuń
-                    </button>
-                  )}
-                  <div
-                    className="comment-swipe"
-                    style={swipedCommentId === c.id ? { transform: `translateX(${-SWIPE_DEL_W}px)` } : undefined}
-                    onClick={() => {
-                      if (swipedCommentId === c.id) setSwipedCommentId(null);
-                    }}
-                  >
+                  {/* Usuwanie: przytrzymanie → ✕ w pickerze (dawny swipe-to-delete wyleciał). */}
+                  <div className="comment-swipe">
                   <div className="comment-body">
                     {first && !mine && <span className="comment-author">{name}</span>}
                     <div className="comment-line">
@@ -1750,17 +1666,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 Zapisz
               </button>
             </div>
-          )}
-
-          {/* Tap poza pickerem/listą reakcji zamyka je (przezroczysta warstwa pod spodem). */}
-          {(pickerFor || whoFor) && (
-            <div
-              className="tap-catcher"
-              onClick={() => {
-                setPickerFor(null);
-                setWhoFor(null);
-              }}
-            />
           )}
         </div>,
         document.body,
