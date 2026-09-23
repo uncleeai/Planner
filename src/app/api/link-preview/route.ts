@@ -8,7 +8,7 @@ import { isPrivateAddress, parsePreview } from '@/lib/linkPreview';
 // - tylko zalogowani z paczki (token Supabase sprawdzany w /auth/v1/user),
 // - tylko http/https na porcie domyślnym, adres musi rozwiązywać się na PUBLICZNE IP
 //   (bez sieci wewnętrznej / metadanych chmury), każde przekierowanie sprawdzane od nowa,
-// - limit czasu i rozmiaru; czytamy tylko <head>.
+// - limit czasu i rozmiaru; czytamy do og:image (zwykle <head>, YouTube ma je w <body>).
 // Wynik cache'uje przeglądarka (dzień) + pamięć klienta, więc stronę pobieramy rzadko.
 export const dynamic = 'force-dynamic';
 
@@ -35,15 +35,20 @@ async function readHead(res: Response): Promise<string> {
   const dec = new TextDecoder();
   let html = '';
   let bytes = 0;
+  let headEnd = -1;
   while (bytes < MAX_BYTES) {
     const { done, value } = await reader.read();
     if (done) break;
     bytes += value.byteLength;
     const chunk = dec.decode(value, { stream: true });
-    // Szukamy końca <head> tylko w nowym kawałku (+ zakładka na tag przecięty granicą).
-    const tail = html.slice(-8) + chunk;
+    // Szukamy tylko w nowym kawałku (+ zakładka na tag przecięty granicą).
+    const tail = html.slice(-400) + chunk;
     html += chunk;
-    if (/<\/head>/i.test(tail)) break;
+    if (/og:image[^>]*>/i.test(tail)) break;
+    if (headEnd < 0 && /<\/head>/i.test(tail)) headEnd = bytes;
+    // Kanały YouTube wstawiają og:* do <body> (~50 KB za </head>) — po końcu
+    // nagłówka czytamy jeszcze trochę, zanim uznamy, że obrazka nie ma.
+    if (headEnd >= 0 && bytes - headEnd > 400_000) break;
   }
   reader.cancel().catch(() => {});
   return html;

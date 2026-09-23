@@ -184,7 +184,8 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   **Usuwanie miękkie:** RPC `delete_comment` (security definer: autor/organizator/admin)
   czyści `body` i stawia `deleted_at` + kasuje reakcje; w wątku zostaje „Wiadomość
   usunięta", karta czatu i kropki nieprzeczytanych pomijają usunięte.
-  **Linki:** klikalne w dymku; pierwszy link dostaje kartę podglądu (`LinkCard` →
+  **Linki:** klikalne w dymku (też bez protokołu: „x.pl", znane końcówki; długie skracane
+  w tekście przez `shortLink`); pierwszy link dostaje kartę podglądu (`LinkCard` →
   `/api/link-preview`, cache: pamięć klienta + HTTP na dzień, bez tabeli w bazie).
   Strony blokujące boty (Booking, Allegro, Instagram) = sam link bez karty.
   **Zdjęcia:** przycisk aparatu przy polu pisania; każde zdjęcie = osobna wiadomość
