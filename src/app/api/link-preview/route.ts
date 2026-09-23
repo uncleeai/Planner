@@ -91,6 +91,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Brak podglądu.' }, { status: 404 });
     }
     const preview = parsePreview(await readHead(res), url.href);
+    // Pusty wynik NIE idzie do cache przeglądarki — inaczej po poprawce parsera
+    // (albo gdy strona chwilowo nie odda znaczników) link zostawał bez karty na dobę.
+    if (!preview.title && !preview.image) {
+      return NextResponse.json({ error: 'Brak podglądu.' }, { status: 404 });
+    }
     return NextResponse.json(preview, { headers: { 'Cache-Control': 'private, max-age=86400' } });
   } catch {
     return NextResponse.json({ error: 'Brak podglądu.' }, { status: 404 });
