@@ -480,9 +480,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       vv?.removeEventListener('resize', fit);
       vv?.removeEventListener('scroll', fit);
     };
-    // closeChat czyta tylko refy i settery — stabilny w praktyce.
+    // closeChat czyta tylko refy i settery — stabilny w praktyce. `loading`: wejście
+    // z linku (?czat) otwiera czat, zanim strona się wczyta — ekranu jeszcze nie ma,
+    // więc podpinamy się ponownie po wczytaniu; hasComments: lista zastępuje „Cisza…".
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatOpen]);
+  }, [chatOpen, loading, comments.length > 0]);
 
   // Nowa wiadomość: zjedź na dół, jeśli byłeś przy dole albo to twoja
   // (czytając starsze, nie wyrywamy cię w dół). Otwarcie = od razu najnowsze.
@@ -505,10 +507,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     chatCountRef.current = comments.length;
     if (!grew) return;
     const lastMine = comments[comments.length - 1]?.user_id === userId;
-    if (opening) {
+    if (opening || lastMine) {
+      // Własna wiadomość: od razu na dół i „przyklej" — zdjęcie dorośnie po
+      // wczytaniu, a płynny przejazd gubił przyklejenie w połowie drogi.
       sc.scrollTop = sc.scrollHeight;
       chatNearBottomRef.current = true;
-    } else if (lastMine || chatNearBottomRef.current) {
+    } else if (chatNearBottomRef.current) {
       sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
     }
   }, [chatOpen, comments, userId]);

@@ -19,4 +19,6 @@ jak w Messengerze — przycisk obok pola pisania, zdjęcie w dymku, tap = pełny
   Raczej nie domyślnie (screeny z planowania ≠ foty z wypadu) — ewentualnie akcja
   „dodaj do galerii" pod przytrzymaniem.
 
-Status: do zrobienia po wypuszczeniu nowego czatu (razem albo po podglądzie linków).
+Status: zrobione na branchu `claude/chat-photos`; do przetestowania na preview po
+postawieniu galerii na `Wypad-dev` (tabela event_photos nie jest potrzebna czatowi,
+ale `gallery-sign` + sekrety R2 tak). Do galerii wypadu zdjęcia z czatu nie trafiają.

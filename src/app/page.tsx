@@ -451,7 +451,7 @@ export default function Home() {
     return {
       name: prof?.display_name ?? c.author_name,
       avatar: prof?.avatar ?? null,
-      body: c.body,
+      body: c.body || (c.image_path ? '📷 Zdjęcie' : ''),
       createdAt: c.created_at,
     };
   }, [heroId, ahead, recentComments, profileById]);

@@ -103,7 +103,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── avatars.ts            # Lista emoji-awatarów + deterministyczne kolory/inicjały
         ├── emoji.ts              # Wyciąganie własnego emoji z wejścia klawiatury (grafemy, +testy) — używane przez EmojiCarousel
         ├── eventImage.ts         # Upload własnego tła wypadu (skalowanie → bucket event-images)
-        ├── gallery.ts            # Galeria wypadu: upload do R2 (oryginał+podgląd) + metadane event_photos; podpis przez /api/gallery-sign (same-origin)
+        ├── gallery.ts            # Galeria wypadu + zdjęcia czatu: upload do R2 (podpis przez /api/gallery-sign, same-origin) + metadane
         ├── accent.ts             # Kolor akcentu użytkownika (localStorage + skrypt bootujący)
         ├── ping.ts               # „Pinguj kurwę": wywołanie Edge Function ping-user + limit 12h
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
@@ -187,6 +187,12 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   **Linki:** klikalne w dymku; pierwszy link dostaje kartę podglądu (`LinkCard` →
   `/api/link-preview`, cache: pamięć klienta + HTTP na dzień, bez tabeli w bazie).
   Strony blokujące boty (Booking, Allegro, Instagram) = sam link bez karty.
+  **Zdjęcia:** przycisk aparatu przy polu pisania; każde zdjęcie = osobna wiadomość
+  (`image_path` podgląd 2048 px + `image_thumb_path` 640 px + `image_w/h`, `body` może
+  być puste). Upload jak galeria (`uploadChatPhoto` w `gallery.ts` → `/api/gallery-sign`
+  ze `scope: 'chat'` → R2 pod `<event_id>/chat/…`), bez oryginału. Optymistycznie z `blob:`.
+  Tap = pełny ekran. Push/zajawki: „📷 Zdjęcie". Pliki usuniętych zdjęć zostają w R2
+  (brak GC dla czatu — do dorobienia, gdy będzie potrzeba).
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
   tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
