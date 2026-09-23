@@ -193,7 +193,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
   tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
-  UX: long-press komentarza otwiera picker (+ edycja/usuwanie przy uprawnieniach);
+  UX: long-press komentarza jak w iMessage — czat przygasa (`.rx-dim`, bez blokady
+  przewijania), dymek się podnosi, nad nim pasek reakcji (sprężyna + emotki po kolei),
+  pod nim menu akcji (Kopiuj / Edytuj / Usuń); dotknięcie obok zamyka;
   tap w chipy pokazuje kto co dał.
   RLS: czytają wszyscy zalogowani, każdy zarządza tylko swoimi. Uwaga na Realtime:
   subskrypcja BEZ filtra (filtry działają tylko na INSERT/UPDATE, a zdjęcie reakcji to

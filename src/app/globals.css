@@ -1325,25 +1325,16 @@ img.avatar { display: inline-block; }
 .reaction-picker {
   position: absolute; left: 0; bottom: calc(100% - 4px); z-index: 60;
   display: flex; gap: 2px; padding: 5px 7px;
-  background: #14171a;
+  background: #1c1f24;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  transform-origin: left bottom;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  transform-origin: 20% 100%;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .reaction-picker { animation: picker-pop 0.16s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
-}
-@keyframes picker-pop {
-  from { opacity: 0; transform: scale(0.7); }
-}
-.comment.mine .reaction-picker { left: auto; right: 0; transform-origin: right bottom; }
-.picker-sep { width: 1px; align-self: stretch; margin: 4px 3px; background: rgba(255, 255, 255, 0.14); }
-.reaction-picker .picker-act { display: grid; place-items: center; color: var(--muted); font-size: 0.95rem; }
-.reaction-picker .picker-act.danger { color: var(--no); }
+.comment.mine .reaction-picker { left: auto; right: 0; transform-origin: 80% 100%; }
 .reaction-picker button {
   background: none; border: none; padding: 6px 7px;
-  font-size: 1.15rem; line-height: 1; cursor: pointer; border-radius: 999px;
+  font-size: 1.2rem; line-height: 1; cursor: pointer; border-radius: 999px;
 }
 .reaction-picker button.sel {
   background: color-mix(in srgb, var(--accent) 26%, transparent);
@@ -1351,6 +1342,53 @@ img.avatar { display: inline-block; }
 @media (hover: hover) {
   .reaction-picker button:hover { background: rgba(255, 255, 255, 0.08); }
 }
+
+/* Menu akcji pod dymkiem (jak menu kontekstowe iOS): Kopiuj / Edytuj / Usuń. */
+.msg-menu {
+  position: absolute; top: calc(100% + 6px); left: 36px; z-index: 60;
+  display: flex; flex-direction: column; min-width: 190px;
+  background: #1c1f24; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  transform-origin: 20% 0;
+  scroll-margin-bottom: 14px;
+}
+/* Zapas pod menu, żeby przy ostatniej wiadomości nie dotykało pola pisania
+   (pusty element poszerza obszar przewijania listy). */
+.msg-menu::after { content: ''; position: absolute; top: 100%; left: 0; width: 1px; height: 14px; }
+.comment.mine .msg-menu { left: auto; right: 0; transform-origin: 80% 0; }
+.msg-menu:empty { display: none; }
+.msg-menu button {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 14px; background: none; border: none; border-radius: 0;
+  color: var(--text); font-size: 0.95rem; font-weight: 500; text-align: left;
+}
+.msg-menu button + button { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.msg-menu button.danger { color: var(--no); }
+/* Bez overflow:hidden (uciąłby zapas ::after) — narożniki podświetlenia z przycisków. */
+.msg-menu button:first-child { border-radius: 14px 14px 0 0; }
+.msg-menu button:last-child { border-radius: 0 0 14px 14px; }
+.msg-menu button:only-child { border-radius: 14px; }
+.msg-menu button:active { background: rgba(255, 255, 255, 0.06); transform: none; }
+
+/* Przygaszenie czatu pod podniesionym dymkiem — tylko wizualne (bez blokady
+   przewijania; zamyka dotknięcie obok). */
+.rx-dim { position: fixed; inset: 0; z-index: 55; background: rgba(0, 0, 0, 0.5); pointer-events: none; }
+.comment.lifted { z-index: 60; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rx-dim { animation: rx-dim 0.18s ease-out; }
+  .comment.lifted .comment-line { animation: rx-lift 0.34s cubic-bezier(0.2, 1.5, 0.4, 1) both; transform-origin: 0 100%; }
+  .comment.mine.lifted .comment-line { transform-origin: 100% 100%; }
+  .reaction-picker { animation: rx-pop 0.34s cubic-bezier(0.2, 1.45, 0.4, 1) both; }
+  .reaction-picker button { animation: rx-emoji 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both; animation-delay: calc(70ms + var(--i, 0) * 25ms); }
+  .msg-menu { animation: rx-menu 0.24s cubic-bezier(0.2, 1, 0.3, 1) both; animation-delay: 40ms; }
+}
+@keyframes rx-dim { from { opacity: 0; } }
+@keyframes rx-lift { to { transform: scale(1.03); } }
+@keyframes rx-pop { from { opacity: 0; transform: translateY(12px) scale(0.35); } }
+@keyframes rx-emoji { from { opacity: 0; transform: translateY(8px) scale(0.3); } }
+@keyframes rx-menu { from { opacity: 0; transform: translateY(-8px) scale(0.85); } }
+
 /* Lista „kto zareagował" — po tapnięciu w chipy. */
 .who-pop {
   position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 60;

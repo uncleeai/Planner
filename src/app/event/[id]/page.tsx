@@ -773,7 +773,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     if (!pickerFor && !whoFor) return;
     const close = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest?.('.reaction-picker, .who-pop, .reaction-chip')) return;
+      if ((e.target as HTMLElement).closest?.('.reaction-picker, .msg-menu, .who-pop, .reaction-chip')) return;
       setPickerFor(null);
       setWhoFor(null);
     };
@@ -1326,6 +1326,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             </div>
           </header>
 
+          {pickerFor && <div className="rx-dim" aria-hidden="true" />}
           <div
             className="chat-scroll"
             ref={chatScrollRef}
@@ -1364,7 +1365,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <Fragment key={c.id}>
                 {day && <div className="chat-day">{day}</div>}
                 <div
-                  className={`comment${mine ? ' mine' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${isEditing ? ' editing' : ''}${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}${pressable ? ' pressable' : ''}`}
+                  className={`comment${mine ? ' mine' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${isEditing ? ' editing' : ''}${pickerFor === c.id ? ' lifted' : ''}${new Date(c.created_at).getTime() > mountTsRef.current ? ' comment-fresh' : ''}${pressable ? ' pressable' : ''}`}
                   {...(pressable
                     ? longPressHandlers(() => {
                         setWhoFor(null);
@@ -1417,48 +1418,72 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     </div>
                     {/* Pierwszy link w wiadomości → karta z podglądem (jak w iMessage). */}
                     {!deleted && !isEditing && firstUrl(c.body) && <LinkCard url={firstUrl(c.body)!} />}
-                    {/* Long-press: reakcje, a przy swoich/organizatorze też edycja
-                        i usuwanie (zamiast ikonek przy każdej wiadomości). */}
+                    {/* Long-press jak w iMessage: tło przygasa, dymek się podnosi, nad nim
+                        wyskakuje pasek reakcji (emotki po kolei), pod nim menu akcji. */}
                     {pickerFor === c.id && (
-                      <span className="reaction-picker" onPointerDown={(e) => e.stopPropagation()}>
-                        {REACTION_EMOJIS.map((e) => (
-                          <button
-                            key={e}
-                            type="button"
-                            className={myEmoji === e ? 'sel' : ''}
-                            onClick={() => toggleReaction(c.id, e)}
-                          >
-                            {e}
-                          </button>
-                        ))}
-                        {(canEdit || canDel) && <span className="picker-sep" aria-hidden="true" />}
-                        {canEdit && (
-                          <button
-                            type="button"
-                            className="picker-act"
-                            aria-label="Edytuj wiadomość"
-                            onClick={() => {
-                              setPickerFor(null);
-                              startCommentEdit(c);
-                            }}
-                          >
-                            <IconPencil size={15} />
-                          </button>
-                        )}
-                        {canDel && (
-                          <button
-                            type="button"
-                            className="picker-act danger"
-                            aria-label="Usuń wiadomość"
-                            onClick={() => {
-                              setPickerFor(null);
-                              deleteComment(c.id);
-                            }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </span>
+                      <>
+                        <span className="reaction-picker" onPointerDown={(e) => e.stopPropagation()}>
+                          {REACTION_EMOJIS.map((e, i) => (
+                            <button
+                              key={e}
+                              type="button"
+                              className={myEmoji === e ? 'sel' : ''}
+                              style={{ '--i': i } as React.CSSProperties}
+                              onClick={() => toggleReaction(c.id, e)}
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </span>
+                        <span
+                          className="msg-menu"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          ref={(el) => {
+                            // Menu pod ostatnią wiadomością wystaje za dół listy — przewiń do niego.
+                            // Raz na otwarcie (ref wołany jest przy każdym renderze).
+                            if (el && !el.dataset.shown) {
+                              el.dataset.shown = '1';
+                              // Po animacji wejścia — w trakcie menu jest pomniejszone i przewijało za mało.
+                              setTimeout(() => el.isConnected && el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 300);
+                            }
+                          }}
+                        >
+                          {c.body && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPickerFor(null);
+                                navigator.clipboard?.writeText(c.body).then(haptic, () => {});
+                              }}
+                            >
+                              Kopiuj
+                            </button>
+                          )}
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPickerFor(null);
+                                startCommentEdit(c);
+                              }}
+                            >
+                              Edytuj <IconPencil size={15} />
+                            </button>
+                          )}
+                          {canDel && (
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => {
+                                setPickerFor(null);
+                                deleteComment(c.id);
+                              }}
+                            >
+                              Usuń
+                            </button>
+                          )}
+                        </span>
+                      </>
                     )}
                     {groups.length > 0 && !isEditing && (
                       <div className="reactions">
