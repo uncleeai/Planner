@@ -9,9 +9,6 @@ import { supabase } from '@/lib/supabaseClient';
 // nowy adres (preview) zaczyna od zera. Nowa wersja notki = nowe WHATS_NEW_ID.
 export const WHATS_NEW_ID = 'chat-2';
 
-// Zdjęcie ze slajdu „Linki i zdjęcia" (podmienialne na zdjęcie od paczki).
-const PHOTO = '/hero/basketball.jpg';
-
 const SLIDES = [
   {
     title: 'Czat na pełnym ekranie',
@@ -35,13 +32,12 @@ const SLIDES = [
           <p>Pole namiotowe z ogniskiem · Mazury</p>
           <small>CAMPING</small>
         </div>
-        <div className="wn-photo" style={{ backgroundImage: `url(${PHOTO})` }} />
       </>
     ),
   },
   {
     title: 'Przytrzymaj wiadomość',
-    text: 'Reakcje jak w iMessage.',
+    text: 'Reakcje podjebane z iMessage 👍',
     art: (
       <>
         <div className="wn-rx">👍 ❤️ 😂 😮 😎 🤙 💀</div>
