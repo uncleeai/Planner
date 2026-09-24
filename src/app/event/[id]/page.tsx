@@ -27,7 +27,7 @@ import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import { notifyComment } from '@/lib/notifyComment';
-import { getChatSeen, markChatSeen } from '@/lib/chatSeen';
+import { getChatSeen, markChatSeen, reportChatOpen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { appAlert, appConfirm } from '@/components/Dialogs';
 import { photoUrl, uploadChatPhoto } from '@/lib/gallery';
@@ -368,6 +368,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     if (chatOpen) markChatSeen(eventId);
   }, [eventId, comments, chatOpen]);
+
+  // Serwer ma wiedzieć, że czat jest na ekranie (bez pushy, zob. reportChatOpen):
+  // co 30 s, póki widoczny; schowanie apki / zamknięcie czatu = „już nie patrzę".
+  useEffect(() => {
+    if (!chatOpen) return;
+    const ping = () => reportChatOpen(eventId, document.visibilityState === 'visible');
+    ping();
+    const t = window.setInterval(() => document.visibilityState === 'visible' && ping(), 30_000);
+    document.addEventListener('visibilitychange', ping);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', ping);
+      reportChatOpen(eventId, false);
+    };
+  }, [eventId, chatOpen]);
 
   useEffect(() => {
     const sync = () => {

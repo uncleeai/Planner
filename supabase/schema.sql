@@ -337,6 +337,67 @@ $$;
 revoke all on function public.delete_comment(uuid) from public, anon;
 grant execute on function public.delete_comment(uuid) to authenticated;
 
+-- Powiadomienia z czatu bez spamu (notify-comment): per osoba i wypad pamiętamy,
+-- kiedy dostała ostatni push (pushed_at), kiedy ostatnio czytała czat (seen_at) i do
+-- kiedy ma go otwartego (open_until — apka odświeża co 30 s, gdy czat jest na ekranie).
+-- Zasady: otwarty czat = bez pusha; po pushu cisza przez 10 min, chyba że w międzyczasie
+-- przeczytasz; kolejny push zbiera wszystko nieprzeczytane („5 nowych wiadomości").
+-- Klient nie ma do tabeli dostępu — tylko przez funkcje niżej.
+create table if not exists public.chat_push_state (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  event_id   uuid not null references public.events(id) on delete cascade,
+  pushed_at  timestamptz,
+  seen_at    timestamptz,
+  open_until timestamptz,
+  primary key (user_id, event_id)
+);
+alter table public.chat_push_state enable row level security;
+
+-- Apka: „czytam czat" (p_open = true co 30 s, gdy widoczny) / „zamknąłem".
+create or replace function public.mark_chat_seen(p_event uuid, p_open boolean)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.chat_push_state (user_id, event_id, seen_at, open_until)
+  values (auth.uid(), p_event, now(), case when p_open then now() + interval '45 seconds' end)
+  on conflict (user_id, event_id)
+    do update set seen_at = excluded.seen_at, open_until = excluded.open_until;
+$$;
+revoke all on function public.mark_chat_seen(uuid, boolean) from public, anon;
+grant execute on function public.mark_chat_seen(uuid, boolean) to authenticated;
+
+-- notify-comment (service_role): atomowo wybiera, komu wysłać push teraz, i stempluje
+-- pushed_at. Zwraca też od kiedy liczyć nieprzeczytane (since). Dwie wiadomości naraz
+-- nie dadzą dwóch pushy: wiersz zablokowany przez równoległe wywołanie jest pomijany.
+create or replace function public.claim_chat_push(p_event uuid, p_users uuid[])
+returns table (r_user uuid, r_since timestamptz)
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.chat_push_state (user_id, event_id)
+    select u, p_event from unnest(p_users) u
+    on conflict do nothing;
+  with due as (
+    select s.user_id, s.seen_at, s.pushed_at
+    from public.chat_push_state s
+    where s.event_id = p_event and s.user_id = any(p_users)
+      and (s.open_until is null or s.open_until < now())
+      and (s.pushed_at is null or s.pushed_at < now() - interval '10 minutes'
+           or s.seen_at > s.pushed_at)
+    for update skip locked
+  )
+  update public.chat_push_state s set pushed_at = now()
+  from due
+  where s.user_id = due.user_id and s.event_id = p_event
+  -- Bez znacznika czytania: od poprzedniego pushu (minuta zapasu — jego wiadomość
+  -- powstała tuż przed nim), a przy pierwszym w ogóle — tylko ta jedna.
+  returning s.user_id, coalesce(due.seen_at, due.pushed_at - interval '1 minute', now() - interval '1 minute');
+$$;
+revoke all on function public.claim_chat_push(uuid, uuid[]) from public, anon, authenticated;
+
 -- Reakcje emoji na komentarze (styl Messengera): JEDNA reakcja na osobę per
 -- komentarz — wybór innej emoji podmienia poprzednią (upsert), tap w tę samą
 -- zdejmuje (delete). event_id dublujemy z komentarza, żeby dało się tanio pobrać

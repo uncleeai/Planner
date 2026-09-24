@@ -198,6 +198,12 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   Tap = pełny ekran (tam przytrzymanie = natywne menu iOS z zapisem do Zdjęć, bo callout
   jest wyłączony globalnie; przycisk „Zapisz" = Web Share z plikiem). Push/zajawki: „📷 Zdjęcie". Pliki usuniętych zdjęć zostają w R2
   (brak GC dla czatu — do dorobienia, gdy będzie potrzeba).
+- **chat_push_state** — pushe z czatu bez spamu: per `(user_id, event_id)` `pushed_at`
+  (ostatni push), `seen_at` (czytał) i `open_until` (czat na ekranie — apka odświeża
+  co 30 s przez RPC `mark_chat_seen`, `reportChatOpen` w `chatSeen.ts`). `notify-comment`
+  woła `claim_chat_push` (tylko service_role, atomowo): bez pusha przy otwartym czacie
+  i przez 10 min po poprzednim, chyba że przeczytał; potem zbiorczo „N nowych wiadomości".
+  Klient nie ma dostępu do tabeli (RLS bez polityk), tylko przez funkcje.
 - **comment_reactions** — reakcje emoji na komentarze (styl Messengera): PK
   `(comment_id, user_id)` = JEDNA reakcja na osobę, wybór innej emoji podmienia (upsert),
   tap w tę samą zdejmuje. `event_id` zdublowany dla taniego pobrania per wypad.
