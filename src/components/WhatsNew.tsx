@@ -9,13 +9,13 @@ import { supabase } from '@/lib/supabaseClient';
 // nowy adres (preview) zaczyna od zera. Nowa wersja notki = nowe WHATS_NEW_ID.
 export const WHATS_NEW_ID = 'chat-2';
 
-// Zdjęcie ze slajdu „Linki i zdjęcia" (od paczki).
-const PHOTO = '/whatsnew/thumbs-up.png';
+// Zdjęcie ze slajdu „Linki i zdjęcia" (podmienialne na zdjęcie od paczki).
+const PHOTO = '/hero/basketball.jpg';
 
 const SLIDES = [
   {
     title: 'Czat na pełnym ekranie',
-    text: 'Czat ma teraz osobny ekran, więc koniec z syfem pod terminami. Wchodzisz tapnięciem w kartę czatu.',
+    text: 'Czat dostał swój osobny ekran.',
     art: (
       <>
         <div className="wn-bub">kto bierze grilla?</div>
@@ -26,7 +26,7 @@ const SLIDES = [
   },
   {
     title: 'Linki i zdjęcia',
-    text: 'Aparat obok pola pisania i zdjęcie leci prosto do czatu. Sexy nudeski też wejdą 😏',
+    text: 'Linki z podglądem i zdjęcia prosto w czacie.',
     art: (
       <>
         <div className="wn-bub">patrzcie gdzie jedziemy</div>
@@ -41,7 +41,7 @@ const SLIDES = [
   },
   {
     title: 'Przytrzymaj wiadomość',
-    text: 'Reakcje podjebane z iMessage 🤙 Przytrzymaj wiadomość, żeby zareagować, skopiować, poprawić albo usunąć.',
+    text: 'Reakcje jak w iMessage.',
     art: (
       <>
         <div className="wn-rx">👍 ❤️ 😂 😮 😎 🤙 💀</div>
