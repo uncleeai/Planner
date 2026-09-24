@@ -58,6 +58,7 @@ Guidance for AI assistants (and humans) working in this repository.
 │       ├── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
 │       ├── gallery-sign/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
 │       └── gallery-gc/       # Edge Function: sprzątanie kosza galerii — po 30 dniach kasuje pliki z R2 + wpis (pg_cron, no-verify-jwt)
+├── docs/pomysly/                 # Notatki pomysłów; czat-do-zrobienia.md = lista kolejnych funkcji czatu
 ├── mockups/                      # Statyczne mockupy HTML konceptów designu (redesign „Lobby")
 ├── public/
 │   ├── manifest.webmanifest      # Manifest PWA
