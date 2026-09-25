@@ -3187,16 +3187,66 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .mock[data-v="h"] .slot.lockable .badge { display: none; }
 .slot.locked .stamp { color: var(--yes); animation: stamp-in 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
 @keyframes stamp-in { from { transform: rotate(-14deg) scale(1.6); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 0.9; } }
+
+/* ===== I · wyspa (high-end: button-in-button, sprężyna) ===== */
+.island-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.island-row .cmd-state { font-family: var(--mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; }
+.island {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 4px 4px 4px 16px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; color: var(--accent);
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.4s cubic-bezier(0.32, 0.72, 0, 1), color 0.4s;
+}
+.il-knob {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); font-size: 0.9rem;
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--accent) 70%, transparent);
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), background 0.4s;
+}
+.island:active { transform: scale(0.97); }
+.island:active .il-knob { transform: translateX(3px) scale(1.06); }
+.slot.locked .island { color: var(--yes); border-color: color-mix(in srgb, var(--yes) 35%, transparent); background: color-mix(in srgb, var(--yes) 8%, transparent) !important; }
+.slot.locked .il-knob { background: var(--yes); color: #062b18; box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--yes) 70%, transparent); animation: knob-pop 0.6s cubic-bezier(0.32, 0.72, 0, 1); }
+@keyframes knob-pop { 0% { transform: scale(0.6) rotate(-90deg); } 100% { transform: scale(1) rotate(0); } }
+
+/* ===== J · telemetria (industrial: siatka 1px, ostre rogi, paski) ===== */
+.tele {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1.7fr; gap: 1px;
+  margin-top: 14px; background: var(--border-strong); border: 1px solid var(--border-strong);
+}
+.tele .cell {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  padding: 7px 8px; background: var(--card-2); border-radius: 0;
+  font-family: var(--mono);
+}
+.tele small { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
+.tele b { font-size: 0.95rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.tele b.y { color: var(--yes); }
+.tele .act {
+  align-items: center; border: 0; color: var(--accent);
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em;
+  background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--accent) 12%, var(--card-2)) 0 6px, var(--card-2) 6px 12px) !important;
+  box-shadow: none !important; border-radius: 0 !important;
+}
+.tele .act:active { filter: brightness(1.3); }
+.slot.locked .tele .act { color: var(--yes); background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--yes) 14%, var(--card-2)) 0 6px, var(--card-2) 6px 12px) !important; }
 </style></head><body>
 <main class="glass-page mock">
   <p class="mock-intro">Ready check, runda 3. LOCK IN nie jako kolejny przycisk, tylko w języku apki (terminal / gra). Kliknij LOCK IN, żeby zobaczyć stan po klepnięciu.</p>
   <div class="mock-tabs" role="tablist">
-    <button type="button" data-v="f" class="on">F · komenda</button>
+    <button type="button" data-v="f" class="on">F · komenda ★</button>
     <button type="button" data-v="g">G · zakładka</button>
     <button type="button" data-v="h">H · pieczątka</button>
+    <button type="button" data-v="i">I · wyspa</button>
+    <button type="button" data-v="j">J · telemetria</button>
   </div>
   <p class="mock-note" data-show="f"><b>F:</b> cicha linia pod głosami jak w terminalu: po lewej stan (2× READY), kropkowany odstęp, po prawej <code>&gt; LOCK IN_</code> z migającym kursorem jak w logo. Bez ramki, bez tła.</p>
   <p class="mock-note" data-show="g"><b>G:</b> mała zakładka wystająca z górnej krawędzi karty, jak fiszka w segregatorze. Siedzi na karcie, nie w niej, więc nie tłoczy się z głosami.</p>
+  <p class="mock-note" data-show="i"><b>I</b> (skill <i>high-end-visual-design</i>): linia jak w F, ale po prawej „wyspa": cienka pigułka z włosową ramką, a w niej osobne kółko ze strzałką (button-in-button). Przy wciśnięciu strzałka ucieka w prawo, a po klepnięciu kółko zmienia się w ✓. Sprężysta animacja zamiast zwykłej.</p>
+  <p class="mock-note" data-show="j"><b>J</b> (skill <i>industrial-brutalist-ui</i>): pod głosami pasek odczytu jak panel w maszynie: komórki READY / MOŻE / PAS z licznikami, oddzielone liniami 1 px, ostre rogi, a ostatnia komórka to <code>[ LOCK IN ]</code> na tle ostrzegawczych pasków. Po klepnięciu <code>[ LOCKED ]</code> na zielono.</p>
   <p class="mock-note" data-show="h"><b>H:</b> pieczątka w rogu karty (podwójna ramka, lekko przekrzywiona) zamiast REMIS; ołówek i ✕ poszłyby pod „⋯". Po kliknięciu „wbija się" na zielono jako LOCKED.</p>
 
   <section class="ev-section">
@@ -3228,7 +3278,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
         </span>
         <span class="badge badge-open st-open">Remis</span>
         <span class="badge st-done">✓ Ustalony</span>
-        <span class="slot-actions" data-show="f g"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
+        <span class="slot-actions" data-show="f g i j"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
         <button type="button" class="stamp" data-show="h" data-lock><span class="l1">LOCK IN</span><span class="l2">LOCKED</span></button>
       </div>
       <div class="voters">
@@ -3236,6 +3286,16 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
         <span class="voter-chip yes"><i class="av">A</i>ALICJA</span>
       </div>
       <div class="seg3 slot-seg3"><button class="on-yes">READY</button><button>MOŻE</button><button>PAS</button></div>
+      <div class="island-row" data-show="i">
+        <span class="cmd-state">2× READY</span>
+        <button type="button" class="island" data-lock><span class="il-lbl"><span class="l1">LOCK IN</span><span class="l2">LOCKED</span></span><span class="il-knob"><span class="l1">→</span><span class="l2">✓</span></span></button>
+      </div>
+      <div class="tele" data-show="j">
+        <span class="cell"><small>READY</small><b class="y">02</b></span>
+        <span class="cell"><small>MOŻE</small><b>00</b></span>
+        <span class="cell"><small>PAS</small><b>00</b></span>
+        <button type="button" class="cell act" data-lock><span class="l1">[ LOCK IN ]</span><span class="l2">[ LOCKED ]</span></button>
+      </div>
       <div class="cmd-line" data-show="f">
         <span class="cmd-state">2× READY</span>
         <span class="cmd-lead" aria-hidden="true"></span>
@@ -3251,7 +3311,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
         </span>
         <span class="badge badge-open st-open">Remis</span>
         <span class="badge st-done">✓ Ustalony</span>
-        <span class="slot-actions" data-show="f g"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
+        <span class="slot-actions" data-show="f g i j"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
         <button type="button" class="stamp" data-show="h" data-lock><span class="l1">LOCK IN</span><span class="l2">LOCKED</span></button>
       </div>
       <div class="voters">
@@ -3259,6 +3319,16 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
         <span class="voter-chip yes"><i class="av">A</i>ALICJA</span>
       </div>
       <div class="seg3 slot-seg3"><button class="on-yes">READY</button><button>MOŻE</button><button>PAS</button></div>
+      <div class="island-row" data-show="i">
+        <span class="cmd-state">2× READY</span>
+        <button type="button" class="island" data-lock><span class="il-lbl"><span class="l1">LOCK IN</span><span class="l2">LOCKED</span></span><span class="il-knob"><span class="l1">→</span><span class="l2">✓</span></span></button>
+      </div>
+      <div class="tele" data-show="j">
+        <span class="cell"><small>READY</small><b class="y">02</b></span>
+        <span class="cell"><small>MOŻE</small><b>00</b></span>
+        <span class="cell"><small>PAS</small><b>00</b></span>
+        <button type="button" class="cell act" data-lock><span class="l1">[ LOCK IN ]</span><span class="l2">[ LOCKED ]</span></button>
+      </div>
       <div class="cmd-line" data-show="f">
         <span class="cmd-state">2× READY</span>
         <span class="cmd-lead" aria-hidden="true"></span>
