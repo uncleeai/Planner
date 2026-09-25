@@ -1244,8 +1244,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             <div key={m.id} className="afk">
               <Avatar name={m.display_name} avatar={m.avatar} size={28} />
               <span className="afk-text">
-                <b>{m.id === userId ? 'Ty się opierdalasz…' : `${m.display_name} się opierdala…`}</b>
-                <span>{afkLabel}</span>
+                <b>{m.id === userId ? 'Twój ruch' : `${m.display_name} się opierdala…`}</b>
+                <span>{m.id === userId ? 'ZAGŁOSUJ NIŻEJ ↓' : afkLabel}</span>
               </span>
               {isOrganizer && m.id !== userId && (
                 <button

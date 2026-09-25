@@ -42,7 +42,7 @@ function timeAgo(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} godz`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} dni`;
+  if (d < 7) return d === 1 ? '1 dzień' : `${d} dni`;
   return new Date(iso).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
 }
 
@@ -475,20 +475,22 @@ export default function Home() {
     return best;
   }, [heroId, aggByEvent, slots]);
 
-  // Chip odliczania na railu hero: dni do STARTU pokazywanego terminu.
+  // Chip odliczania na railu hero: dni do STARTU pokazywanego terminu. Bez klepniętego
+  // terminu to tylko najbliższa propozycja — „START" sugerowałby, że już ustalone.
   const heroCountdown = useMemo(() => {
     if (!heroSlot) return null;
+    const pre = heroId && aggByEvent.get(heroId)?.slot ? '' : 'PROPOZYCJA ';
     const mid = (t: number) => {
       const d = new Date(t);
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     };
     const days = Math.round((mid(new Date(heroSlot.starts_at).getTime()) - mid(Date.now())) / (24 * 3600 * 1000));
-    if (days < 0) return 'TRWA';
-    if (days === 0) return 'DZIŚ';
-    if (days === 1) return 'JUTRO';
-    return `START ZA ${days} DNI`;
-  }, [heroSlot]);
+    if (days < 0) return `${pre}TRWA`;
+    if (days === 0) return `${pre}DZIŚ`;
+    if (days === 1) return `${pre}JUTRO`;
+    return pre ? `${pre}ZA ${days} DNI` : `START ZA ${days} DNI`;
+  }, [heroSlot, heroId, aggByEvent]);
 
 
   return (
@@ -898,7 +900,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
                 m.state === 'yes' ? 'READY'
                 : m.state === 'maybe' ? 'MOŻE'
                 : m.state === 'no' ? 'PAS'
-                : isYou ? 'TWÓJ SLOT' : 'AFK';
+                : isYou ? 'TWÓJ RUCH' : 'AFK';
               const showNudge = mission && isOrg && !m.state && !isYou;
               return (
                 <div key={m.id} className={`slot-p ${m.state ? `s-${m.state}` : 's-none'}${isYou && !m.state ? ' is-you' : ''}`}>
