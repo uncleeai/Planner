@@ -2158,9 +2158,11 @@ main.has-dock { padding-bottom: 24px; }
    one-shoty; żadnych blurów, blend-mode'ów ani nieskończonych animacji malowania.
    Wszystko pod @media (prefers-reduced-motion: no-preference). */
 
+/* Bez opacity w `to` — animacja dojeżdża do krycia z CSS elementu, więc przyciemnione
+   karty (.gone „ODPADŁ", .stale) nie błyskają na pełno przy wejściu na stronę. */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+  to { transform: none; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
