@@ -53,12 +53,10 @@ Kluczowe decyzje:
 
 ## `ready-check.html` — minione terminy + LOCK IN w karcie
 
-**Wybrane:** minione terminy = wygaszona karta „ODPADŁ"; LOCK IN = **F** (faworyt)
-— cicha linia terminala pod głosami: `2× READY ······ > LOCK IN_` z migającym
-kursorem jak w logo, bez ramki i tła; po klepnięciu `✓ LOCKED` na zielono.
-
-Pozostałe warianty w pliku (przełącznik): G zakładka z krawędzi karty,
-H pieczątka, I „wyspa" button-in-button (skill high-end-visual-design),
-J pasek telemetrii z komórkami i `[ LOCK IN ]` (skill industrial-brutalist-ui).
-Rundy 1–2 (przycisk, stopka, pigułka, suwak) odrzucone — w historii gita.
-Style = wklejony `globals.css` apki.
+**Wybrane:** minione terminy = wygaszona karta „ODPADŁ"; LOCK IN = kierunek **F**
+(linia terminala pod głosami: `2× READY ······ LOCK IN`). Czysty F (`> LOCK IN_`
+bez ramki) okazał się za mało czytelny jako przycisk, więc runda 4 to jego
+czytelne wersje (przełącznik): F1 wypukły klawisz, F2 podpis „Ty wybierasz
+termin" + obrysowany `LOCK IN ›`, F3 jednorazowy dymek-podpowiedź.
+Wcześniejsze rundy (G zakładka, H pieczątka, I wyspa, J telemetria, przyciski,
+pigułki, suwak) są w historii gita. Style = wklejony `globals.css` apki.
