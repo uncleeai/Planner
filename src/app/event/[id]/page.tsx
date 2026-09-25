@@ -29,6 +29,7 @@ import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import { notifyComment } from '@/lib/notifyComment';
 import { getChatSeen, markChatSeen, reportChatOpen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
+import { HapticSwitch } from '@/components/HapticSwitch';
 import { appAlert, appConfirm } from '@/components/Dialogs';
 import { photoUrl, uploadChatPhoto } from '@/lib/gallery';
 
@@ -1371,6 +1372,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         onClick={() => vote(slot.id, c.value)}
                       >
                         {c.label}
+                        <HapticSwitch onTap={() => vote(slot.id, c.value)} />
                       </button>
                     ))}
                   </div>
