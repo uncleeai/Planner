@@ -50,3 +50,9 @@ Kluczowe decyzje:
   reszta to płaskie wiersze z hairline'ami.
 - **CTA na dole ekranu**, pod kciukiem.
 - Paleta: smoła `#121114`, kość `#F1EEE8`, popiel `#97928A`, bursztyn `#FFB224`.
+
+## `ready-check.html` — minione terminy + LOCK IN w karcie
+
+Dwa warianty do wyboru (przełącznik A/B na górze): termin, który minął, jako
+zwinięty wiersz (A) albo wygaszona karta „ODPADŁ" (B); LOCK IN jako przycisk
+w karcie (A) albo pasek-stopka karty (B). Style = wklejony `globals.css` apki.
