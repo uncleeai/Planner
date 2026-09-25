@@ -298,6 +298,11 @@ export default function CreatorSheet({
     </>
   );
 
+  // Czego brakuje do odpalenia — wyłączony przycisk mówi to wprost zamiast milczeć.
+  const missing = !title.trim()
+    ? 'Najpierw nazwa ↑'
+    : !edit && !slotDrafts[0]?.od ? 'Najpierw termin ↑' : null;
+
   return (
     <div
       className={`creator${closing ? ' closing' : ''}`}
@@ -420,15 +425,19 @@ export default function CreatorSheet({
             </div>
           )}
           {emoji && <div className="creator-emoji" aria-hidden="true">{emoji}</div>}
-          <input
-            className="creator-title"
-            type="text"
-            placeholder="Nazwa wypadu…"
-            aria-label="Nazwa wypadu"
-            maxLength={60}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          {/* Pusta nazwa = własny placeholder z migającym „_" jak w logo — sam
+              „Nazwa wypadu…" wyglądał na gotowy nagłówek, nie na pole do wpisania. */}
+          <div className="title-field">
+            <input
+              className="creator-title"
+              type="text"
+              aria-label="Nazwa wypadu"
+              maxLength={60}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            {!title && <span className="title-ph" aria-hidden="true">Nazwa wypadu</span>}
+          </div>
         </div>
 
         <div className="creator-body">
@@ -492,9 +501,9 @@ export default function CreatorSheet({
           <button
             type="submit"
             className="cta-gradient"
-            disabled={!title.trim() || (!edit && !slotDrafts[0]?.od) || busy}
+            disabled={!!missing || busy}
           >
-            {edit ? (busy ? 'Zapisuję…' : 'Zapisz zmiany') : busy ? 'Odpalam…' : 'Odpal lobby'}
+            {busy ? (edit ? 'Zapisuję…' : 'Odpalam…') : missing ?? (edit ? 'Zapisz zmiany' : 'Odpal lobby')}
           </button>
         </div>
       </form>

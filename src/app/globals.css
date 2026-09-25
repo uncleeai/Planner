@@ -2803,6 +2803,22 @@ button.solid-danger { background: var(--no); color: #fff; }
 }
 .creator-hero .creator-title:focus { outline: none; border: none; box-shadow: none; }
 .creator-hero .creator-title::placeholder { color: rgba(232, 237, 240, 0.5); font-weight: 800; }
+/* Własny placeholder nazwy (render tylko przy pustym polu) z migającym „_" jak w logo.
+   Przy fokusie kursor przejmuje natywna karetka — nasz „_" znika. */
+.title-field { width: 100%; }
+.title-field .title-ph {
+  position: absolute; inset: 0;
+  display: flex; justify-content: center; align-items: center;
+  pointer-events: none;
+  font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.08;
+  color: rgba(232, 237, 240, 0.5);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+.title-field .title-ph::after { content: '_'; color: var(--accent); margin-left: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .title-field .title-ph::after { animation: cursor-blink 1.1s steps(2, start) infinite; }
+}
+.title-field .creator-title:focus + .title-ph::after { content: none; }
 
 .creator-body {
   display: flex; flex-direction: column; gap: 14px;
