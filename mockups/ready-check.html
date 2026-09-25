@@ -3120,7 +3120,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .mock-note b { color: var(--accent); }
 .mock-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 0 0 6px; }
 .mock-tabs button {
-  font-family: var(--mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
   padding: 10px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: none; color: var(--muted);
 }
 .mock-tabs button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
@@ -3129,72 +3129,75 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .av2 { background: #3a4a5b; }
 .ev-section .slot { animation: none !important; }
 
-/* minione: wariant B */
+/* minione (wybrane: wygaszona karta) */
 .glass-page .slot.past-card { opacity: 0.45; filter: grayscale(1); }
 .past-card .slot-when b { text-decoration: line-through; }
 .past-card .slot-head .badge { margin-left: auto; }
 
-.slot-when em { font-style: normal; }
-.tie-word { font-style: normal; color: var(--maybe); }
-.slot .slot-del.more { font-size: 1.2rem; letter-spacing: 0.05em; }
+/* stan po klepnięciu (wspólny) — karta przechodzi w .confirmed jak dziś */
+.slot .st-done, .slot.locked .st-open { display: none; }
+.slot.locked .st-done { display: inline; }
+.glass-page .slot.lockable { position: relative; transition: background 0.3s ease, border-color 0.3s ease; }
+.glass-page .slot.locked {
+  background: radial-gradient(120% 170% at 12% 0%, rgba(61, 220, 139, 0.13), transparent 58%), var(--card-2);
+  border-color: rgba(61, 220, 139, 0.24);
+}
+.l2 { display: none; } .slot.locked .l1 { display: none; } .slot.locked .l2 { display: inline; }
+[data-lock] { cursor: pointer; -webkit-user-select: none; user-select: none; }
 
-/* pigułka LOCK IN (C i E) */
-.lock-pill {
-  position: relative; overflow: hidden; flex-shrink: 0;
-  display: inline-grid; place-items: center;
-  font-family: var(--mono); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em;
-  padding: 8px 14px; border-radius: 999px;
-  background: var(--accent); color: var(--accent-ink); border: 0;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 4px 14px -4px color-mix(in srgb, var(--accent) 60%, transparent);
-  touch-action: none; user-select: none; -webkit-user-select: none;
+/* ===== F · komenda: linia terminala pod głosami ===== */
+.cmd-line {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
 }
-.lock-pill > * { grid-area: 1 / 1; }
-.lock-pill .fill { position: absolute; inset: 0; background: #fff; opacity: 0.35; transform: scaleX(0); transform-origin: left; }
-.lock-pill.holding .fill { transform: scaleX(1); transition: transform 0.9s linear; }
-.lock-pill .ok { opacity: 0; }
-.lock-pill.locked { background: var(--yes); box-shadow: 0 0 0 1px var(--yes); }
-.lock-pill.locked .lbl { opacity: 0; } .lock-pill.locked .ok { opacity: 1; } .lock-pill.locked .fill { opacity: 0; }
-.lock-pill.hold { margin-right: 2px; }
-.lock-pill.in-voters { margin-left: auto; padding: 6px 12px; }
+.cmd-state { color: var(--yes); opacity: 0.85; }
+.cmd-lead { flex: 1; height: 1px; background: repeating-linear-gradient(90deg, var(--border-strong) 0 2px, transparent 2px 6px); }
+.cmd {
+  background: none; border: 0; padding: 6px 0 6px 6px; margin: -6px 0;
+  font: inherit; letter-spacing: inherit; color: var(--accent);
+}
+.cmd .l1::after { content: '_'; animation: cursor-blink 1.1s steps(2, start) infinite; }
+.cmd, .cmd:hover, .cmd:focus, .cmd:active { background: none !important; box-shadow: none !important; }
+.cmd:active { opacity: 0.6; }
+.slot.locked .cmd { color: var(--yes); }
 
-/* suwak (D) */
-.slide-lock {
-  --p: 0;
-  position: relative; margin-top: 12px; height: 48px; border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 10%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  display: grid; place-items: center; overflow: hidden; touch-action: none;
+/* ===== G · zakładka wystająca z górnej krawędzi ===== */
+.lock-tab {
+  position: absolute; top: 0; right: 14px; transform: translateY(-100%);
+  padding: 5px 12px 4px; border-radius: 7px 7px 0 0;
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.16em;
+  color: var(--accent-ink); background: var(--accent); border: 0;
 }
-.slide-lock .trail { position: absolute; inset: 0; background: var(--accent); opacity: calc(var(--p) * 0.35); }
-.slide-lock .hint {
-  font-family: var(--mono); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; color: var(--accent);
-  opacity: calc(1 - var(--p) * 1.4);
-  background: linear-gradient(90deg, var(--accent) 40%, #ffd2b0 50%, var(--accent) 60%) 0 0 / 250% 100%;
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-  animation: shimmer 2.4s linear infinite; padding-left: 36px;
+.mock[data-v="g"] .slot.lockable { margin-top: 30px; border-top-right-radius: 0; }
+.mock[data-v="g"] .slot.lockable { border-top-right-radius: var(--radius-sm); }
+.lock-tab:active { transform: translateY(-100%) translateY(1px); }
+.slot.locked .lock-tab { background: var(--yes); color: #062b18; }
+
+/* ===== H · pieczątka ===== */
+.stamp {
+  margin-left: auto; transform: rotate(-6deg);
+  padding: 5px 9px; border-radius: 4px;
+  font-family: var(--mono); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--accent); background: none;
+  border: 2px solid currentColor; outline: 1px solid currentColor; outline-offset: 2px;
+  opacity: 0.9;
 }
-@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
-.slide-lock .ok { position: absolute; font-family: var(--mono); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; color: #062b18; opacity: 0; }
-.slide-lock .knob {
-  position: absolute; left: 4px; top: 4px; width: 40px; height: 40px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 1rem;
-  background: var(--accent); box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: grab;
-}
-.slide-lock.locked { background: var(--yes); border-color: var(--yes); }
-.slide-lock.locked .ok { opacity: 1; } .slide-lock.locked .hint, .slide-lock.locked .trail { opacity: 0; }
-.slide-lock.locked .knob { background: #062b18; }
+.mock[data-v="h"] .slot.lockable .badge { display: none; }
+.slot.locked .stamp { color: var(--yes); animation: stamp-in 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes stamp-in { from { transform: rotate(-14deg) scale(1.6); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 0.9; } }
 </style></head><body>
 <main class="glass-page mock">
-  <p class="mock-intro">Ready check, runda 2. Minione terminy: wygaszone (B). LOCK IN w trzech ujęciach, przełącz niżej. Wszystko klikalne.</p>
+  <p class="mock-intro">Ready check, runda 3. LOCK IN nie jako kolejny przycisk, tylko w języku apki (terminal / gra). Kliknij LOCK IN, żeby zobaczyć stan po klepnięciu.</p>
   <div class="mock-tabs" role="tablist">
-    <button type="button" data-v="c" class="on">C · pigułka</button>
-    <button type="button" data-v="d">D · suwak</button>
-    <button type="button" data-v="e">E · przy głosach</button>
+    <button type="button" data-v="f" class="on">F · komenda</button>
+    <button type="button" data-v="g">G · zakładka</button>
+    <button type="button" data-v="h">H · pieczątka</button>
   </div>
-  <p class="mock-note" data-show="c"><b>C:</b> mała pełna pigułka LOCK IN w nagłówku karty, obok daty. Organizator widzi pigułkę zamiast plakietki REMIS (reszta paczki dalej widzi REMIS). Ołówek i ✕ chowają się pod „⋯". Kliknięcie = przytrzymaj ~1 s (pigułka się napełnia), żeby nie klepnąć przypadkiem.</p>
-  <p class="mock-note" data-show="d"><b>D:</b> suwak jak „przesuń, aby odblokować", w stopce karty. Przeciągnij kłódkę w prawo. Nie da się kliknąć przypadkiem, bardzo „gamingowe".</p>
-  <p class="mock-note" data-show="e"><b>E:</b> pigułka LOCK IN w wierszu z imionami, po prawej, czyli obok dowodu, kto jest READY. Nagłówek zostaje jak dziś.</p>
+  <p class="mock-note" data-show="f"><b>F:</b> cicha linia pod głosami jak w terminalu: po lewej stan (2× READY), kropkowany odstęp, po prawej <code>&gt; LOCK IN_</code> z migającym kursorem jak w logo. Bez ramki, bez tła.</p>
+  <p class="mock-note" data-show="g"><b>G:</b> mała zakładka wystająca z górnej krawędzi karty, jak fiszka w segregatorze. Siedzi na karcie, nie w niej, więc nie tłoczy się z głosami.</p>
+  <p class="mock-note" data-show="h"><b>H:</b> pieczątka w rogu karty (podwójna ramka, lekko przekrzywiona) zamiast REMIS; ołówek i ✕ poszłyby pod „⋯". Po kliknięciu „wbija się" na zielono jako LOCKED.</p>
 
   <section class="ev-section">
     <div class="rail">
@@ -3216,41 +3219,51 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
       </div>
     </div>
 
-    <div class="slot tie">
+    <div class="slot tie lockable">
+      <button type="button" class="lock-tab" data-show="g" data-lock><span class="l1">LOCK IN</span><span class="l2">✓ LOCKED</span></button>
       <div class="slot-head">
         <span class="slot-when-wrap">
           <span class="leaf"><span class="dow">SOB</span><span class="day">26</span><span class="mon">WRZ</span></span>
           <span class="slot-when"><b>Jutro</b><span>cały dzień</span></span>
         </span>
-        <span class="badge badge-open" data-show="d e">Remis</span>
-        <span class="slot-actions" data-show="d e"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
-        <span class="slot-actions" data-show="c"><button type="button" class="lock-pill hold"><span class="fill"></span><span class="lbl">LOCK IN</span><span class="ok">✓ GRAMY</span></button><button class="ghost slot-del more">⋯</button></span>
+        <span class="badge badge-open st-open">Remis</span>
+        <span class="badge st-done">✓ Ustalony</span>
+        <span class="slot-actions" data-show="f g"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
+        <button type="button" class="stamp" data-show="h" data-lock><span class="l1">LOCK IN</span><span class="l2">LOCKED</span></button>
       </div>
       <div class="voters">
         <span class="voter-chip yes"><i class="av av2">L</i>LUKENS</span>
         <span class="voter-chip yes"><i class="av">A</i>ALICJA</span>
-        <button type="button" class="lock-pill tap in-voters" data-show="e"><span class="fill"></span><span class="lbl">LOCK IN</span><span class="ok">✓ GRAMY</span></button>
       </div>
       <div class="seg3 slot-seg3"><button class="on-yes">READY</button><button>MOŻE</button><button>PAS</button></div>
-      <div class="slide-lock" data-show="d"><span class="trail"></span><span class="hint">LOCK IN · 26.09 ›››</span><span class="ok">✓ GRAMY</span><span class="knob">🔒</span></div>
+      <div class="cmd-line" data-show="f">
+        <span class="cmd-state">2× READY</span>
+        <span class="cmd-lead" aria-hidden="true"></span>
+        <button type="button" class="cmd" data-lock><span class="l1">&gt; LOCK IN</span><span class="l2">✓ LOCKED</span></button>
+      </div>
     </div>
-    <div class="slot tie">
+    <div class="slot tie lockable">
+      <button type="button" class="lock-tab" data-show="g" data-lock><span class="l1">LOCK IN</span><span class="l2">✓ LOCKED</span></button>
       <div class="slot-head">
         <span class="slot-when-wrap">
           <span class="leaf"><span class="dow">SOB</span><span class="day">3</span><span class="mon">PAŹ</span></span>
           <span class="slot-when"><b>Za 8 dni</b><span>cały dzień</span></span>
         </span>
-        <span class="badge badge-open" data-show="d e">Remis</span>
-        <span class="slot-actions" data-show="d e"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
-        <span class="slot-actions" data-show="c"><button type="button" class="lock-pill hold"><span class="fill"></span><span class="lbl">LOCK IN</span><span class="ok">✓ GRAMY</span></button><button class="ghost slot-del more">⋯</button></span>
+        <span class="badge badge-open st-open">Remis</span>
+        <span class="badge st-done">✓ Ustalony</span>
+        <span class="slot-actions" data-show="f g"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
+        <button type="button" class="stamp" data-show="h" data-lock><span class="l1">LOCK IN</span><span class="l2">LOCKED</span></button>
       </div>
       <div class="voters">
         <span class="voter-chip yes"><i class="av av2">L</i>LUKENS</span>
         <span class="voter-chip yes"><i class="av">A</i>ALICJA</span>
-        <button type="button" class="lock-pill tap in-voters" data-show="e"><span class="fill"></span><span class="lbl">LOCK IN</span><span class="ok">✓ GRAMY</span></button>
       </div>
       <div class="seg3 slot-seg3"><button class="on-yes">READY</button><button>MOŻE</button><button>PAS</button></div>
-      <div class="slide-lock" data-show="d"><span class="trail"></span><span class="hint">LOCK IN · 3.10 ›››</span><span class="ok">✓ GRAMY</span><span class="knob">🔒</span></div>
+      <div class="cmd-line" data-show="f">
+        <span class="cmd-state">2× READY</span>
+        <span class="cmd-lead" aria-hidden="true"></span>
+        <button type="button" class="cmd" data-lock><span class="l1">&gt; LOCK IN</span><span class="l2">✓ LOCKED</span></button>
+      </div>
     </div>
 
     <div class="slot">
@@ -3259,8 +3272,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
           <span class="leaf"><span class="dow">PT</span><span class="day">9</span><span class="mon">PAŹ</span></span>
           <span class="slot-when"><b>Za 14 dni</b><span>od 18:00</span></span>
         </span>
-        <span class="slot-actions" data-show="d e"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
-        <span class="slot-actions" data-show="c"><button class="ghost slot-del more">⋯</button></span>
+        <span class="slot-actions"><button class="ghost slot-del">✎</button><button class="ghost slot-del">✕</button></span>
       </div>
       <div class="seg3 slot-seg3"><button>READY</button><button>MOŻE</button><button>PAS</button></div>
     </div>
@@ -3274,34 +3286,15 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
     main.dataset.v = v;
     document.querySelectorAll('.mock-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
     document.querySelectorAll('[data-show]').forEach((el) => { el.hidden = !el.dataset.show.split(' ').includes(v); });
+    document.querySelectorAll('.slot.locked').forEach((s) => s.classList.remove('locked'));
   };
   document.querySelectorAll('.mock-tabs button').forEach((b) => b.addEventListener('click', () => set(b.dataset.v)));
-  set('c');
-  const done = (el) => { el.classList.add('locked'); setTimeout(() => el.classList.remove('locked', 'holding'), 1800); };
-  // C: przytrzymaj
-  document.querySelectorAll('.lock-pill.hold').forEach((p) => {
-    let t;
-    p.addEventListener('pointerdown', () => { p.classList.add('holding'); t = setTimeout(() => done(p), 900); });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => p.addEventListener(ev, () => { if (!p.classList.contains('locked')) { clearTimeout(t); p.classList.remove('holding'); } }));
-  });
-  // E: zwykły tap
-  document.querySelectorAll('.lock-pill.tap').forEach((p) => p.addEventListener('click', () => done(p)));
-  // D: suwak
-  document.querySelectorAll('.slide-lock').forEach((track) => {
-    const knob = track.querySelector('.knob');
-    let x0 = null, max = 0;
-    knob.addEventListener('pointerdown', (e) => { x0 = e.clientX; max = track.clientWidth - knob.offsetWidth - 8; knob.setPointerCapture(e.pointerId); knob.style.transition = 'none'; });
-    knob.addEventListener('pointermove', (e) => {
-      if (x0 === null) return;
-      const dx = Math.max(0, Math.min(max, e.clientX - x0));
-      knob.style.transform = `translateX(${dx}px)`; track.style.setProperty('--p', dx / max);
-    });
-    knob.addEventListener('pointerup', (e) => {
-      const dx = Math.max(0, Math.min(max, e.clientX - x0)); x0 = null;
-      knob.style.transition = '';
-      if (dx > max * 0.9) { knob.style.transform = `translateX(${max}px)`; track.style.setProperty('--p', 1); track.classList.add('locked'); setTimeout(() => { track.classList.remove('locked'); knob.style.transform = ''; track.style.setProperty('--p', 0); }, 1800); }
-      else { knob.style.transform = ''; track.style.setProperty('--p', 0); }
-    });
-  });
+  set(new URLSearchParams(location.search).get('v') || 'f');
+  document.querySelectorAll('[data-lock]').forEach((b) => b.addEventListener('click', () => {
+    const card = b.closest('.slot');
+    const on = !card.classList.contains('locked');
+    document.querySelectorAll('.slot.locked').forEach((s) => s.classList.remove('locked'));
+    card.classList.toggle('locked', on);
+  }));
 </script>
 </body></html>

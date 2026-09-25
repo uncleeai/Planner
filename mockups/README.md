@@ -51,9 +51,10 @@ Kluczowe decyzje:
 - **CTA na dole ekranu**, pod kciukiem.
 - Paleta: smoła `#121114`, kość `#F1EEE8`, popiel `#97928A`, bursztyn `#FFB224`.
 
-## `ready-check.html` — minione terminy + LOCK IN w karcie (runda 2)
+## `ready-check.html` — minione terminy + LOCK IN w karcie (runda 3)
 
-Minione terminy: wygaszona karta „ODPADŁ" (wybrana w rundzie 1). LOCK IN w trzech
-ujęciach (przełącznik C/D/E): pełna pigułka w nagłówku karty z przytrzymaniem (C),
-suwak „przesuń, aby klepnąć" w stopce (D), pigułka w wierszu z imionami (E).
-Style = wklejony `globals.css` apki.
+Minione terminy: wygaszona karta „ODPADŁ" (wybrana w rundzie 1). LOCK IN nie jako
+kolejny przycisk obok READY/MOŻE/PAS, tylko w języku apki (przełącznik F/G/H):
+linia terminala `> LOCK IN_` pod głosami (F), zakładka wystająca z krawędzi karty
+(G), pieczątka w rogu karty (H). Rundy 1–2 (przycisk, stopka, pigułka, suwak)
+odrzucone — są w historii gita. Style = wklejony `globals.css` apki.
