@@ -51,8 +51,9 @@ Kluczowe decyzje:
 - **CTA na dole ekranu**, pod kciukiem.
 - Paleta: smoła `#121114`, kość `#F1EEE8`, popiel `#97928A`, bursztyn `#FFB224`.
 
-## `ready-check.html` — minione terminy + LOCK IN w karcie
+## `ready-check.html` — minione terminy + LOCK IN w karcie (runda 2)
 
-Dwa warianty do wyboru (przełącznik A/B na górze): termin, który minął, jako
-zwinięty wiersz (A) albo wygaszona karta „ODPADŁ" (B); LOCK IN jako przycisk
-w karcie (A) albo pasek-stopka karty (B). Style = wklejony `globals.css` apki.
+Minione terminy: wygaszona karta „ODPADŁ" (wybrana w rundzie 1). LOCK IN w trzech
+ujęciach (przełącznik C/D/E): pełna pigułka w nagłówku karty z przytrzymaniem (C),
+suwak „przesuń, aby klepnąć" w stopce (D), pigułka w wierszu z imionami (E).
+Style = wklejony `globals.css` apki.
