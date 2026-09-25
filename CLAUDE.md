@@ -156,7 +156,7 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   **Na stronie wypadu:** termin, który minął przed ustaleniem wypadu, jest wygaszony
   jako „ODPADŁ" (bez głosowania) i nie liczy się do remisu/prowadzącego (tylko w UI —
   `getEventStatus` liczy wszystkie, żeby odbyty wypad został na swoim terminie).
-  LOCK IN to wypukły klawisz w karcie prowadzącego/remisującego terminu (organizator);
+  LOCK IN to terminalowa komenda `> LOCK IN_` w karcie prowadzącego/remisującego terminu (organizator);
   po klepnięciu „✓ LOCKED" — tap = odklep (z potwierdzeniem).
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.

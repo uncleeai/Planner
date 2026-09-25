@@ -1381,13 +1381,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     <span className="lockin-state">{yes}× READY</span>
                     <span className="lockin-lead" aria-hidden="true" />
                     {canLock ? (
-                      <button type="button" className="lockin-key" onClick={() => confirmSlot(slot)}>
-                        LOCK IN
+                      <button type="button" className="lockin-cmd" onClick={() => confirmSlot(slot)}>
+                        &gt; LOCK IN
                       </button>
                     ) : (
                       <button
                         type="button"
-                        className="lockin-key locked"
+                        className="lockin-cmd locked"
                         aria-label="Odklep termin"
                         onClick={async () => {
                           if (await appConfirm('Odklepać termin?', { message: 'Wypad wróci do głosowania.', confirmLabel: 'Odklep' })) unconfirmSlot();

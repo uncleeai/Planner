@@ -2111,9 +2111,9 @@ main.has-dock { padding-bottom: 24px; }
 
 /* Głosowanie w slocie + LOCK IN pod terminami */
 .slot-seg3 { margin-top: 12px; }
-/* LOCK IN w karcie terminu (organizator): linia pod głosami „2× READY ···· [LOCK IN_]".
-   Wypukły klawisz (gruba dolna krawędź) — ma wyglądać na coś do wciśnięcia, nie na
-   napis; kursor jak w logo. Po klepnięciu zostaje wciśnięty i zielony (tap = odklep). */
+/* LOCK IN w karcie terminu (organizator): terminalowa linia pod głosami
+   „2× READY ······ > LOCK IN_" — sama komenda w akcencie, z kursorem jak w logo,
+   bez ramki i tła. Po klepnięciu „✓ LOCKED" na zielono (tap = odklep). */
 .lockin-line {
   display: flex; align-items: center; gap: 10px;
   margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
@@ -2124,29 +2124,20 @@ main.has-dock { padding-bottom: 24px; }
   flex: 1; min-width: 12px; height: 1px;
   background: repeating-linear-gradient(90deg, var(--border-strong) 0 2px, transparent 2px 6px);
 }
-.lockin-key {
-  font-family: var(--mono); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em;
-  color: var(--accent); padding: 8px 14px 7px; border-radius: 7px;
-  background: color-mix(in srgb, var(--accent) 10%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-bottom: 4px solid color-mix(in srgb, var(--accent) 55%, #000);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: transform 0.08s ease, border-bottom-width 0.08s ease, margin 0.08s ease;
+/* Padding powiększa pole dotyku, ujemny margines oddaje miejsce w linii. */
+.lockin-cmd,
+.lockin-cmd:hover,
+.lockin-cmd:active {
+  background: none; border: 0; box-shadow: none; transform: none;
+  padding: 10px 0 10px 10px; margin: -10px 0;
+  font: inherit; letter-spacing: inherit; color: var(--accent);
 }
-.lockin-key:not(.locked)::after { content: '_'; }
+.lockin-cmd:active { opacity: 0.6; }
+.lockin-cmd:not(.locked)::after { content: '_'; }
 @media (prefers-reduced-motion: no-preference) {
-  .lockin-key:not(.locked)::after { animation: cursor-blink 1.1s steps(2, start) infinite; }
+  .lockin-cmd:not(.locked)::after { animation: cursor-blink 1.1s steps(2, start) infinite; }
 }
-.lockin-key:active, .lockin-key.locked { transform: translateY(3px); border-bottom-width: 1px; margin-bottom: 3px; }
-.lockin-key.locked {
-  color: var(--yes);
-  background: color-mix(in srgb, var(--yes) 10%, var(--card));
-  border-color: color-mix(in srgb, var(--yes) 45%, transparent);
-}
-@media (hover: hover) {
-  .lockin-key:hover { background: color-mix(in srgb, var(--accent) 18%, var(--card)); }
-  .lockin-key.locked:hover { background: color-mix(in srgb, var(--yes) 16%, var(--card)); }
-}
+.lockin-cmd.locked { color: var(--yes); }
 
 /* Termin, który minął (przed ustaleniem wypadu) — „ODPADŁ": wygaszony, szary,
    bez głosowania; imiona zostają, żeby było widać, kto co dał. */
