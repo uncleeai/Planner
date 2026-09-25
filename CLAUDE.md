@@ -153,6 +153,11 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   autor lub organizator. **Zmiana czasu terminu zeruje oddane na niego głosy** — pilnuje
   tego trigger `slots_reset_votes` w bazie (security definer), który przy okazji
   synchronizuje `events.confirmed_at`, jeśli edytowany slot był klepnięty.
+  **Na stronie wypadu:** termin, który minął przed ustaleniem wypadu, jest wygaszony
+  jako „ODPADŁ" (bez głosowania) i nie liczy się do remisu/prowadzącego (tylko w UI —
+  `getEventStatus` liczy wszystkie, żeby odbyty wypad został na swoim terminie).
+  LOCK IN to wypukły klawisz w karcie prowadzącego/remisującego terminu (organizator);
+  po klepnięciu „✓ LOCKED" — tap = odklep (z potwierdzeniem).
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
 - **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name` + `avatar` (emoji

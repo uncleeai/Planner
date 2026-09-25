@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
-import { getEventStatus, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
+import { getEventStatus, getConfirmedSlot, formatSlotRange, formatSlotShort, relativeDay, slotEndMs } from '@/lib/types';
 import type { Availability, Comment, EventRow, Profile, Reaction, Slot, Vote } from '@/lib/types';
 import { Avatar, type Person } from '@/components/Avatar';
 import { IconCalendarPlus, IconCamera, IconPencil } from '@/components/icons';
@@ -1034,12 +1034,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         maybe: slotVotes.filter((v) => v.availability === 'maybe').length,
         no: slotVotes.filter((v) => v.availability === 'no').length,
         mine: slotVotes.find((v) => v.user_id === userId)?.availability,
+        // Termin, który już minął — „ODPADŁ": bez głosowania, poza remisem/prowadzeniem.
+        gone: slotEndMs(slot) < Date.now(),
       };
     });
   }, [slots, votes, userId]);
 
-  const maxYes = useMemo(() => Math.max(0, ...stats.map((s) => s.yes)), [stats]);
-  const isTie = useMemo(() => stats.filter((s) => s.yes > 0 && s.yes === maxYes).length > 1, [stats, maxYes]);
+  // Remis i prowadzący liczone tylko z żywych terminów. getEventStatus zostaje na
+  // wszystkich — automat musi dalej trzymać odbyty wypad na jego (minionym) terminie.
+  const liveStats = useMemo(() => stats.filter((s) => !s.gone), [stats]);
+  const maxYes = useMemo(() => Math.max(0, ...liveStats.map((s) => s.yes)), [liveStats]);
+  const isTie = useMemo(() => liveStats.filter((s) => s.yes > 0 && s.yes === maxYes).length > 1, [liveStats, maxYes]);
+  const liveLeading = useMemo(() => getConfirmedSlot(liveStats.map((s) => s.slot), votes), [liveStats, votes]);
 
   const memberIds = useMemo(() => members.map((m) => m.id), [members]);
   const status = useMemo(
@@ -1048,14 +1054,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   );
 
   // Data w nagłówku: ustalony termin; a jeśli nieustalony — prowadzący (gdy nie remis).
-  const headerDate = status.settled ? status.date : (!isTie ? status.leadingDate : null);
+  const headerDate = status.settled ? status.date : (!isTie ? liveLeading.confirmedAt : null);
   const [lastHeaderDate, setLastHeaderDate] = useState<string | null>(null);
   useEffect(() => {
     if (headerDate) setLastHeaderDate(headerDate);
   }, [headerDate]);
 
   // Slot pokazywany w nagłówku (do formatowania zakresu + eksportu kalendarza).
-  const headerSlotId = status.settled ? status.slotId : (!isTie ? status.leadingSlotId : null);
+  const headerSlotId = status.settled ? status.slotId : (!isTie ? liveLeading.slotId : null);
   const headerSlot = useMemo(
     () => (headerSlotId ? slots.find((s) => s.id === headerSlotId) ?? null : null),
     [headerSlotId, slots],
@@ -1278,9 +1284,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         {/* Po wypadzie liczy się tylko ten termin, który się odbył — nieaktualne
             propozycje (dziś wyciszone) znikają, zostaje jeden kafel z obsadą. */}
         {(isPast ? stats.filter(({ slot }) => slot.id === status.slotId) : stats)
-          .map(({ slot, yes, mine, votes: slotVotes }) => {
-          const isBest = yes > 0 && yes === maxYes;
+          .map(({ slot, yes, mine, votes: slotVotes, gone: slotGone }) => {
           const isSettledSlot = status.settled && status.slotId === slot.id;
+          const gone = slotGone && !isSettledSlot && !isPast;
+          const isBest = !gone && yes > 0 && yes === maxYes;
+          // LOCK IN w karcie: organizator, nic nie klepnięte, a termin prowadzi (albo remisuje).
+          const canLock = isOrganizer && !status.settled && !gone && (isTie ? isBest : slot.id === liveLeading.slotId);
+          const canUnlock = isOrganizer && isSettledSlot && status.source === 'manual' && !isPast;
           // Po fakcie „Prowadzi"/„Remis" nie niosą już informacji.
           const showBestBadge = !isPast && !isSettledSlot && isBest && !isTie;
           const showTieBadge = !isPast && !isSettledSlot && isBest && isTie;
@@ -1292,14 +1302,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               // Termin klepnięty → pozostałe propozycje są nieaktualne: wyciszone,
               // ale wciąż klikalne (zmiana głosu może przestawić automat).
               status.settled && !isSettledSlot ? ' stale' : ''
-            }`}
+            }${gone ? ' gone' : ''}`}
           >
             <div className="slot-head">
               <SlotWhen slot={slot} />
               {isSettledSlot && <span className="badge">✓ USTALONY</span>}
               {showBestBadge && <span className="badge">Prowadzi</span>}
               {showTieBadge && <span className="badge badge-open">Remis</span>}
-              {canDelete && !isPast && (
+              {gone && <span className="badge badge-muted gone-badge">Odpadł</span>}
+              {canDelete && !isPast && !gone && (
                 <span className="slot-actions">
                   <button
                     type="button"
@@ -1350,7 +1361,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   </div>
                 )}
 
-                {!isPast && (
+                {!isPast && !gone && (
                   <div className="seg3 slot-seg3" role="group" aria-label="Twój głos">
                     {CHOICES.map((c) => (
                       <button
@@ -1364,40 +1375,34 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     ))}
                   </div>
                 )}
+
+                {(canLock || canUnlock) && (
+                  <div className="lockin-line">
+                    <span className="lockin-state">{yes}× READY</span>
+                    <span className="lockin-lead" aria-hidden="true" />
+                    {canLock ? (
+                      <button type="button" className="lockin-key" onClick={() => confirmSlot(slot)}>
+                        LOCK IN
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="lockin-key locked"
+                        aria-label="Odklep termin"
+                        onClick={async () => {
+                          if (await appConfirm('Odklepać termin?', { message: 'Wypad wróci do głosowania.', confirmLabel: 'Odklep' })) unconfirmSlot();
+                        }}
+                      >
+                        ✓ LOCKED
+                      </button>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
           );
         })}
-
-        {/* LOCK IN — jeden przycisk pod terminami (prowadzący; przy remisie po jednym
-            na każdy remisujący termin). Odklepanie tylko przy ręcznym ustaleniu. */}
-        {isOrganizer && !isPast && stats.length > 0 && (
-          status.settled ? (
-            status.source === 'manual' && (
-              <button type="button" className="ghost lockin-btn" onClick={unconfirmSlot}>
-                Odklep termin
-              </button>
-            )
-          ) : (
-            stats
-              .filter(({ slot, yes }) =>
-                isTie ? yes > 0 && yes === maxYes : slot.id === status.leadingSlotId,
-              )
-              .map(({ slot }) => (
-                <button
-                  key={slot.id}
-                  type="button"
-                  className="slot-confirm-btn primary lockin-btn"
-                  onClick={() => confirmSlot(slot)}
-                >
-                  LOCK IN: {formatSlotShort(slot)}
-                </button>
-              ))
-          )
-        )}
-
-
 
         {!isPast && (
         <div className={`add-slot-wrapper${showAddForm ? ' open' : ''}`}>

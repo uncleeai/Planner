@@ -289,22 +289,6 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
 .badge-open { background: rgba(244, 183, 64, 0.16); color: var(--maybe); }
 .badge-muted { background: rgba(255, 255, 255, 0.08); color: var(--muted); }
 
-/* Ustalanie terminu przez organizatora (na stronie wypadu) */
-.slot-confirm-btn { width: 100%; font-size: 0.9rem; }
-/* „Klepnij ten termin" (LOCK IN) — jedyna akcja finalizująca wypad, więc dostaje
-   sygnałowy akcent zamiast wtapiać się jako kolejny .ghost. */
-.slot-confirm-btn.primary {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-@media (hover: hover) {
-  .slot-confirm-btn.primary:hover { background: var(--accent-dim); }
-}
 .voters {
   font-size: 0.82rem;
   color: var(--muted);
@@ -2127,7 +2111,48 @@ main.has-dock { padding-bottom: 24px; }
 
 /* Głosowanie w slocie + LOCK IN pod terminami */
 .slot-seg3 { margin-top: 12px; }
-.lockin-btn { width: 100%; margin: 2px 0 12px; }
+/* LOCK IN w karcie terminu (organizator): linia pod głosami „2× READY ···· [LOCK IN_]".
+   Wypukły klawisz (gruba dolna krawędź) — ma wyglądać na coś do wciśnięcia, nie na
+   napis; kursor jak w logo. Po klepnięciu zostaje wciśnięty i zielony (tap = odklep). */
+.lockin-line {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
+}
+.lockin-state { color: var(--yes); opacity: 0.85; white-space: nowrap; }
+.lockin-lead {
+  flex: 1; min-width: 12px; height: 1px;
+  background: repeating-linear-gradient(90deg, var(--border-strong) 0 2px, transparent 2px 6px);
+}
+.lockin-key {
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em;
+  color: var(--accent); padding: 8px 14px 7px; border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-bottom: 4px solid color-mix(in srgb, var(--accent) 55%, #000);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.08s ease, border-bottom-width 0.08s ease, margin 0.08s ease;
+}
+.lockin-key:not(.locked)::after { content: '_'; }
+@media (prefers-reduced-motion: no-preference) {
+  .lockin-key:not(.locked)::after { animation: cursor-blink 1.1s steps(2, start) infinite; }
+}
+.lockin-key:active, .lockin-key.locked { transform: translateY(3px); border-bottom-width: 1px; margin-bottom: 3px; }
+.lockin-key.locked {
+  color: var(--yes);
+  background: color-mix(in srgb, var(--yes) 10%, var(--card));
+  border-color: color-mix(in srgb, var(--yes) 45%, transparent);
+}
+@media (hover: hover) {
+  .lockin-key:hover { background: color-mix(in srgb, var(--accent) 18%, var(--card)); }
+  .lockin-key.locked:hover { background: color-mix(in srgb, var(--yes) 16%, var(--card)); }
+}
+
+/* Termin, który minął (przed ustaleniem wypadu) — „ODPADŁ": wygaszony, szary,
+   bez głosowania; imiona zostają, żeby było widać, kto co dał. */
+.glass-page .slot.gone { opacity: 0.45; filter: grayscale(1); }
+.slot.gone .slot-when b { text-decoration: line-through; }
+.slot.gone .gone-badge { margin-left: auto; }
 
 /* Ikonkowy przycisk wysyłki w czacie */
 .comment-form .send {
