@@ -3118,9 +3118,9 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .mock-intro { font-size: 0.8rem; color: var(--muted); margin: 0 4px 12px; }
 .mock-note { font-size: 0.8rem; color: var(--muted); margin: 10px 4px; line-height: 1.45; }
 .mock-note b { color: var(--accent); }
-.mock-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 6px; }
+.mock-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 0 0 6px; }
 .mock-tabs button {
-  font-family: var(--mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
   padding: 10px 2px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: none; color: var(--muted);
 }
 .mock-tabs button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
@@ -3201,15 +3201,20 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .tip.gone { display: none; }
 .tip-x { background: none !important; border: 0; box-shadow: none !important; color: inherit; font-size: 0.7rem; padding: 2px 4px; opacity: 0.7; }
 @keyframes tip-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.host-mini { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.64rem; }
+.guest-label { margin-top: -4px; text-align: center; font-size: 0.72rem; }
+.mock[data-v="f12"] .cmd-state.hint { font-size: 0.72rem; }
 </style></head><body>
 <main class="glass-page mock">
   <p class="mock-intro">Ready check, runda 4: F, ale czytelny jako przycisk. Kliknij LOCK IN, żeby zobaczyć stan po klepnięciu.</p>
   <div class="mock-tabs" role="tablist">
+    <button type="button" data-v="f12" class="on">F1+F2 ★</button>
     <button type="button" data-v="f0">F · było</button>
-    <button type="button" data-v="f1" class="on">F1 · klawisz</button>
+    <button type="button" data-v="f1">F1 · klawisz</button>
     <button type="button" data-v="f2">F2 · podpis</button>
     <button type="button" data-v="f3">F3 · podpowiedź</button>
   </div>
+  <p class="mock-note" data-show="f12"><b>F1+F2:</b> podpis mówi, co to robi („Ty wybierasz termin"), a klawisz pokazuje, że to się klika. Po klepnięciu linia zmienia się na „Termin ustalony" i klawisz zostaje wciśnięty na zielono. Reszta paczki zamiast przycisku widzi „Czeka na LOCK IN hosta" (trzecia karta).</p>
   <p class="mock-note" data-show="f0"><b>F (było):</b> sama komenda <code>&gt; LOCK IN_</code>, bez ramki. Ładna, ale nie wygląda na coś do kliknięcia.</p>
   <p class="mock-note" data-show="f1"><b>F1 · klawisz:</b> LOCK IN jako wypukły klawisz z grubszą krawędzią na dole (jak prompt „wciśnij E" w grach). Wciśnięty naprawdę się wgniata. Kursor <code>_</code> zostaje.</p>
   <p class="mock-note" data-show="f2"><b>F2 · podpis:</b> linia mówi, co zrobić: po lewej „Ty wybierasz termin", po prawej obrysowany przycisk <code>LOCK IN ›</code>. Znaczenie jest napisane wprost.</p>
@@ -3250,12 +3255,12 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
       <div class="seg3 slot-seg3"><button class="on-yes">READY</button><button>MOŻE</button><button>PAS</button></div>
       <div class="cmd-line">
         <span class="cmd-state" data-show="f0 f1 f3">2× READY</span>
-        <span class="cmd-state hint" data-show="f2"><span class="l1">Ty wybierasz termin</span><span class="l2">Termin ustalony</span></span>
+        <span class="cmd-state hint" data-show="f2 f12"><span class="l1">Ty wybierasz termin</span><span class="l2">Termin ustalony</span></span>
         <span class="cmd-lead" aria-hidden="true"></span>
         <span class="cmd-wrap">
           <span class="tip" data-show="f3">Kliknij, żeby ustalić termin<button type="button" class="tip-x" aria-label="Zamknij">✕</button></span>
           <button type="button" class="cmd" data-show="f0 f3" data-lock><i class="pulse" data-show="f3"></i><span class="l1">&gt; LOCK IN</span><span class="l2">✓ LOCKED</span></button>
-          <button type="button" class="key" data-show="f1" data-lock><span class="l1">LOCK IN</span><span class="l2">✓ LOCKED</span></button>
+          <button type="button" class="key" data-show="f1 f12" data-lock><span class="l1">LOCK IN</span><span class="l2">✓ LOCKED</span></button>
           <button type="button" class="obtn" data-show="f2" data-lock><span class="l1">LOCK IN ›</span><span class="l2">✓ LOCKED</span></button>
         </span>
       </div>
@@ -3277,16 +3282,32 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
       <div class="seg3 slot-seg3"><button class="on-yes">READY</button><button>MOŻE</button><button>PAS</button></div>
       <div class="cmd-line">
         <span class="cmd-state" data-show="f0 f1 f3">2× READY</span>
-        <span class="cmd-state hint" data-show="f2"><span class="l1">Ty wybierasz termin</span><span class="l2">Termin ustalony</span></span>
+        <span class="cmd-state hint" data-show="f2 f12"><span class="l1">Ty wybierasz termin</span><span class="l2">Termin ustalony</span></span>
         <span class="cmd-lead" aria-hidden="true"></span>
         <span class="cmd-wrap">
           
           <button type="button" class="cmd" data-show="f0 f3" data-lock><i class="pulse" data-show="f3"></i><span class="l1">&gt; LOCK IN</span><span class="l2">✓ LOCKED</span></button>
-          <button type="button" class="key" data-show="f1" data-lock><span class="l1">LOCK IN</span><span class="l2">✓ LOCKED</span></button>
+          <button type="button" class="key" data-show="f1 f12" data-lock><span class="l1">LOCK IN</span><span class="l2">✓ LOCKED</span></button>
           <button type="button" class="obtn" data-show="f2" data-lock><span class="l1">LOCK IN ›</span><span class="l2">✓ LOCKED</span></button>
         </span>
       </div>
     </div>
+    <div class="slot tie" data-show="f12">
+      <div class="slot-head">
+        <span class="slot-when-wrap">
+          <span class="leaf"><span class="dow">SOB</span><span class="day">3</span><span class="mon">PAŹ</span></span>
+          <span class="slot-when"><b>Za 8 dni</b><span>cały dzień</span></span>
+        </span>
+        <span class="badge badge-open">Remis</span>
+      </div>
+      <div class="voters">
+        <span class="voter-chip yes"><i class="av av2">L</i>LUKENS</span>
+        <span class="voter-chip yes"><i class="av">A</i>ALICJA</span>
+      </div>
+      <div class="seg3 slot-seg3"><button class="on-yes">READY</button><button>MOŻE</button><button>PAS</button></div>
+      <div class="cmd-line"><span class="cmd-state hint">Czeka na LOCK IN hosta</span><span class="cmd-lead" aria-hidden="true"></span><span class="host-mini"><i class="av av2">L</i>LUKENS</span></div>
+    </div>
+    <p class="mock-note guest-label" data-show="f12">↑ tak ten sam termin widzi ktoś, kto nie jest hostem</p>
     <div class="add-slot-wrapper"><button type="button" class="add-slot-toggle">+ Dodaj propozycję terminu</button></div>
   </section>
 </main>
@@ -3300,7 +3321,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
     document.querySelectorAll('.tip').forEach((t) => t.classList.remove('gone'));
   };
   document.querySelectorAll('.mock-tabs button').forEach((b) => b.addEventListener('click', () => set(b.dataset.v)));
-  set(new URLSearchParams(location.search).get('v') || 'f1');
+  set(new URLSearchParams(location.search).get('v') || 'f12');
   const hideTips = () => document.querySelectorAll('.tip').forEach((t) => t.classList.add('gone'));
   document.querySelectorAll('.tip-x').forEach((x) => x.addEventListener('click', hideTips));
   document.querySelectorAll('[data-lock]').forEach((b) => b.addEventListener('click', () => {

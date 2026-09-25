@@ -57,6 +57,16 @@ Kluczowe decyzje:
 (linia terminala pod głosami: `2× READY ······ LOCK IN`). Czysty F (`> LOCK IN_`
 bez ramki) okazał się za mało czytelny jako przycisk, więc runda 4 to jego
 czytelne wersje (przełącznik): F1 wypukły klawisz, F2 podpis „Ty wybierasz
-termin" + obrysowany `LOCK IN ›`, F3 jednorazowy dymek-podpowiedź.
+termin" + obrysowany `LOCK IN ›`, F3 jednorazowy dymek-podpowiedź, oraz
+**F1+F2** (propozycja): podpis „Ty wybierasz termin" + klawisz `LOCK IN_`;
+reszta paczki widzi w tym miejscu „Czeka na LOCK IN hosta".
 Wcześniejsze rundy (G zakładka, H pieczątka, I wyspa, J telemetria, przyciski,
 pigułki, suwak) są w historii gita. Style = wklejony `globals.css` apki.
+
+## `creator-title.html` — pole nazwy w kreatorze (teraz vs po poprawce)
+
+Pole „Nazwa wypadu…" wyglądało jak nagłówek (zero ramki), a „Odpal lobby" było
+wyszarzone bez wyjaśnienia — kumpel nie wiedział, że trzeba tam wpisać nazwę.
+Poprawka: akcentowe podkreślenie, placeholder „Nazwij wypad" z migającym `_`
+jak w logo, podpis „DOTKNIJ, ŻEBY WPISAĆ NAZWĘ", a wyłączony CTA mówi
+„↑ Najpierw nazwa wypadu".
