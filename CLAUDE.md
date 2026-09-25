@@ -158,6 +158,10 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   `getEventStatus` liczy wszystkie, żeby odbyty wypad został na swoim terminie).
   LOCK IN to terminalowa komenda `> LOCK IN_` w karcie prowadzącego/remisującego terminu (organizator);
   po klepnięciu „✓ LOCKED" — tap = odklep (z potwierdzeniem).
+  Gdy wszystkie terminy odpadły — linia „Terminy odpadły ··· > DODAJ NOWY".
+  **Automat „wszyscy dali znać"** klepie prowadzącego tylko spośród terminów, które
+  trwały, gdy komplet się zebrał (najpóźniejszy pierwszy głos członka, `votes.created_at`)
+  — `getEventStatus` w `types.ts` i `pickConfirmed` w `notify-reminders` (trzymaj w synchronie).
 - **votes** — głos uczestnika: `availability` ∈ `yes | maybe | no`; `user_id` (konto)
   + `participant_name` (migawka nazwy). Unikalność: `(slot_id, user_id)`.
 - **profiles** — lista „paczki": `id` (= `auth.users.id`) + `display_name` + `avatar` (emoji

@@ -190,6 +190,9 @@ export type EventStatus = {
  *  A) ręcznie — organizator zapisał `confirmed_slot_id` (ma pierwszeństwo, jest sticky),
  *  B) automatycznie — WSZYSCY z paczki (memberIds) dali znać i jest prowadzący termin
  *     (≥1 „Wchodzę"); liczone na żywo, więc zmiana głosu przestawia/cofa ustalenie.
+ *     Prowadzący liczony tylko z terminów, które jeszcze trwały, gdy komplet się zebrał
+ *     (najpóźniejszy „pierwszy głos" członka) — odbyty wypad zostaje na swoim terminie,
+ *     a komplet dobity po czasie nie klepie terminu, który już minął.
  * Gdy nieustalony — zwracamy prowadzący termin do pokazania jako podpowiedź.
  */
 export function getEventStatus(
@@ -199,8 +202,15 @@ export function getEventStatus(
   memberIds: string[],
 ): EventStatus {
   const leading = getConfirmedSlot(eventSlots, eventVotes);
-  const voterIds = new Set(eventVotes.map((v) => v.user_id).filter(Boolean) as string[]);
-  const allVoted = memberIds.length > 0 && memberIds.every((id) => voterIds.has(id));
+  // Pierwszy głos każdej osoby (created_at nie zmienia się przy zmianie głosu).
+  const firstVoteMs = new Map<string, number>();
+  for (const v of eventVotes) {
+    if (!v.user_id) continue;
+    const t = Date.parse(v.created_at) || 0;
+    const prev = firstVoteMs.get(v.user_id);
+    if (prev === undefined || t < prev) firstVoteMs.set(v.user_id, t);
+  }
+  const allVoted = memberIds.length > 0 && memberIds.every((id) => firstVoteMs.has(id));
 
   // A) Ręczne ustalenie organizatora — pierwszeństwo.
   if (event.confirmed_slot_id) {
@@ -216,13 +226,17 @@ export function getEventStatus(
     };
   }
 
-  // B) Automat — komplet głosów + jest prowadzący termin.
-  if (allVoted && leading.slotId) {
+  // B) Automat — komplet głosów + jest prowadzący termin (spośród żywych w chwili kompletu).
+  const completedMs = allVoted ? Math.max(...memberIds.map((id) => firstVoteMs.get(id) as number)) : 0;
+  const auto = allVoted
+    ? getConfirmedSlot(eventSlots.filter((s) => slotEndMs(s) >= completedMs), eventVotes)
+    : null;
+  if (auto?.slotId) {
     return {
       settled: true,
       source: 'auto',
-      slotId: leading.slotId,
-      date: leading.confirmedAt,
+      slotId: auto.slotId,
+      date: auto.confirmedAt,
       leadingSlotId: leading.slotId,
       leadingDate: leading.confirmedAt,
       allVoted,

@@ -13,11 +13,14 @@ function mkSlot(id: string, starts_at: string, opts: Partial<Slot> = {}): Slot {
     ...opts,
   };
 }
-function mkVote(slot_id: string, user_id: string | null, availability: Vote['availability']): Vote {
+function mkVote(
+  slot_id: string, user_id: string | null, availability: Vote['availability'],
+  created_at = '2026-07-01T10:00:00Z',
+): Vote {
   return {
     id: `v${seq++}`, event_id: 'ev1', slot_id, user_id,
     participant_name: user_id ?? 'gość',
-    availability, created_at: '2026-07-01T10:00:00Z',
+    availability, created_at,
   };
 }
 const NOT_CONFIRMED = { confirmed_slot_id: null, confirmed_at: null };
@@ -128,6 +131,34 @@ describe('getEventStatus — reguły klepania terminu', () => {
     const votes = [mkVote('s1', 'a', 'yes'), mkVote('s1', 'b', 'yes'), mkVote('s1', null, 'yes')];
     const st = getEventStatus(NOT_CONFIRMED, [s1], votes, paczka);
     expect(st).toMatchObject({ settled: false, allVoted: false });
+  });
+
+  it('odbyty wypad zostaje ustalony na swoim (minionym) terminie', () => {
+    // Komplet 10.07, termin 11.07 — dziś termin dawno minął, a wypad dalej „odbyty".
+    const votes = ['a', 'b', 'c'].map((u) => mkVote('s1', u, 'yes', '2026-07-10T10:00'));
+    const st = getEventStatus(NOT_CONFIRMED, [s1, s2], votes, paczka);
+    expect(st).toMatchObject({ settled: true, source: 'auto', slotId: 's1' });
+  });
+
+  it('komplet dobity po terminie nie klepie terminu, który już minął', () => {
+    // s1 (11.07) ma 2× READY, ale „c" dołącza dopiero 15.07 głosem na s2 (18.07).
+    const votes = [
+      mkVote('s1', 'a', 'yes', '2026-07-05T10:00'),
+      mkVote('s1', 'b', 'yes', '2026-07-05T10:00'),
+      mkVote('s2', 'c', 'yes', '2026-07-15T10:00'),
+    ];
+    const st = getEventStatus(NOT_CONFIRMED, [s1, s2], votes, paczka);
+    expect(st).toMatchObject({ settled: true, source: 'auto', slotId: 's2' });
+  });
+
+  it('komplet dobity, gdy wszystkie terminy minęły → nieustalone', () => {
+    const votes = [
+      mkVote('s1', 'a', 'yes', '2026-07-05T10:00'),
+      mkVote('s1', 'b', 'yes', '2026-07-05T10:00'),
+      mkVote('s1', 'c', 'yes', '2026-07-20T10:00'),
+    ];
+    const st = getEventStatus(NOT_CONFIRMED, [s1, s2], votes, paczka);
+    expect(st).toMatchObject({ settled: false, allVoted: true });
   });
 
   it('pusta paczka nigdy nie klepie automatem', () => {

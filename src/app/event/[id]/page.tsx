@@ -1404,6 +1404,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           );
         })}
 
+        {/* Wszystkie propozycje minęły, nic nie klepnięte — podpowiedź, jak wskrzesić wypad. */}
+        {!isPast && !status.settled && stats.length > 0 && liveStats.length === 0 && (
+          <div className="lockin-line all-gone">
+            <span className="gone-note">Terminy odpadły</span>
+            <span className="lockin-lead" aria-hidden="true" />
+            <button type="button" className="lockin-cmd" onClick={() => setShowAddForm(true)}>
+              &gt; DODAJ NOWY
+            </button>
+          </div>
+        )}
+
         {!isPast && (
         <div className={`add-slot-wrapper${showAddForm ? ' open' : ''}`}>
           <button

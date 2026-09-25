@@ -5,7 +5,8 @@
 //     Warsaw); push do CAŁEJ paczki, wysyłany po 16:00 dnia poprzedniego. Raz na
 //     wypad (stempel `day_before_notified_at`). Klepnięty = confirmed_slot_id
 //     (ręczny LOCK IN) albo confirmed_notified_at (automat — stempel pusha GRAMY);
-//     dla automatu prowadzący slot liczony jak w getConfirmedSlot (types.ts).
+//     dla automatu prowadzący slot liczony jak w getEventStatus (types.ts) — tylko
+//     z terminów, które trwały jeszcze, gdy komplet głosów się zebrał.
 //  3. „Wrzuć zdjęcia" — dobę po zakończeniu wypadu (i nie później niż tydzień po);
 //     push do CAŁEJ paczki, też po 16:00. Raz na wypad (stempel
 //     `photos_prompted_at`), niezależnie od tego, czy galeria jest już pusta czy nie.
@@ -36,20 +37,29 @@ type Sub = { endpoint: string; p256dh: string; auth: string; user_id: string | n
 type SlotRow = { id: string; starts_at: string; all_day?: boolean | null; ends_at?: string | null };
 
 // Klepnięty slot wypadu: ręczny LOCK IN wprost, a przy automacie — prowadzący
-// (READY > MOŻE > wcześniejsza data), jak getConfirmedSlot w types.ts.
+// (READY > MOŻE > wcześniejsza data) spośród terminów żywych w chwili kompletu
+// (najpóźniejszy „pierwszy głos"), jak getEventStatus w types.ts.
 function pickConfirmed(
   slots: SlotRow[],
   confirmedSlotId: string | null,
-  votes: { slot_id: string; availability: string }[],
+  votes: { slot_id: string; availability: string; user_id: string | null; created_at: string }[],
 ): SlotRow | undefined {
   if (confirmedSlotId) {
     const direct = slots.find((s) => s.id === confirmedSlotId);
     if (direct) return direct;
   }
+  const firstVote = new Map<string, number>();
+  for (const v of votes) {
+    if (!v.user_id) continue;
+    const t = Date.parse(v.created_at) || 0;
+    const prev = firstVote.get(v.user_id);
+    if (prev === undefined || t < prev) firstVote.set(v.user_id, t);
+  }
+  const completedMs = firstVote.size ? Math.max(...firstVote.values()) : 0;
   let best: SlotRow | undefined;
   let bestYes = 0;
   let bestMaybe = 0;
-  for (const s of slots) {
+  for (const s of slots.filter((sl) => slotEndMs(sl) >= completedMs)) {
     const sv = votes.filter((v) => v.slot_id === s.id);
     const yes = sv.filter((v) => v.availability === 'yes').length;
     const maybe = sv.filter((v) => v.availability === 'maybe').length;
@@ -189,13 +199,13 @@ Deno.serve(async (req) => {
     for (const ev of settled ?? []) {
       const { data: slots } = await supabase
         .from('slots')
-        .select('id, starts_at, all_day')
+        .select('id, starts_at, ends_at, all_day')
         .eq('event_id', ev.id);
       if (!slots || slots.length === 0) continue;
 
       const { data: votes } = await supabase
         .from('votes')
-        .select('slot_id, availability')
+        .select('slot_id, availability, user_id, created_at')
         .eq('event_id', ev.id);
       const slot = pickConfirmed(slots as SlotRow[], ev.confirmed_slot_id, votes ?? []);
       if (!slot) continue;
@@ -262,7 +272,7 @@ Deno.serve(async (req) => {
 
       const { data: votes } = await supabase
         .from('votes')
-        .select('slot_id, availability')
+        .select('slot_id, availability, user_id, created_at')
         .eq('event_id', ev.id);
       const slot = pickConfirmed(slots as SlotRow[], ev.confirmed_slot_id, votes ?? []);
       if (!slot) continue;
