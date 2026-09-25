@@ -63,10 +63,9 @@ reszta paczki widzi w tym miejscu „Czeka na LOCK IN hosta".
 Wcześniejsze rundy (G zakładka, H pieczątka, I wyspa, J telemetria, przyciski,
 pigułki, suwak) są w historii gita. Style = wklejony `globals.css` apki.
 
-## `creator-title.html` — pole nazwy w kreatorze (teraz vs po poprawce)
+## `creator-title.html` — pole nazwy + przycisk w kreatorze (lekka wersja)
 
-Pole „Nazwa wypadu…" wyglądało jak nagłówek (zero ramki), a „Odpal lobby" było
-wyszarzone bez wyjaśnienia — kumpel nie wiedział, że trzeba tam wpisać nazwę.
-Poprawka: akcentowe podkreślenie, placeholder „Nazwij wypad" z migającym `_`
-jak w logo, podpis „DOTKNIJ, ŻEBY WPISAĆ NAZWĘ", a wyłączony CTA mówi
-„↑ Najpierw nazwa wypadu".
+Kumpel nie wiedział, że trzeba wpisać nazwę, a „Odpal lobby" było wyszarzone bez
+słowa. Lekka poprawka (4 stany: teraz / pusto / nazwa bez daty / gotowe): migający
+`_` jak w logo za pustą nazwą (bez podkreślenia i podpisów) + wyłączony przycisk
+mówi, czego brakuje („Najpierw nazwa ↑", „Najpierw termin ↑").
