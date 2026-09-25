@@ -1262,6 +1262,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   onClick={() => doPing(m)}
                 >
                   {pinged.has(m.id) ? 'Spingowano ✓' : 'Pinguj kurwę'}
+                  <HapticSwitch onTap={() => doPing(m)} disabled={pinged.has(m.id)} />
                 </button>
               )}
             </div>
@@ -1385,6 +1386,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                     {canLock ? (
                       <button type="button" className="lockin-cmd" onClick={() => confirmSlot(slot)}>
                         &gt; LOCK IN
+                        <HapticSwitch onTap={() => confirmSlot(slot)} />
                       </button>
                     ) : (
                       <button

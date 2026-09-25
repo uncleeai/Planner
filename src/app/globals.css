@@ -2111,15 +2111,17 @@ main.has-dock { padding-bottom: 24px; }
 
 /* Głosowanie w slocie + LOCK IN pod terminami */
 .slot-seg3 { margin-top: 12px; }
-/* TEST wibracji iOS: niewidoczny natywny przełącznik na całym przycisku głosu
-   (HapticSwitch.tsx). clip-path przycina też strefę dotyku do zaokrągleń. */
-.slot-seg3 button { position: relative; }
+/* Wibracja iOS: niewidoczny natywny przełącznik na całym przycisku (HapticSwitch.tsx).
+   clip-path przycina też strefę dotyku do zaokrągleń (--hs-r dla pigułek). */
+button:has(> .haptic-switch) { position: relative; }
 .haptic-switch {
   position: absolute; inset: 0;
   width: 100%; height: 100%; margin: 0;
   opacity: 0; cursor: pointer;
-  clip-path: inset(0 round var(--radius-sm));
+  clip-path: inset(0 round var(--hs-r, var(--radius-sm)));
 }
+.haptic-switch:disabled { display: none; }
+.creator-bg-btn { --hs-r: 999px; }
 /* LOCK IN w karcie terminu (organizator): terminalowa linia pod głosami
    „2× READY ······ > LOCK IN_" — sama komenda w akcencie, z kursorem jak w logo,
    bez ramki i tła. Po klepnięciu „✓ LOCKED" na zielono (tap = odklep). */

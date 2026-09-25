@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { getEventStatus, formatSlotShort, slotEndMs } from '@/lib/types';
 import { pingUser } from '@/lib/ping';
 import { haptic } from '@/lib/haptics';
+import { HapticSwitch } from '@/components/HapticSwitch';
 import { appAlert } from '@/components/Dialogs';
 import { LoadingSkeleton } from '@/components/BootScreen';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
@@ -760,9 +761,10 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
 
   // „Pinguj" przy slocie AFK (tylko karta misji, tylko organizator).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
-  async function nudge(e: React.MouseEvent, m: SquadMember) {
-    e.preventDefault();
-    e.stopPropagation();
+  // e = null, gdy tap przyszedł przez HapticSwitch (on sam nie puszcza kliku do Linka).
+  async function nudge(e: React.MouseEvent | null, m: SquadMember) {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (pinged.has(m.id)) return;
     haptic();
     const err = await pingUser(ev.id, m.id, m.name);
@@ -776,9 +778,9 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
   // Głos z dashboardu: optymistyczne zaznaczenie od razu, realtime dociągnie prawdę
   // (i przełączy hero w tryb „Czekamy na resztę").
   const [myPick, setMyPick] = useState<Availability | null>(null);
-  async function castVote(e: React.MouseEvent, availability: Availability) {
-    e.preventDefault();
-    e.stopPropagation();
+  async function castVote(e: React.MouseEvent | null, availability: Availability) {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (!slot || myPick === availability) return;
     haptic();
     setMyPick(availability);
@@ -909,6 +911,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
                   {showNudge ? (
                     <button type="button" className="nudge-sm" onClick={(e) => nudge(e, m)}>
                       {pinged.has(m.id) ? '✓' : 'Pinguj'}
+                      <HapticSwitch onTap={() => nudge(null, m)} disabled={pinged.has(m.id)} />
                     </button>
                   ) : mission && isYou ? (
                     <span className="side">TY</span>
@@ -939,9 +942,9 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
             {otherSlots > 0 && <span className="more">+{otherSlots} w lobby</span>}
           </div>
           <div className="seg3">
-            <button type="button" className={myPick === 'yes' ? 'on-yes' : ''} onClick={(e) => castVote(e, 'yes')}>READY</button>
-            <button type="button" className={myPick === 'maybe' ? 'on-maybe' : ''} onClick={(e) => castVote(e, 'maybe')}>MOŻE</button>
-            <button type="button" className={myPick === 'no' ? 'on-no' : ''} onClick={(e) => castVote(e, 'no')}>PAS</button>
+            <button type="button" className={myPick === 'yes' ? 'on-yes' : ''} onClick={(e) => castVote(e, 'yes')}>READY<HapticSwitch onTap={() => castVote(null, 'yes')} /></button>
+            <button type="button" className={myPick === 'maybe' ? 'on-maybe' : ''} onClick={(e) => castVote(e, 'maybe')}>MOŻE<HapticSwitch onTap={() => castVote(null, 'maybe')} /></button>
+            <button type="button" className={myPick === 'no' ? 'on-no' : ''} onClick={(e) => castVote(e, 'no')}>PAS<HapticSwitch onTap={() => castVote(null, 'no')} /></button>
           </div>
         </div>
       )}

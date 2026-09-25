@@ -93,7 +93,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
     │   ├── WeatherModal.tsx      # Prognoza godzinowa na dzień wypadu (tap w kafelek pogody w hero)
     │   ├── Dialogs.tsx           # appAlert/appConfirm + DialogHost (zamiast natywnych alertów)
-    │   ├── HapticSwitch.tsx      # TEST: niewidoczny <input switch> na przycisku → tyk na iOS 26.5+ (na razie tylko READY/MOŻE/PAS)
+    │   ├── HapticSwitch.tsx      # Niewidoczny <input switch> na przycisku → tyk na iOS 26.5+ przy tapnięciu (głos, ping, LOCK IN, kadrowanie)
     │   ├── WhatsNew.tsx          # „Co nowego" (karty) raz na konto — znacznik `whats_new` w user_metadata, nie localStorage
     │   ├── GlassBackground.tsx   # Tło „frosted glass" pod całą apką
     │   ├── HeroCropEditor.tsx    # Admin: kadrowanie zdjęć hero per kategoria (zoom+pozycja)

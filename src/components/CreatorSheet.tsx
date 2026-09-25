@@ -16,6 +16,7 @@ import {
   type ImageFocus,
 } from '@/lib/eventImage';
 import { haptic } from '@/lib/haptics';
+import { HapticSwitch } from '@/components/HapticSwitch';
 import { Avatar } from '@/components/Avatar';
 import { Markdown } from '@/lib/markdown';
 import ChildSheet from '@/components/ChildSheet';
@@ -337,6 +338,7 @@ export default function CreatorSheet({
             }}
           >
             Gotowe
+            <HapticSwitch onTap={() => { haptic(); setCropMode(false); }} />
           </button>
         ) : bgOn ? (
           <>
@@ -350,6 +352,7 @@ export default function CreatorSheet({
               }}
             >
               Kadruj
+              <HapticSwitch onTap={() => { haptic(); setHintSeen(false); setCropMode(true); }} />
             </button>
             <button
               type="button"

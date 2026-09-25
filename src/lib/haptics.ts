@@ -8,6 +8,8 @@
 // ale WYŁĄCZNIE gdy klik idzie przez powiązany <label> (klik w sam input nie działa).
 // Świeży element na każde wywołanie, jak w znanym, sprawdzonym snippecie.
 // UWAGA: Apple załatało ten trik w iOS 26.5 — na nowszych wersjach po prostu cisza.
+// Przy tapnięciach przycisków iOS 26.5+ tyka przez HapticSwitch (prawdziwy dotyk
+// przełącznika); tu zostają gesty bez tapnięcia (long-press, karuzela) = na iOS cisza.
 export function haptic(): void {
   if (typeof window === 'undefined') return;
   if (typeof navigator.vibrate === 'function') {
