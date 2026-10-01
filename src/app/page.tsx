@@ -47,7 +47,7 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
 }
 
-// Stan gracza w składzie: najlepszy głos w wypadzie (yes > maybe > no) albo null = AFK.
+// Stan gracza w składzie: najlepszy aktualny głos (yes > maybe > no) albo null = AFK.
 type SquadMember = { id: string; name: string; avatar: string | null; state: 'yes' | 'maybe' | 'no' | null };
 
 type Agg = {
@@ -382,7 +382,18 @@ export default function Home() {
     for (const ev of events) {
       const seen = new Map<string, Person>();
       const evVotes = votesBy.get(ev.id) ?? [];
-      for (const v of evVotes) {
+      const evSlots = (slotsBy.get(ev.id) ?? [])
+        .slice()
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+      const status = getEventStatus(ev, evSlots, evVotes, memberIds);
+      // Skład pokazuje stan NA TERAZ: po ustaleniu — głos na ustalony termin; przed —
+      // tylko głosy na żywe terminy (głos na termin, który minął, nie czyni nikogo READY).
+      // Gdy wszystkie odpadły — jak dawniej, ze wszystkich.
+      const now = Date.now();
+      const live = evSlots.filter((s) => slotEndMs(s) >= now).map((s) => s.id);
+      const relevant = new Set(status.settled && status.slotId ? [status.slotId] : live.length ? live : evSlots.map((s) => s.id));
+      const curVotes = evVotes.filter((v) => relevant.has(v.slot_id));
+      for (const v of curVotes) {
         const key = v.user_id ?? `name:${v.participant_name}`;
         if (seen.has(key)) continue;
         const prof = v.user_id ? profileById.get(v.user_id) : undefined;
@@ -390,16 +401,12 @@ export default function Home() {
       }
       const voters = Array.from(seen.values());
       const percent = memberCount > 0 ? Math.round((voters.length / memberCount) * 100) : 0;
-      const evSlots = (slotsBy.get(ev.id) ?? [])
-        .slice()
-        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-      const status = getEventStatus(ev, evSlots, evVotes, memberIds);
       const slot = status.settled ? evSlots.find((s) => s.id === status.slotId) ?? null : null;
-      // Skład: stan każdego z paczki = najlepszy głos w tym wypadzie (yes > maybe > no),
+      // Skład: stan każdego z paczki = najlepszy aktualny głos (yes > maybe > no),
       // brak głosu = null (AFK). Kolejność profili stała — sloty nie skaczą między kartami.
       const squad: SquadMember[] = profiles.map((p) => {
         let state: SquadMember['state'] = null;
-        for (const v of evVotes) {
+        for (const v of curVotes) {
           if (v.user_id !== p.id) continue;
           if (v.availability === 'yes') { state = 'yes'; break; }
           if (v.availability === 'maybe') state = 'maybe';

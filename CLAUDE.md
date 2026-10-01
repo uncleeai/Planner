@@ -162,6 +162,8 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   Lista „kto się opierdala" (+ „Pinguj kurwę" dla organizatora) obejmuje osoby bez
   żadnego głosu ORAZ — póki termin nieustalony — bez głosu na któryś żywy termin
   (bez głosu na żaden żywy = zwykłe AFK; „BRAK GŁOSU NA N TERMINY" tylko gdy część zaklikał).
+  Skład na dashboardzie (READY/MOŻE/PAS/AFK + „N/M DAŁO ZNAĆ") liczy tylko aktualne głosy:
+  po ustaleniu — na ustalony termin, przed — na żywe terminy (`aggByEvent` w `page.tsx`).
   **Na stronie wypadu:** termin, który minął przed ustaleniem wypadu, jest wygaszony
   jako „ODPADŁ" (bez głosowania) i nie liczy się do remisu/prowadzącego (tylko w UI —
   `getEventStatus` liczy wszystkie, żeby odbyty wypad został na swoim terminie).
