@@ -1147,7 +1147,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       const mine = new Set(votes.filter((v) => v.user_id === m.id).map((v) => v.slot_id));
       const left = live.filter((id) => !mine.has(id)).length;
       if (mine.size === 0) return [{ ...m, left: null as number | null }];
-      return !status.settled && left > 0 ? [{ ...m, left }] : [];
+      if (status.settled || left === 0) return [];
+      // Głosy tylko na minione terminy = na żywe nic — wygląda jak reszta AFK, bez
+      // licznika; „BRAK GŁOSU NA N" tylko gdy część żywych już zaklikał.
+      return [{ ...m, left: left === live.length ? null : left }];
     });
   }, [members, votes, liveStats, status.settled]);
 

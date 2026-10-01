@@ -161,7 +161,7 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   synchronizuje `events.confirmed_at`, jeśli edytowany slot był klepnięty.
   Lista „kto się opierdala" (+ „Pinguj kurwę" dla organizatora) obejmuje osoby bez
   żadnego głosu ORAZ — póki termin nieustalony — bez głosu na któryś żywy termin
-  („BRAK GŁOSU NA N TERMINY", np. po dodaniu/zmianie terminu).
+  (bez głosu na żaden żywy = zwykłe AFK; „BRAK GŁOSU NA N TERMINY" tylko gdy część zaklikał).
   **Na stronie wypadu:** termin, który minął przed ustaleniem wypadu, jest wygaszony
   jako „ODPADŁ" (bez głosowania) i nie liczy się do remisu/prowadzącego (tylko w UI —
   `getEventStatus` liczy wszystkie, żeby odbyty wypad został na swoim terminie).
