@@ -60,6 +60,9 @@ alter table public.events
 -- stempel = jedno powiadomienie na wypad, niezależnie ilu klientów zawoła.
 alter table public.events
   add column if not exists confirmed_notified_at timestamptz;
+-- Stempel pusha „nowy / zmieniony termin" (Edge Function notify-slot): najwyżej
+-- jeden na wypad na 10 min, ustawiany atomowo.
+alter table public.events add column if not exists slot_notified_at timestamptz;
 
 -- Znacznik przypomnienia „Jutro gramy!" (notify-reminders, przebieg 2) —
 -- wysyłane raz, dzień przed klepniętym terminem, do całej paczki.

@@ -55,6 +55,7 @@ Guidance for AI assistants (and humans) working in this repository.
 │       ├── ping-user/            # Edge Function: „Pinguj kurwę" — celowany push z cytatem (verify JWT)
 │       ├── notify-confirmed/     # Edge Function: push „✓ GRAMY" do paczki po klepnięciu terminu (verify JWT)
 │       ├── notify-comment/       # Edge Function: push o nowym komentarzu (treść+autor z bazy, verify JWT)
+│       ├── notify-slot/          # Edge Function: push „nowy / zmieniony termin — zagłosuj" do osób bez głosu (verify JWT, 1/wypad/10 min)
 │       ├── invite-user/          # Edge Function: admin dodaje e-mail do paczki (Admin API, verify JWT)
 │       ├── gallery-sign/    # Edge Function: presigned PUT do R2 dla galerii zdjęć (verify JWT)
 │       └── gallery-gc/       # Edge Function: sprzątanie kosza galerii — po 30 dniach kasuje pliki z R2 + wpis (pg_cron, no-verify-jwt)
@@ -112,6 +113,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── invite.ts             # Admin: dodanie e-maila do paczki (Edge Function invite-user)
         ├── notifyConfirmed.ts    # Fire-and-forget push „✓ GRAMY" (Edge Function notify-confirmed)
         ├── notifyComment.ts      # Fire-and-forget push o nowym komentarzu (Edge Function notify-comment)
+        ├── notifySlot.ts         # Fire-and-forget push o dodanym/zmienionym terminie (Edge Function notify-slot)
         ├── heroImage.ts          # Mapa emoji → zdjęcie tła karty hero (public/hero/*.jpg) + kategorie
         ├── heroCrops.ts          # Odczyt/zapis kadru hero per kategoria (tabela hero_crops)
         ├── push.ts               # Web Push po stronie klienta (subskrypcja, rejestracja SW)
@@ -146,6 +148,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   przypomnienia „nie dałeś znać" (Edge Function `notify-reminders` + pg_cron).
   `confirmed_notified_at` — atomowy stempel pusha „✓ GRAMY" (Edge Function
   `notify-confirmed`, wołana z klienta po LOCK IN / kompletującym głosie).
+  `slot_notified_at` — atomowy stempel pusha „nowy / zmieniony termin" (Edge Function
+  `notify-slot`, wołana z klienta po dodaniu/zmianie terminu; najwyżej 1 na wypad na 10 min,
+  tylko do osób bez głosu na ten termin; po LOCK IN cisza).
 - **slots** — proponowany termin powiązany z wypadem: `starts_at` + opcjonalnie `ends_at`
   (zakres dni) i `all_day` (cały dzień, bez godziny). Warianty: moment, cały dzień,
   zakres dni, zakres z godziną wyjazdu. Budowanie z pól Od/Do/Godzina: `src/lib/slotInput.ts`
@@ -154,6 +159,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   autor lub organizator. **Zmiana czasu terminu zeruje oddane na niego głosy** — pilnuje
   tego trigger `slots_reset_votes` w bazie (security definer), który przy okazji
   synchronizuje `events.confirmed_at`, jeśli edytowany slot był klepnięty.
+  Lista „kto się opierdala" (+ „Pinguj kurwę" dla organizatora) obejmuje osoby bez
+  żadnego głosu ORAZ — póki termin nieustalony — bez głosu na któryś żywy termin
+  („BRAK GŁOSU NA N TERMINY", np. po dodaniu/zmianie terminu).
   **Na stronie wypadu:** termin, który minął przed ustaleniem wypadu, jest wygaszony
   jako „ODPADŁ" (bez głosowania) i nie liczy się do remisu/prowadzącego (tylko w UI —
   `getEventStatus` liczy wszystkie, żeby odbyty wypad został na swoim terminie).

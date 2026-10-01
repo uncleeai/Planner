@@ -27,6 +27,7 @@ import { addToCalendar } from '@/lib/calendar';
 import { pingUser } from '@/lib/ping';
 import { notifyConfirmed } from '@/lib/notifyConfirmed';
 import { notifyComment } from '@/lib/notifyComment';
+import { notifySlot } from '@/lib/notifySlot';
 import { getChatSeen, markChatSeen, reportChatOpen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { HapticSwitch } from '@/components/HapticSwitch';
@@ -687,14 +688,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       appAlert('Zły termin', 'Nie można dodać terminu z przeszłości.');
       return;
     }
-    await supabase.from('slots').insert({
-      event_id: eventId,
-      starts_at: times.starts_at,
-      ends_at: times.ends_at,
-      all_day: times.all_day,
-      created_by: displayName,
-      created_by_user_id: userId,
-    });
+    const { data: added } = await supabase
+      .from('slots')
+      .insert({
+        event_id: eventId,
+        starts_at: times.starts_at,
+        ends_at: times.ends_at,
+        all_day: times.all_day,
+        created_by: displayName,
+        created_by_user_id: userId,
+      })
+      .select('id')
+      .single();
+    if (added) notifySlot(added.id, 'added');
     setSlotDraft(EMPTY_SLOT_RANGE);
   }
 
@@ -737,6 +743,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       return;
     }
     setEditingSlotId(null);
+    notifySlot(slot.id, 'changed');
     load();
   }
 
@@ -1132,11 +1139,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }, [votes, profileById]);
 
 
-  // Kto z paczki nie oddał jeszcze żadnego głosu w tym wypadzie (= AFK).
-  const missingMembers = useMemo<Profile[]>(() => {
-    const voted = new Set(votes.map((v) => v.user_id).filter(Boolean));
-    return members.filter((m) => !voted.has(m.id));
-  }, [members, votes]);
+  // Kto z paczki nie dał znać: zero głosów (= AFK) albo — póki termin nieustalony —
+  // brak głosu na któryś żywy termin (nowo dodany albo zmieniony, bo zmiana zeruje głosy).
+  const missingMembers = useMemo(() => {
+    const live = liveStats.map((s) => s.slot.id);
+    return members.flatMap((m) => {
+      const mine = new Set(votes.filter((v) => v.user_id === m.id).map((v) => v.slot_id));
+      const left = live.filter((id) => !mine.has(id)).length;
+      if (mine.size === 0) return [{ ...m, left: null as number | null }];
+      return !status.settled && left > 0 ? [{ ...m, left }] : [];
+    });
+  }, [members, votes, liveStats, status.settled]);
 
   // „Pinguj kurwę": push do jednej osoby z losowym cytatem (wspólna logika w lib/ping).
   const [pinged, setPinged] = useState<Set<string>>(new Set());
@@ -1252,7 +1265,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <Avatar name={m.display_name} avatar={m.avatar} size={28} />
               <span className="afk-text">
                 <b>{m.id === userId ? 'Twój ruch' : `${m.display_name} się opierdala…`}</b>
-                <span>{m.id === userId ? 'ZAGŁOSUJ NIŻEJ ↓' : afkLabel}</span>
+                <span>
+                  {m.id === userId
+                    ? 'ZAGŁOSUJ NIŻEJ ↓'
+                    : m.left === null
+                      ? afkLabel
+                      : `BRAK GŁOSU NA ${m.left} ${plural(m.left, 'TERMIN', 'TERMINY', 'TERMINÓW')}`}
+                </span>
               </span>
               {isOrganizer && m.id !== userId && (
                 <button
