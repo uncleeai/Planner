@@ -34,7 +34,7 @@ import { getChatSeen, markChatSeen, reportChatOpen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { HapticSwitch } from '@/components/HapticSwitch';
 import { appAlert, appConfirm } from '@/components/Dialogs';
-import { mediaLabel, photoUrl, uploadChatPhoto } from '@/lib/gallery';
+import { isEmoteUrl, mediaLabel, photoUrl, uploadChatPhoto } from '@/lib/gallery';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
@@ -1638,7 +1638,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                       {!deleted && c.image_thumb_path && (
                         <button
                           type="button"
-                          className={`comment-img${c.id.startsWith('optimistic') ? ' uploading' : ''}`}
+                          className={`comment-img${isEmoteUrl(c.image_thumb_path) ? ' emote' : ''}${c.id.startsWith('optimistic') ? ' uploading' : ''}`}
                           style={c.image_w && c.image_h ? { aspectRatio: `${c.image_w} / ${c.image_h}` } : undefined}
                           aria-label="Pokaż zdjęcie"
                           onClick={() => {

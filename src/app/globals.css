@@ -1259,6 +1259,9 @@ img.avatar { display: inline-block; }
 }
 .comment-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .comment-img.uploading { opacity: 0.55; }
+/* Emotka z 7TV: jak duża emotka — bez ramki i tła, stała wysokość, szerokość z proporcji. */
+.comment-img.emote { width: auto; height: 96px; max-height: none; border: 0; border-radius: 0; background: none; }
+.comment-img.emote img { width: auto; height: 100%; object-fit: contain; }
 .chat-attach {
   width: 42px; height: 42px; padding: 0; flex-shrink: 0; border-radius: 50%;
   display: grid; place-items: center;
@@ -1277,9 +1280,20 @@ img.avatar { display: inline-block; }
 .gif-head { display: flex; gap: 8px; margin-bottom: 10px; }
 .gif-head input { flex: 1; min-width: 0; border-radius: 21px; padding: 9px 15px; }
 .gif-close { width: 40px; height: 40px; padding: 0; flex-shrink: 0; border-radius: 50%; background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }
+.gif-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.gif-tabs button {
+  flex: 1; padding: 7px 0; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
+  background: var(--card-2); color: var(--muted); border: 1px solid var(--border);
+}
+.gif-tabs button.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .gif-grid { flex: 1; overflow-y: auto; columns: 2; column-gap: 6px; overscroll-behavior: contain; }
 .gif-item { display: block; width: 100%; padding: 0; margin: 0 0 6px; border: 0; border-radius: 10px; overflow: hidden; background: var(--card-2); break-inside: avoid; }
 .gif-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* Emotki: małe, w kwadratowych kafelkach, całe widoczne (bez kadrowania). */
+.gif-grid.emotes { columns: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; align-content: start; }
+.gif-grid.emotes .gif-item { aspect-ratio: auto !important; height: 72px; margin: 0; padding: 6px; display: flex; align-items: center; justify-content: center; }
+.gif-grid.emotes .gif-item img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+.gif-grid.emotes .gif-note { grid-column: 1 / -1; }
 .gif-note { column-span: all; text-align: center; color: var(--muted); padding: 24px 8px; margin: 0; }
 .gif-credit { margin: 6px 0 0; text-align: center; font-size: 0.68rem; letter-spacing: 0.06em; color: var(--muted); }
 .photo-view {

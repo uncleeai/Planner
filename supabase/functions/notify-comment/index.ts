@@ -124,9 +124,11 @@ Deno.serve(async (req) => {
         .limit(200)
     : { data: [] };
 
-  // Bez tekstu: GIF (adres z GIPHY) albo zdjęcie (klucz w R2).
+  // Bez tekstu: emotka (7TV), GIF (GIPHY) albo zdjęcie (klucz w R2).
+  const media = (p: string) =>
+    p.startsWith('https://cdn.7tv.app/') ? 'Emotka' : /^https:\/\/[^/]*giphy\.com\//.test(p) ? 'GIF' : '📷 Zdjęcie';
   const text = (c: { body: string | null; image_path?: string | null }) =>
-    preview(c.body || (!c.image_path ? '' : /^https:\/\/[^/]*giphy\.com\//.test(c.image_path) ? 'GIF' : '📷 Zdjęcie'));
+    preview(c.body || (c.image_path ? media(c.image_path) : ''));
   const messageFor = (user: string | null) => {
     const unread = user
       ? ((recent ?? []) as { user_id: string | null; created_at: string }[]).filter(

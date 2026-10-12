@@ -1,12 +1,40 @@
 import { NextResponse } from 'next/server';
 
-// Wyszukiwarka GIF-ów do czatu (GIPHY). Klucz GIPHY_API_KEY tylko po stronie serwera
+// Wyszukiwarka GIF-ów do czatu: GIPHY (domyślnie) albo emotki z Twitcha przez 7TV
+// (`src=7tv`, publiczne API bez klucza). Klucz GIPHY_API_KEY tylko po stronie serwera
 // (Vercel → Environment Variables), tylko dla zalogowanych z paczki. Pusty `q` = trendy.
 // Zwracamy tylko to, czego potrzebuje siatka i wiadomość: podgląd do siatki, wersję
 // do dymka (≤ 2 MB) i oryginał na pełny ekran — wszystko z media*.giphy.com.
 export const dynamic = 'force-dynamic';
 
 export type Gif = { id: string; preview: string; thumb: string; full: string; w: number; h: number };
+
+type SevenTvEmote = { id: string; name: string; host: { url: string; files: { name: string; width: number; height: number }[] } };
+
+// 7TV: emotka w kilku rozmiarach (1x–4x, wysokość 32–128 px); animowane WebP działają
+// w Safari. Do siatki 2x, do wiadomości 4x (najostrzejsza). Pusty `q` = najpopularniejsze.
+async function sevenTv(q: string): Promise<Gif[] | null> {
+  const res = await fetch('https://7tv.io/v3/gql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query:
+        'query($q:String!){emotes(query:$q,limit:40,sort:{value:"popularity",order:DESCENDING}){items{id name host{url files{name width height}}}}}',
+      variables: { q },
+    }),
+  });
+  if (!res.ok) return null;
+  const json = (await res.json()) as { data?: { emotes?: { items?: SevenTvEmote[] } } };
+  // Dokładna nazwa (np. „monkaS") na początek — popularność sama wypycha warianty.
+  const exact = (e: SevenTvEmote) => (e.name.toLowerCase() === q.toLowerCase() ? 0 : 1);
+  const items = [...(json.data?.emotes?.items ?? [])].sort((a, b) => exact(a) - exact(b));
+  return items.flatMap((e) => {
+    const big = e.host.files.find((f) => f.name === '4x.webp');
+    if (!big) return [];
+    const base = `https:${e.host.url}`;
+    return [{ id: e.id, preview: `${base}/2x.webp`, thumb: `${base}/4x.webp`, full: `${base}/4x.webp`, w: big.width, h: big.height }];
+  });
+}
 
 type GiphyImage = { url?: string; webp?: string; width?: string; height?: string };
 type GiphyItem = { id: string; images: Record<string, GiphyImage | undefined> };
@@ -19,9 +47,16 @@ export async function GET(req: Request) {
   if (!base || !auth) return NextResponse.json({ error: 'Brak autoryzacji.' }, { status: 401 });
   const who = await fetch(`${base}/auth/v1/user`, { headers: { Authorization: auth, apikey: anon } });
   if (!who.ok) return NextResponse.json({ error: 'Brak autoryzacji.' }, { status: 401 });
-  if (!key) return NextResponse.json({ error: 'GIF-y nie są jeszcze skonfigurowane (brak GIPHY_API_KEY).' }, { status: 503 });
 
-  const q = (new URL(req.url).searchParams.get('q') ?? '').trim().slice(0, 50);
+  const sp = new URL(req.url).searchParams;
+  const q = (sp.get('q') ?? '').trim().slice(0, 50);
+  if (sp.get('src') === '7tv') {
+    const emotes = await sevenTv(q);
+    if (!emotes) return NextResponse.json({ error: '7TV nie odpowiada.' }, { status: 502 });
+    return NextResponse.json(emotes, { headers: { 'Cache-Control': 'private, max-age=300' } });
+  }
+
+  if (!key) return NextResponse.json({ error: 'GIF-y nie są jeszcze skonfigurowane (brak GIPHY_API_KEY).' }, { status: 503 });
   const params = new URLSearchParams({ api_key: key, limit: '30', rating: 'r', lang: 'pl' });
   if (q) params.set('q', q);
   const res = await fetch(`https://api.giphy.com/v1/gifs/${q ? 'search' : 'trending'}?${params}`);

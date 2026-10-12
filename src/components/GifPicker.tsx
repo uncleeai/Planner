@@ -6,8 +6,10 @@ import type { Gif } from '@/app/api/gif-search/route';
 
 // Wyszukiwarka GIF-ów nad polem pisania (GIPHY przez /api/gif-search). Puste pole =
 // trendy, wpisywanie szuka po 300 ms ciszy. Tap w GIF = wysyłka (onPick).
+// Zakładka „Emotki" = emotki z Twitcha przez 7TV (monkaS, pepeD…), ta sama ścieżka.
 export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
+  const [src, setSrc] = useState<'giphy' | '7tv'>('giphy');
   const [gifs, setGifs] = useState<Gif[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -17,7 +19,7 @@ export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => voi
     const t = window.setTimeout(async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        const res = await fetch(`/api/gif-search?q=${encodeURIComponent(q.trim())}`, {
+        const res = await fetch(`/api/gif-search?src=${src}&q=${encodeURIComponent(q.trim())}`, {
           headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
         });
         const json = await res.json();
@@ -33,7 +35,7 @@ export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => voi
       alive = false;
       window.clearTimeout(t);
     };
-  }, [q]);
+  }, [q, src]);
 
   return (
     <div className="gif-backdrop" onClick={onClose}>
@@ -42,7 +44,7 @@ export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => voi
           <input
             ref={inputRef}
             type="search"
-            placeholder="Szukaj GIF-a…"
+            placeholder={src === '7tv' ? 'Szukaj emotki… (np. monkaS)' : 'Szukaj GIF-a…'}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             enterKeyHint="search"
@@ -52,7 +54,26 @@ export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => voi
             ✕
           </button>
         </div>
-        <div className="gif-grid">
+        <div className="gif-tabs" role="tablist">
+          {(['giphy', '7tv'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={src === t}
+              className={src === t ? 'on' : ''}
+              onClick={() => {
+                if (t === src) return;
+                setGifs(null);
+                setError(null);
+                setSrc(t);
+              }}
+            >
+              {t === 'giphy' ? 'GIF-y' : 'Emotki'}
+            </button>
+          ))}
+        </div>
+        <div className={`gif-grid${src === '7tv' ? ' emotes' : ''}`}>
           {error && <p className="gif-note">{error}</p>}
           {!error && gifs === null && <p className="gif-note">Wczytuję…</p>}
           {!error && gifs?.length === 0 && <p className="gif-note">Nic nie znalazłem.</p>}
@@ -63,7 +84,7 @@ export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => voi
             </button>
           ))}
         </div>
-        <p className="gif-credit">Powered by GIPHY</p>
+        <p className="gif-credit">{src === '7tv' ? 'Emotki z 7TV' : 'Powered by GIPHY'}</p>
       </div>
     </div>
   );
