@@ -3,12 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Gif } from '@/app/api/gif-search/route';
+import { KLIPY_KEY, klipySearch } from '@/lib/klipy';
 
-// Wyszukiwarka GIF-ów POD polem pisania, w miejscu klawiatury (GIPHY przez
-// /api/gif-search) — wysuwa się i chowa animacją, czat robi mu miejsce. Puste pole =
+// Wyszukiwarka GIF-ów POD polem pisania, w miejscu klawiatury (KLIPY prosto z przeglądarki,
+// GIPHY i 7TV przez /api/gif-search) — wysuwa się i chowa animacją, czat robi mu miejsce. Puste pole =
 // trendy, wpisywanie szuka po 300 ms ciszy, przewijanie doczytuje. Tap w GIF = wysyłka (onPick).
 // Zakładka „Emotki" = emotki z Twitcha przez 7TV (monkaS, pepeD…): tap wstawia emotkę
 // do pola pisania (onEmote), okno zostaje — można dobrać kilka i dopisać tekst.
+type Src = 'klipy' | 'giphy' | '7tv';
+// KLIPY tylko, gdy jest klucz (NEXT_PUBLIC_KLIPY_KEY) — bez niego zakładka nie ma sensu.
+const TABS: Src[] = KLIPY_KEY ? ['klipy', 'giphy', '7tv'] : ['giphy', '7tv'];
+
 export default function GifPicker({
   closing,
   onClosed,
@@ -23,7 +28,7 @@ export default function GifPicker({
   onClose: () => void;
 }) {
   const [q, setQ] = useState('');
-  const [src, setSrc] = useState<'giphy' | '7tv'>('giphy');
+  const [src, setSrc] = useState<Src>(KLIPY_KEY ? 'klipy' : 'giphy');
   const [gifs, setGifs] = useState<Gif[] | null>(null);
   const [page, setPage] = useState(1);
   const [more, setMore] = useState(true);
@@ -40,14 +45,19 @@ export default function GifPicker({
     loadingRef.current = true;
     const t = window.setTimeout(async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        const res = await fetch(`/api/gif-search?src=${src}&page=${page}&q=${encodeURIComponent(q.trim())}`, {
-          headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
-        });
-        const json = await res.json();
+        let next: Gif[];
+        if (src === 'klipy') {
+          next = await klipySearch(q.trim(), page);
+        } else {
+          const { data } = await supabase.auth.getSession();
+          const res = await fetch(`/api/gif-search?src=${src}&page=${page}&q=${encodeURIComponent(q.trim())}`, {
+            headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error ?? `Błąd ${res.status}`);
+          next = json as Gif[];
+        }
         if (!alive) return;
-        if (!res.ok) throw new Error(json.error ?? `Błąd ${res.status}`);
-        const next = json as Gif[];
         setError(null);
         setMore(next.length > 0 && page < 50); // serwer i tak nie poda dalej niż 50. strony
         setGifs((prev) => {
@@ -85,7 +95,7 @@ export default function GifPicker({
   // GIF-y w dwóch stałych kolumnach (każdy do niższej) — doczytane dochodzą na dół,
   // nic nie przeskakuje między kolumnami jak przy CSS columns.
   const cols: Gif[][] = [[], []];
-  if (src === 'giphy' && gifs) {
+  if (src !== '7tv' && gifs) {
     const h = [0, 0];
     for (const g of gifs) {
       const i = h[0] <= h[1] ? 0 : 1;
@@ -120,7 +130,7 @@ export default function GifPicker({
           <input
             ref={inputRef}
             type="search"
-            placeholder={src === '7tv' ? 'Szukaj emotki… (np. monkaS)' : 'Szukaj GIF-a…'}
+            placeholder={src === '7tv' ? 'Szukaj emotki… (np. monkaS)' : src === 'klipy' ? 'Search KLIPY' : 'Szukaj GIF-a…'}
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -134,7 +144,7 @@ export default function GifPicker({
           </button>
         </div>
         <div className="gif-tabs" role="tablist">
-          {(['giphy', '7tv'] as const).map((t) => (
+          {TABS.map((t) => (
             <button
               key={t}
               type="button"
@@ -149,7 +159,7 @@ export default function GifPicker({
                 setSrc(t);
               }}
             >
-              {t === 'giphy' ? 'GIF-y' : 'Emotki'}
+              {t === 'klipy' ? 'KLIPY' : t === 'giphy' ? 'GIPHY' : 'Emotki'}
             </button>
           ))}
         </div>
@@ -171,7 +181,7 @@ export default function GifPicker({
           )}
           <div ref={endRef} className="gif-end" />
         </div>
-        <p className="gif-credit">{src === '7tv' ? 'Emotki z 7TV' : 'Powered by GIPHY'}</p>
+        <p className="gif-credit">{src === '7tv' ? 'Emotki z 7TV' : src === 'klipy' ? 'Powered by KLIPY' : 'Powered by GIPHY'}</p>
       </div>
     </div>
   );

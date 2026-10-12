@@ -127,6 +127,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── eventPrefetch.ts      # Prefetch danych wypadu na pointerdown (przed nawigacją)
         ├── chatSeen.ts           # Lokalny znacznik „przeczytane" czatu (kropki nieprzeczytanych)
         ├── emotes.ts             # Emotki 7TV w tekście: znacznik [7tv:id:nazwa] w body ↔ :nazwa: w polu pisania (+ testy)
+        ├── klipy.ts              # KLIPY (następca Tenora): wyszukiwarka GIF-ów prosto z przeglądarki (NEXT_PUBLIC_KLIPY_KEY)
         ├── linkPreview.ts        # Linki w czacie: wykrywanie URL, parsowanie Open Graph, blokada adresów prywatnych (+ testy)
         ├── haptics.ts            # Haptic tick przy gestach (vibrate; iOS: trik z <input switch>)
         └── types.ts              # Typy + logika statusu wypadu (EventRow, Slot, Vote, Profile…) (+ testy)
@@ -221,9 +222,12 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   ze `scope: 'chat'` → R2 pod `<event_id>/chat/…`), bez oryginału. Optymistycznie z `blob:`.
   Tap = pełny ekran (tam przytrzymanie = natywne menu iOS z zapisem do Zdjęć, bo callout
   jest wyłączony globalnie; przycisk „Zapisz" = Web Share z plikiem). Push/zajawki: „📷 Zdjęcie".
-  **GIF-y:** przycisk „GIF" obok aparatu → `GifPicker` → `/api/gif-search` (GIPHY). Wysłany GIF
+  **GIF-y:** przycisk „GIF" obok aparatu → `GifPicker`: zakładki KLIPY (domyślna, gdy jest klucz
+  `NEXT_PUBLIC_KLIPY_KEY`; wymogi KLIPY: zapytania prosto z przeglądarki, wyniki bez przestawiania,
+  placeholder „Search KLIPY" — `lib/klipy.ts`) | GIPHY (`/api/gif-search`) | Emotki (7TV).
+  Tenor odpada: od 01.2026 nie przyjmuje nowych klientów API. Wysłany GIF
   to wiadomość jak zdjęcie, ale `image_path`/`image_thumb_path` = pełne adresy media*.giphy.com
-  (nic nie idzie do R2); `photoUrl` przepuszcza tylko adresy GIPHY i cdn.7tv.app (`isGifUrl`),
+  (albo static.klipy.com; nic nie idzie do R2); `photoUrl` przepuszcza tylko adresy GIPHY, KLIPY i cdn.7tv.app (`isGifUrl`),
   zajawki/push „GIF". **Emotki 7TV** (zakładka w tym samym oknie): tap wstawia `:nazwa:` do pola
   pisania (okno zostaje), przy wysyłce zamiana na znacznik `[7tv:<id>:<nazwa>]` w `body` (`lib/emotes.ts`);
   w dymku obrazki w linii tekstu, same emotki (≤ 3) = duże bez dymka; push/zajawki/„Kopiuj" = sama nazwa

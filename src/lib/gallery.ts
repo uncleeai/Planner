@@ -15,12 +15,12 @@ export const R2_PUBLIC_BASE = 'https://pub-bfab842060924ea18c2d40f24cca7939.r2.d
 
 export const isGalleryConfigured = !!R2_PUBLIC_BASE;
 
-// GIF (GIPHY) / emotka (7TV) z czatu siedzi w image_path jako pełny adres — tylko z tych
-// dwóch CDN-ów, żeby nikt nie wstawił do wątku obrazka z dowolnego serwera (np. piksela
+// GIF (GIPHY / KLIPY) / emotka (7TV) z czatu siedzi w image_path jako pełny adres — tylko z tych
+// CDN-ów, żeby nikt nie wstawił do wątku obrazka z dowolnego serwera (np. piksela
 // śledzącego).
 export const isEmoteUrl = (path: string) => path.startsWith('https://cdn.7tv.app/emote/');
 export const isGifUrl = (path: string) =>
-  /^https:\/\/(media\d*|i)\.giphy\.com\//.test(path) || isEmoteUrl(path);
+  /^https:\/\/((media\d*|i)\.giphy\.com|static\.klipy\.com)\//.test(path) || isEmoteUrl(path);
 
 export function photoUrl(path: string): string {
   if (path.startsWith('blob:') || isGifUrl(path)) return path;
