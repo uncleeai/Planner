@@ -1285,7 +1285,15 @@ img.avatar { display: inline-block; }
 }
 .gif-inner { height: 100%; display: flex; flex-direction: column; padding: 10px 12px 0; }
 .gif-head { display: flex; gap: 8px; margin-bottom: 10px; }
-.gif-head input { flex: 1; min-width: 0; border-radius: 21px; padding: 9px 15px; }
+.gif-head input {
+  flex: 1; min-width: 0; border-radius: 21px; padding: 9px 15px;
+  /* Bez natywnego wyglądu iOS (gruba ramka + cień) i min. 16 px — mniejsza czcionka
+     w polu = Safari przybliża stronę przy pisaniu i układ czatu się rozjeżdża. */
+  -webkit-appearance: none; appearance: none; font-size: 16px;
+  background: var(--card-2); color: var(--text); border: 1px solid var(--border);
+}
+.gif-head input::-webkit-search-decoration,
+.gif-head input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .gif-close { width: 40px; height: 40px; padding: 0; flex-shrink: 0; border-radius: 50%; background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }
 .gif-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
 .gif-tabs button {

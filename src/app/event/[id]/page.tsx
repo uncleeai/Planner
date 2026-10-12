@@ -334,7 +334,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const top = (screen.querySelector('.chat-top') as HTMLElement | null)?.offsetHeight ?? 0;
     const room = screen.clientHeight - top - form.offsetHeight;
     const h = Math.max(0, Math.min(sheet.offsetHeight, room));
-    if (h < sheet.offsetHeight) sheet.style.height = `${h}px`;
+    // Zawsze na sztywno w px: CSS liczy wysokość z env(safe-area-inset-bottom), a iOS
+    // zmienia tę wartość, gdy klawiatura już wjechała (bez kolejnego zdarzenia resize) —
+    // okno rosło wtedy o kilka px i wchodziło pod pole pisania.
+    sheet.style.height = `${h}px`;
     return h;
   }
   // Zapas listy = wysokość okna, doliczany do jej własnego paddingu (CSS).
@@ -670,6 +673,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     };
     window.addEventListener('keydown', onKey);
     const vv = window.visualViewport;
+    let refitTimer = 0;
     const fit = () => {
       const el = chatRef.current;
       const sc = chatScrollRef.current;
@@ -678,6 +682,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       el.style.top = `${vv.offsetTop}px`;
       if (sc && chatNearBottomRef.current) sc.scrollTop = sc.scrollHeight;
       gifRefit();
+      // Klawiatura iOS kończy wjazd (i zmienia safe-area) chwilę po ostatnim resize.
+      window.clearTimeout(refitTimer);
+      refitTimer = window.setTimeout(gifRefit, 350);
     };
     fit();
     vv?.addEventListener('resize', fit);
@@ -695,6 +702,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       window.removeEventListener('keydown', onKey);
       vv?.removeEventListener('resize', fit);
       vv?.removeEventListener('scroll', fit);
+      window.clearTimeout(refitTimer);
     };
     // closeChat czyta tylko refy i settery — stabilny w praktyce. `loading`: wejście
     // z linku (?czat) otwiera czat, zanim strona się wczyta — ekranu jeszcze nie ma,
