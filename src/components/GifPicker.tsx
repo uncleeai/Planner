@@ -11,18 +11,14 @@ import { KLIPY_KEY, klipySearch } from '@/lib/klipy';
 // Zakładka „Emotki" = emotki z Twitcha przez 7TV (monkaS, pepeD…): tap wstawia emotkę
 // do pola pisania (onEmote), okno zostaje — można dobrać kilka i dopisać tekst.
 type Src = 'klipy' | 'giphy' | '7tv';
-// KLIPY tylko, gdy jest klucz (NEXT_PUBLIC_KLIPY_KEY) — bez niego zakładka nie ma sensu.
-const TABS: Src[] = KLIPY_KEY ? ['klipy', 'giphy', '7tv'] : ['giphy', '7tv'];
+// GIPHY na razie wyłączone (nudne, mocno moderowane) — wraca, gdyby nie było klucza KLIPY.
+const TABS: Src[] = KLIPY_KEY ? ['klipy', '7tv'] : ['giphy', '7tv'];
 
 export default function GifPicker({
-  closing,
-  onClosed,
   onPick,
   onEmote,
   onClose,
 }: {
-  closing: boolean;
-  onClosed: () => void;
   onPick: (g: Gif) => void;
   onEmote: (g: Gif) => void;
   onClose: () => void;
@@ -119,12 +115,6 @@ export default function GifPicker({
   );
 
   return (
-    <div
-      className={`gif-sheet${closing ? ' closing' : ''}`}
-      role="dialog"
-      aria-label="GIF-y i emotki"
-      onAnimationEnd={(e) => e.target === e.currentTarget && closing && onClosed()}
-    >
       <div className="gif-inner">
         <div className="gif-head">
           <input
@@ -159,7 +149,7 @@ export default function GifPicker({
                 setSrc(t);
               }}
             >
-              {t === 'klipy' ? 'KLIPY' : t === 'giphy' ? 'GIPHY' : 'Emotki'}
+              {t === '7tv' ? 'Emotki' : 'GIF-y'}
             </button>
           ))}
         </div>
@@ -181,8 +171,6 @@ export default function GifPicker({
           )}
           <div ref={endRef} className="gif-end" />
         </div>
-        <p className="gif-credit">{src === '7tv' ? 'Emotki z 7TV' : src === 'klipy' ? 'Powered by KLIPY' : 'Powered by GIPHY'}</p>
       </div>
-    </div>
   );
 }

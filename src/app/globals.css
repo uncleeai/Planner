@@ -1198,6 +1198,7 @@ img.avatar { display: inline-block; }
 }
 .chat-compose {
   flex-shrink: 0; align-items: flex-end;
+  position: relative; z-index: 2; background: var(--bg); will-change: transform;
   padding:
     10px calc(12px + env(safe-area-inset-right))
     calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
@@ -1275,19 +1276,14 @@ img.avatar { display: inline-block; }
 .chat-gif { font: 700 0.72rem var(--mono, ui-monospace, monospace); letter-spacing: 0.04em; }
 .chat-gif.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .gif-sheet {
-  --gif-h: min(46dvh, 400px);
-  flex-shrink: 0; height: var(--gif-h); overflow: hidden;
+  --gif-h: min(44dvh, 380px);
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
+  /* Górny pas (wys. paska systemowego) chowa się pod polem pisania — patrz animacja w page.tsx. */
+  height: calc(var(--gif-h) + env(safe-area-inset-bottom)); padding-top: env(safe-area-inset-bottom);
   background: var(--card); border-top: 1px solid var(--border);
-  animation: gif-open 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform: translateY(100%); will-change: transform;
 }
-.gif-sheet.closing { animation: gif-close 0.22s cubic-bezier(0.4, 0, 1, 1) forwards; }
-@keyframes gif-open { from { height: 0; } }
-@keyframes gif-close { to { height: 0; } }
-/* Treść ma stałą wysokość — przy rozwijaniu się nie ściska, tylko odsłania. */
-.gif-inner {
-  height: var(--gif-h); display: flex; flex-direction: column;
-  padding: 10px 12px calc(6px + env(safe-area-inset-bottom));
-}
+.gif-inner { height: 100%; display: flex; flex-direction: column; padding: 10px 12px 0; }
 .gif-head { display: flex; gap: 8px; margin-bottom: 10px; }
 .gif-head input { flex: 1; min-width: 0; border-radius: 21px; padding: 9px 15px; }
 .gif-close { width: 40px; height: 40px; padding: 0; flex-shrink: 0; border-radius: 50%; background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }
@@ -1297,7 +1293,7 @@ img.avatar { display: inline-block; }
   background: var(--card-2); color: var(--muted); border: 1px solid var(--border);
 }
 .gif-tabs button.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.gif-grid { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.gif-grid { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
 .gif-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: start; }
 .gif-end { height: 1px; grid-column: 1 / -1; }
 .gif-item { display: block; width: 100%; padding: 0; margin: 0 0 6px; border: 0; border-radius: 10px; overflow: hidden; background: var(--card-2); }
@@ -1308,7 +1304,6 @@ img.avatar { display: inline-block; }
 .gif-grid.emotes .gif-item img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
 .gif-grid.emotes .gif-note { grid-column: 1 / -1; }
 .gif-note { text-align: center; color: var(--muted); padding: 24px 8px; margin: 0; }
-.gif-credit { margin: 6px 0 0; text-align: center; font-size: 0.68rem; letter-spacing: 0.06em; color: var(--muted); }
 .photo-view {
   position: absolute; inset: 0; z-index: 70;
   display: grid; place-items: center; padding: 12px;

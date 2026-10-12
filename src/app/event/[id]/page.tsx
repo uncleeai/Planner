@@ -290,8 +290,54 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [gifState, setGifState] = useState<'closed' | 'open' | 'closing'>('closed');
   const closeGif = () => setGifState((s) => (s === 'open' ? 'closing' : s));
   useEffect(() => {
-    if (!chatOpen) setGifState('closed');
+    if (chatOpen) return;
+    setGifState('closed');
+    if (chatScrollRef.current) chatScrollRef.current.style.paddingBottom = '';
+    if (composeFormRef.current) composeFormRef.current.style.transform = '';
   }, [chatOpen]);
+  // Wjazd/zjazd okna GIF-ów samymi transformami + scrollTop w jednym rAF: okno leży nad
+  // czatem (absolute), pole pisania podjeżdża translateY, a lista przewija się o tyle
+  // samo (zapas = padding-bottom). Bez animowania wysokości — ta przeliczała układ co
+  // klatkę i z przypinaniem do dołu dawała „skaczące" przewijanie.
+  const gifSheetRef = useRef<HTMLDivElement>(null);
+  const composeFormRef = useRef<HTMLFormElement>(null);
+  useLayoutEffect(() => {
+    if (gifState === 'closed') return;
+    const sheet = gifSheetRef.current;
+    const form = composeFormRef.current;
+    const sc = chatScrollRef.current;
+    if (!sheet || !form || !sc) return;
+    const opening = gifState === 'open';
+    // Pole pisania przykrywa górny pas okna o wysokości paska systemowego (padding-top
+    // okna) — dzięki temu nie ma dziury między polem a GIF-ami.
+    const shift = sheet.offsetHeight - parseFloat(getComputedStyle(sheet).paddingTop);
+    const dur = opening ? 300 : 220;
+    const ease = opening ? (t: number) => 1 - (1 - t) ** 3 : (t: number) => t * t * t;
+    // Zapas doliczany do własnego paddingu listy (CSS), nie zamiast niego.
+    if (opening) {
+      sc.style.paddingBottom = '';
+      sc.style.paddingBottom = `${parseFloat(getComputedStyle(sc).paddingBottom) + shift}px`;
+    }
+    const s0 = sc.scrollTop;
+    const t0 = performance.now();
+    let raf = 0;
+    const frame = (now: number) => {
+      const p = Math.min(1, (now - t0) / dur);
+      const e = ease(p);
+      const k = opening ? e : 1 - e;
+      form.style.transform = `translateY(${-shift * k}px)`;
+      sheet.style.transform = `translateY(${(1 - k) * 100}%)`;
+      sc.scrollTop = opening ? s0 + shift * e : s0 - shift * e;
+      if (p < 1) raf = requestAnimationFrame(frame);
+      else if (!opening) {
+        sc.style.paddingBottom = '';
+        form.style.transform = '';
+        setGifState('closed');
+      }
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [gifState]);
   // Emotki wstawione do pola pisania jako :nazwa: → id 7TV (zob. lib/emotes).
   const emoteMapRef = useRef(new Map<string, string>());
   const editEmoteMapRef = useRef(new Map<string, string>());
@@ -1819,7 +1865,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             )}
           </div>
 
-          <form className="comment-form chat-compose" onSubmit={addComment}>
+          <form ref={composeFormRef} className="comment-form chat-compose" onSubmit={addComment}>
             <button
               type="button"
               className="chat-attach"
@@ -1883,13 +1929,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             </button>
           </form>
           {gifState !== 'closed' && (
-            <GifPicker
-              closing={gifState === 'closing'}
-              onClosed={() => setGifState('closed')}
-              onPick={sendGif}
-              onEmote={insertEmote}
-              onClose={closeGif}
-            />
+            <div ref={gifSheetRef} className="gif-sheet" role="dialog" aria-label="GIF-y i emotki">
+              <GifPicker onPick={sendGif} onEmote={insertEmote} onClose={closeGif} />
+            </div>
           )}
 
           {photoView && (

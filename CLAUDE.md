@@ -85,7 +85,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── EmojiCarousel.tsx     # Wybór emoji wypadu: zapętlona karuzela ze snapem (ramka na środku) + kafelek własnego emoji
     │   ├── EventHero.tsx         # Hero strony wypadu: zdjęcie full-bleed + tytuł/meta pod nim (fallback tekstowy bez zdjęcia)
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
-    │   ├── GifPicker.tsx         # Okno GIF-ów/emotek POD polem pisania (w miejscu klawiatury, animowane) (siatka, trendy przy pustym polu, „Powered by GIPHY") + zakładka „Emotki" (7TV: pusto = kategoria TOP); przewijanie doczytuje strony (`page`)
+    │   ├── GifPicker.tsx         # Okno GIF-ów/emotek (treść; ramę `.gif-sheet` i animację trzyma strona wypadu): KLIPY + „Emotki" (7TV: pusto = kategoria TOP); przewijanie doczytuje strony (`page`)
     │   ├── LinkCard.tsx          # Karta podglądu linku pod dymkiem czatu (obrazek + tytuł + domena)
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
@@ -222,9 +222,10 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   ze `scope: 'chat'` → R2 pod `<event_id>/chat/…`), bez oryginału. Optymistycznie z `blob:`.
   Tap = pełny ekran (tam przytrzymanie = natywne menu iOS z zapisem do Zdjęć, bo callout
   jest wyłączony globalnie; przycisk „Zapisz" = Web Share z plikiem). Push/zajawki: „📷 Zdjęcie".
-  **GIF-y:** przycisk „GIF" obok aparatu → `GifPicker`: zakładki KLIPY (domyślna, gdy jest klucz
+  **GIF-y:** przycisk „GIF" obok aparatu → `GifPicker`: zakładki „GIF-y" = KLIPY (gdy jest klucz
   `NEXT_PUBLIC_KLIPY_KEY`; wymogi KLIPY: zapytania prosto z przeglądarki, wyniki bez przestawiania,
-  placeholder „Search KLIPY" — `lib/klipy.ts`) | GIPHY (`/api/gif-search`) | Emotki (7TV).
+  placeholder „Search KLIPY" — `lib/klipy.ts`) | Emotki (7TV). GIPHY (`/api/gif-search`) na razie
+  schowane — wraca jako „GIF-y" tylko bez klucza KLIPY.
   Tenor odpada: od 01.2026 nie przyjmuje nowych klientów API. Wysłany GIF
   to wiadomość jak zdjęcie, ale `image_path`/`image_thumb_path` = pełne adresy media*.giphy.com
   (albo static.klipy.com; nic nie idzie do R2); `photoUrl` przepuszcza tylko adresy GIPHY, KLIPY i cdn.7tv.app (`isGifUrl`),
@@ -232,7 +233,10 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   pisania (okno zostaje), przy wysyłce zamiana na znacznik `[7tv:<id>:<nazwa>]` w `body` (`lib/emotes.ts`);
   w dymku obrazki w linii tekstu, same emotki (≤ 3) = duże bez dymka; push/zajawki/„Kopiuj" = sama nazwa
   (`toPlain`). Starsze wiadomości z emotką w `image_path` (cdn.7tv.app) nadal się wyświetlają.
-  Okno GIF-ów stoi w układzie pod polem pisania (czat robi miejsce), tap w pole pisania je chowa. Pliki usuniętych zdjęć zostają w R2
+  Okno GIF-ów (`.gif-sheet`, absolute na dole czatu) wjeżdża samymi transformami: pole pisania
+  podjeżdża translateY, lista przewija się o tyle samo w tym samym rAF (zapas = padding-bottom listy),
+  bez animowania wysokości (skakało). Pole pisania przykrywa górny pas okna o wysokości paska
+  systemowego, GIF-y sięgają do krawędzi ekranu. Tap w pole pisania chowa okno. Pliki usuniętych zdjęć zostają w R2
   (brak GC dla czatu — do dorobienia, gdy będzie potrzeba).
 - **chat_push_state** — pushe z czatu bez spamu: per `(user_id, event_id)` `pushed_at`
   (ostatni push), `seen_at` (czytał) i `open_until` (czat na ekranie — apka odświeża
