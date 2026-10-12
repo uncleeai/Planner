@@ -26,6 +26,7 @@ import { getChatSeen } from '@/lib/chatSeen';
 import { heroImageForEmoji, DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { parseImageFocus, DEFAULT_FOCUS } from '@/lib/eventImage';
 import { isGalleryConfigured, mediaLabel } from '@/lib/gallery';
+import { toPlain } from '@/lib/emotes';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
 
@@ -459,7 +460,7 @@ export default function Home() {
     return {
       name: prof?.display_name ?? c.author_name,
       avatar: prof?.avatar ?? null,
-      body: c.body || mediaLabel(c.image_path),
+      body: toPlain(c.body) || mediaLabel(c.image_path),
       createdAt: c.created_at,
     };
   }, [heroId, ahead, recentComments, profileById]);

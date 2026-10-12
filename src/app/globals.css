@@ -1259,6 +1259,10 @@ img.avatar { display: inline-block; }
 }
 .comment-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .comment-img.uploading { opacity: 0.55; }
+/* Emotki 7TV w tekście: w linii jak duże emoji; same emotki = duże, bez dymka. */
+.inline-emote { height: 1.75em; width: auto; vertical-align: middle; margin: -0.25em 0.05em; }
+.comment-text.emotes-only { background: none !important; border: 0 !important; padding: 2px 0 !important; box-shadow: none !important; }
+.comment-text.emotes-only .inline-emote { height: 64px; margin: 0 2px; }
 /* Emotka z 7TV: jak duża emotka — bez ramki i tła, stała wysokość, szerokość z proporcji. */
 .comment-img.emote { width: auto; height: 96px; max-height: none; border: 0; border-radius: 0; background: none; }
 .comment-img.emote img { width: auto; height: 100%; object-fit: contain; }
@@ -1269,14 +1273,21 @@ img.avatar { display: inline-block; }
 }
 /* GIF-y: przycisk obok aparatu + wyszukiwarka wysuwana od dołu (nad czatem). */
 .chat-gif { font: 700 0.72rem var(--mono, ui-monospace, monospace); letter-spacing: 0.04em; }
-.gif-backdrop { position: absolute; inset: 0; z-index: 65; background: rgba(0, 0, 0, 0.5); display: flex; align-items: flex-end; }
+.chat-gif.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .gif-sheet {
-  width: 100%; height: min(70%, 560px); display: flex; flex-direction: column;
-  background: var(--card); border-top: 1px solid var(--border-strong, var(--border));
-  border-radius: 18px 18px 0 0; padding: 12px 12px calc(6px + env(safe-area-inset-bottom));
-  animation: gif-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --gif-h: min(46dvh, 400px);
+  flex-shrink: 0; height: var(--gif-h); overflow: hidden;
+  background: var(--card); border-top: 1px solid var(--border);
+  animation: gif-open 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes gif-up { from { transform: translateY(40px); opacity: 0; } }
+.gif-sheet.closing { animation: gif-close 0.22s cubic-bezier(0.4, 0, 1, 1) forwards; }
+@keyframes gif-open { from { height: 0; } }
+@keyframes gif-close { to { height: 0; } }
+/* Treść ma stałą wysokość — przy rozwijaniu się nie ściska, tylko odsłania. */
+.gif-inner {
+  height: var(--gif-h); display: flex; flex-direction: column;
+  padding: 10px 12px calc(6px + env(safe-area-inset-bottom));
+}
 .gif-head { display: flex; gap: 8px; margin-bottom: 10px; }
 .gif-head input { flex: 1; min-width: 0; border-radius: 21px; padding: 9px 15px; }
 .gif-close { width: 40px; height: 40px; padding: 0; flex-shrink: 0; border-radius: 50%; background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }

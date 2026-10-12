@@ -4,10 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Gif } from '@/app/api/gif-search/route';
 
-// Wyszukiwarka GIF-ów nad polem pisania (GIPHY przez /api/gif-search). Puste pole =
+// Wyszukiwarka GIF-ów POD polem pisania, w miejscu klawiatury (GIPHY przez
+// /api/gif-search) — wysuwa się i chowa animacją, czat robi mu miejsce. Puste pole =
 // trendy, wpisywanie szuka po 300 ms ciszy, przewijanie doczytuje. Tap w GIF = wysyłka (onPick).
-// Zakładka „Emotki" = emotki z Twitcha przez 7TV (monkaS, pepeD…), ta sama ścieżka.
-export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => void; onClose: () => void }) {
+// Zakładka „Emotki" = emotki z Twitcha przez 7TV (monkaS, pepeD…): tap wstawia emotkę
+// do pola pisania (onEmote), okno zostaje — można dobrać kilka i dopisać tekst.
+export default function GifPicker({
+  closing,
+  onClosed,
+  onPick,
+  onEmote,
+  onClose,
+}: {
+  closing: boolean;
+  onClosed: () => void;
+  onPick: (g: Gif) => void;
+  onEmote: (g: Gif) => void;
+  onClose: () => void;
+}) {
   const [q, setQ] = useState('');
   const [src, setSrc] = useState<'giphy' | '7tv'>('giphy');
   const [gifs, setGifs] = useState<Gif[] | null>(null);
@@ -80,15 +94,28 @@ export default function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => voi
     }
   }
   const item = (g: Gif) => (
-    <button key={g.id} type="button" className="gif-item" onClick={() => onPick(g)} style={{ aspectRatio: `${g.w} / ${g.h}` }}>
+    <button
+      key={g.id}
+      type="button"
+      className="gif-item"
+      title={g.name}
+      onPointerDown={(e) => e.preventDefault()}
+      onClick={() => (src === '7tv' ? onEmote(g) : onPick(g))}
+      style={{ aspectRatio: `${g.w} / ${g.h}` }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={g.preview} alt="" loading="lazy" />
     </button>
   );
 
   return (
-    <div className="gif-backdrop" onClick={onClose}>
-      <div className="gif-sheet" role="dialog" aria-label="GIF-y" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`gif-sheet${closing ? ' closing' : ''}`}
+      role="dialog"
+      aria-label="GIF-y i emotki"
+      onAnimationEnd={(e) => e.target === e.currentTarget && closing && onClosed()}
+    >
+      <div className="gif-inner">
         <div className="gif-head">
           <input
             ref={inputRef}

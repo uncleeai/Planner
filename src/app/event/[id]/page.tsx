@@ -17,6 +17,7 @@ import LinkCard from '@/components/LinkCard';
 import GifPicker from '@/components/GifPicker';
 import type { Gif } from '@/app/api/gif-search/route';
 import { firstUrl, shortLink, splitLinks } from '@/lib/linkPreview';
+import { emoteUrl, emotesOnly, fromDraft, splitEmotes, toDraft, toPlain } from '@/lib/emotes';
 import { LoadingSkeleton } from '@/components/BootScreen';
 import { DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
 import { loadHeroCrops } from '@/lib/heroCrops';
@@ -285,10 +286,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // więc systemowe „wstecz" zamyka czat zamiast wychodzić z wypadu, a push
   // o komentarzu otwiera od razu rozmowę.
   const [chatOpen, setChatOpen] = useState(false);
-  const [gifOpen, setGifOpen] = useState(false);
+  // Okno GIF-ów/emotek w miejscu klawiatury: 'closing' = animacja chowania, potem znika.
+  const [gifState, setGifState] = useState<'closed' | 'open' | 'closing'>('closed');
+  const closeGif = () => setGifState((s) => (s === 'open' ? 'closing' : s));
   useEffect(() => {
-    if (!chatOpen) setGifOpen(false);
+    if (!chatOpen) setGifState('closed');
   }, [chatOpen]);
+  // Emotki wstawione do pola pisania jako :nazwa: → id 7TV (zob. lib/emotes).
+  const emoteMapRef = useRef(new Map<string, string>());
+  const editEmoteMapRef = useRef(new Map<string, string>());
+  const composeRef = useRef<HTMLTextAreaElement>(null);
   const chatPushedRef = useRef(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -838,7 +845,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   async function addComment(e: React.FormEvent) {
     e.preventDefault();
-    const body = newComment.trim();
+    const body = fromDraft(newComment.trim(), emoteMapRef.current);
     if (!body) return;
     setNewComment('');
     const ta = (e.currentTarget as HTMLFormElement).querySelector('textarea');
@@ -861,11 +868,30 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       .select('id')
       .single();
     if (error) {
-      setNewComment(body);
+      setNewComment(toDraft(body).text);
       load();
       return;
     }
     if (saved) notifyComment(saved.id);
+  }
+
+  // Tap w emotkę (zakładka „Emotki"): :nazwa: w miejscu kursora, okno zostaje otwarte —
+  // można dobrać kilka i dopisać tekst. Sama emotka wysłana bez tekstu = duża.
+  function insertEmote(g: Gif) {
+    const name = g.name ?? 'emote';
+    emoteMapRef.current.set(name, g.id);
+    const ta = composeRef.current;
+    const at = ta?.selectionStart ?? newComment.length;
+    const before = newComment.slice(0, at);
+    const after = newComment.slice(at);
+    const piece = `${before && !/\s$/.test(before) ? ' ' : ''}:${name}: `;
+    setNewComment(before + piece + after);
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      ta.selectionStart = ta.selectionEnd = before.length + piece.length;
+      ta.style.height = 'auto';
+      ta.style.height = `${ta.scrollHeight}px`;
+    });
   }
 
   // Zdjęcia do czatu: każde to osobna wiadomość (pierwsze bierze podpis z pola pisania).
@@ -912,7 +938,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // GIF z wyszukiwarki = wiadomość ze zdjęciem, tylko że z adresem GIPHY zamiast
   // pliku w R2 (nic nie wrzucamy; photoUrl przepuszcza media*.giphy.com).
   async function sendGif(g: Gif) {
-    setGifOpen(false);
+    closeGif();
     const tmpId = `optimistic-${Date.now()}`;
     const img = { image_path: g.full, image_thumb_path: g.thumb, image_w: g.w, image_h: g.h };
     setComments((prev) => [
@@ -980,13 +1006,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }, [pickerFor, whoFor]);
 
   function startCommentEdit(c: Comment) {
-    setEditCommentText(c.body);
+    const draft = toDraft(c.body);
+    editEmoteMapRef.current = draft.map;
+    setEditCommentText(draft.text);
     setEditingCommentId(c.id);
   }
 
   async function saveCommentEdit(e: React.FormEvent, id: string) {
     e.preventDefault();
-    const body = editCommentText.trim();
+    const body = fromDraft(editCommentText.trim(), editEmoteMapRef.current);
     if (!body) return;
     setEditingCommentId(null);
     // Optymistycznie podmień treść; przy błędzie load() przywróci prawdę z bazy.
@@ -1529,7 +1557,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <span key={c.id} className="chat-peek-line">
                   <Avatar name={name} avatar={prof?.avatar ?? null} size={26} />
                   <span>
-                    <b>{c.user_id === userId ? 'Ty' : name}:</b> {c.body || mediaLabel(c.image_path)}
+                    <b>{c.user_id === userId ? 'Ty' : name}:</b> {toPlain(c.body) || mediaLabel(c.image_path)}
                   </span>
                 </span>
               );
@@ -1655,16 +1683,23 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                         </button>
                       )}
                       {(deleted || c.body) && (
-                      <p className={`comment-text${deleted ? ' deleted' : ''}`}>
+                      <p className={`comment-text${deleted ? ' deleted' : ''}${!deleted && emotesOnly(c.body) ? ' emotes-only' : ''}`}>
                         {deleted
                           ? 'Wiadomość usunięta'
-                          : splitLinks(c.body).map((part, i) =>
-                              part.href ? (
-                                <a key={i} href={part.href} target="_blank" rel="noopener noreferrer">
-                                  {shortLink(part.text)}
-                                </a>
+                          : splitEmotes(c.body).map((chunk, j) =>
+                              'emote' in chunk ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img key={j} className="inline-emote" src={emoteUrl(chunk.emote.id)} alt={chunk.emote.name} title={chunk.emote.name} />
                               ) : (
-                                part.text
+                                splitLinks(chunk.text).map((part, i) =>
+                                  part.href ? (
+                                    <a key={`${j}-${i}`} href={part.href} target="_blank" rel="noopener noreferrer">
+                                      {shortLink(part.text)}
+                                    </a>
+                                  ) : (
+                                    part.text
+                                  ),
+                                )
                               ),
                             )}
                       </p>
@@ -1706,7 +1741,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                               type="button"
                               onClick={() => {
                                 setPickerFor(null);
-                                navigator.clipboard?.writeText(c.body).then(haptic, () => {});
+                                navigator.clipboard?.writeText(toPlain(c.body)).then(haptic, () => {});
                               }}
                             >
                               Kopiuj
@@ -1793,7 +1828,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             >
               <IconCamera size={20} />
             </button>
-            <button type="button" className="chat-attach chat-gif" aria-label="Dodaj GIF" onClick={() => setGifOpen(true)}>
+            <button
+              type="button"
+              className={`chat-attach chat-gif${gifState === 'open' ? ' on' : ''}`}
+              aria-label="GIF-y i emotki"
+              // Bez kradzieży fokusu: klawiatura chowa się dopiero, gdy okno faktycznie wjeżdża.
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => {
+                if (gifState === 'open') return closeGif();
+                composeRef.current?.blur();
+                setGifState('open');
+              }}
+            >
               GIF
             </button>
             <input
@@ -1809,8 +1855,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               }}
             />
             <textarea
+              ref={composeRef}
               rows={1}
               placeholder="Napisz coś…"
+              // Tap w pole = klawiatura zamiast okna GIF-ów (jak w iMessage).
+              onFocus={closeGif}
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               onInput={(e) => {
@@ -1833,8 +1882,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
             </button>
           </form>
+          {gifState !== 'closed' && (
+            <GifPicker
+              closing={gifState === 'closing'}
+              onClosed={() => setGifState('closed')}
+              onPick={sendGif}
+              onEmote={insertEmote}
+              onClose={closeGif}
+            />
+          )}
 
-          {gifOpen && <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} />}
           {photoView && (
             <div className="photo-view" role="dialog" aria-label="Zdjęcie" onClick={() => setPhotoView(null)}>
               {/* Przytrzymanie zdjęcia = natywne menu iOS („Zachowaj w Zdjęciach",

@@ -85,7 +85,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── EmojiCarousel.tsx     # Wybór emoji wypadu: zapętlona karuzela ze snapem (ramka na środku) + kafelek własnego emoji
     │   ├── EventHero.tsx         # Hero strony wypadu: zdjęcie full-bleed + tytuł/meta pod nim (fallback tekstowy bez zdjęcia)
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
-    │   ├── GifPicker.tsx         # Wyszukiwarka GIF-ów nad polem pisania (siatka, trendy przy pustym polu, „Powered by GIPHY") + zakładka „Emotki" (7TV: pusto = kategoria TOP); przewijanie doczytuje strony (`page`)
+    │   ├── GifPicker.tsx         # Okno GIF-ów/emotek POD polem pisania (w miejscu klawiatury, animowane) (siatka, trendy przy pustym polu, „Powered by GIPHY") + zakładka „Emotki" (7TV: pusto = kategoria TOP); przewijanie doczytuje strony (`page`)
     │   ├── LinkCard.tsx          # Karta podglądu linku pod dymkiem czatu (obrazek + tytuł + domena)
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
@@ -126,6 +126,7 @@ Guidance for AI assistants (and humans) working in this repository.
         ├── dataCache.ts          # Cache danych w pamięci: dashboard ↔ strona wypadu bez „Wczytuję…"
         ├── eventPrefetch.ts      # Prefetch danych wypadu na pointerdown (przed nawigacją)
         ├── chatSeen.ts           # Lokalny znacznik „przeczytane" czatu (kropki nieprzeczytanych)
+        ├── emotes.ts             # Emotki 7TV w tekście: znacznik [7tv:id:nazwa] w body ↔ :nazwa: w polu pisania (+ testy)
         ├── linkPreview.ts        # Linki w czacie: wykrywanie URL, parsowanie Open Graph, blokada adresów prywatnych (+ testy)
         ├── haptics.ts            # Haptic tick przy gestach (vibrate; iOS: trik z <input switch>)
         └── types.ts              # Typy + logika statusu wypadu (EventRow, Slot, Vote, Profile…) (+ testy)
@@ -223,8 +224,11 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   **GIF-y:** przycisk „GIF" obok aparatu → `GifPicker` → `/api/gif-search` (GIPHY). Wysłany GIF
   to wiadomość jak zdjęcie, ale `image_path`/`image_thumb_path` = pełne adresy media*.giphy.com
   (nic nie idzie do R2); `photoUrl` przepuszcza tylko adresy GIPHY i cdn.7tv.app (`isGifUrl`),
-  zajawki/push „GIF". **Emotki 7TV** (zakładka w tym samym oknie): `image_path` = `cdn.7tv.app/emote/<id>/4x.webp`,
-  w dymku jak duża emotka (`.comment-img.emote`, bez ramki, 96 px), zajawki/push „Emotka". Pliki usuniętych zdjęć zostają w R2
+  zajawki/push „GIF". **Emotki 7TV** (zakładka w tym samym oknie): tap wstawia `:nazwa:` do pola
+  pisania (okno zostaje), przy wysyłce zamiana na znacznik `[7tv:<id>:<nazwa>]` w `body` (`lib/emotes.ts`);
+  w dymku obrazki w linii tekstu, same emotki (≤ 3) = duże bez dymka; push/zajawki/„Kopiuj" = sama nazwa
+  (`toPlain`). Starsze wiadomości z emotką w `image_path` (cdn.7tv.app) nadal się wyświetlają.
+  Okno GIF-ów stoi w układzie pod polem pisania (czat robi miejsce), tap w pole pisania je chowa. Pliki usuniętych zdjęć zostają w R2
   (brak GC dla czatu — do dorobienia, gdy będzie potrzeba).
 - **chat_push_state** — pushe z czatu bez spamu: per `(user_id, event_id)` `pushed_at`
   (ostatni push), `seen_at` (czytał) i `open_until` (czat na ekranie — apka odświeża
@@ -292,7 +296,7 @@ i terminów. Listę e-maili trzymaj zsynchronizowaną w `is_admin()` (schema.sql
   formaty dat; `slotInput.test.ts`: budowanie slotu z pól Od/Do/Godzina;
   `emoji.test.ts`: sanityzacja własnego emoji — litery/spacje odrzucone, flagi
   i sekwencje ZWJ w całości; `linkPreview.test.ts`: wycinanie linków z tekstu,
-  Open Graph, blokada adresów prywatnych).
+  Open Graph, blokada adresów prywatnych; `emotes.test.ts`: znaczniki emotek 7TV ↔ pole pisania).
   Odpalane z `TZ=Europe/Warsaw` dla powtarzalności dat. Brak testów UI/E2E —
   zachowanie sprawdzamy na preview. Lint: brak konfiguracji.
 - **Sanity check:** `next build` weryfikuje typy TypeScript (strict). Po

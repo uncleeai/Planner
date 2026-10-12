@@ -127,8 +127,10 @@ Deno.serve(async (req) => {
   // Bez tekstu: emotka (7TV), GIF (GIPHY) albo zdjęcie (klucz w R2).
   const media = (p: string) =>
     p.startsWith('https://cdn.7tv.app/') ? 'Emotka' : /^https:\/\/[^/]*giphy\.com\//.test(p) ? 'GIF' : '📷 Zdjęcie';
+  // Emotka w tekście to znacznik [7tv:<id>:<nazwa>] (src/lib/emotes.ts) — w pushu sama nazwa.
+  const plain = (b: string | null) => (b ?? '').replace(/\[7tv:[0-9A-Za-z]{20,32}:([^\]\s]{1,100})\]/g, '$1');
   const text = (c: { body: string | null; image_path?: string | null }) =>
-    preview(c.body || (c.image_path ? media(c.image_path) : ''));
+    preview(plain(c.body) || (c.image_path ? media(c.image_path) : ''));
   const messageFor = (user: string | null) => {
     const unread = user
       ? ((recent ?? []) as { user_id: string | null; created_at: string }[]).filter(

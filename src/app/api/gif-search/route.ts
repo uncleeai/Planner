@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // Ile wyników na stronę (GIPHY i 7TV) — klient doczytuje, dopóki strona jest pełna.
 export const PAGE = 30;
 
-export type Gif = { id: string; preview: string; thumb: string; full: string; w: number; h: number };
+export type Gif = { id: string; preview: string; thumb: string; full: string; w: number; h: number; name?: string };
 
 type SevenTvEmote = { id: string; name: string; host: { url: string; files: { name: string; width: number; height: number }[] } };
 
@@ -37,7 +37,7 @@ async function sevenTv(q: string, page: number): Promise<Gif[] | null> {
     const big = e.host.files.find((f) => f.name === '4x.webp');
     if (!big) return [];
     const base = `https:${e.host.url}`;
-    return [{ id: e.id, preview: `${base}/2x.webp`, thumb: `${base}/4x.webp`, full: `${base}/4x.webp`, w: big.width, h: big.height }];
+    return [{ id: e.id, name: e.name, preview: `${base}/2x.webp`, thumb: `${base}/4x.webp`, full: `${base}/4x.webp`, w: big.width, h: big.height }];
   });
 }
 
