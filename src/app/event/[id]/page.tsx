@@ -639,8 +639,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     } else {
       // Wyjście: CAŁA lista gaśnie od razu — wcześniej gasło tylko 10 ostatnich
       // wierszy, a starsze wisiały nad stroną, gdy tło już się zwinęło.
-      const list = el.querySelector('.chat-scroll');
-      if (list) anims.push(list.animate([{ opacity: 1 }, { opacity: 0 }], { ...o, duration: 90 }));
+      // Okno GIF-ów (także w trakcie wjazdu) gaśnie razem z listą — inaczej wisiało nad
+      // stroną, aż czat się do końca zamknął.
+      for (const part of el.querySelectorAll('.chat-scroll, .gif-sheet')) {
+        anims.push(part.animate([{ opacity: 1 }, { opacity: 0 }], { ...o, duration: 90, fill: 'forwards' }));
+      }
     }
 
     // Kaskada wiadomości kończy się później niż okno — czekamy na wszystko.
