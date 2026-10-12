@@ -292,7 +292,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     if (chatOpen) return;
     setGifState('closed');
-    if (chatScrollRef.current) chatScrollRef.current.style.paddingBottom = '';
+    gifPadList(0);
     gifUntrimCompose();
   }, [chatOpen]);
   // Wjazd/zjazd okna GIF-ów samymi transformami + scrollTop w jednym rAF: okno leży nad
@@ -340,10 +340,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     sheet.style.height = `${h}px`;
     return h;
   }
-  // Zapas listy = wysokość okna, doliczany do jej własnego paddingu (CSS).
-  function gifPadList(sc: HTMLElement, h: number) {
-    sc.style.paddingBottom = '';
-    sc.style.paddingBottom = `${parseFloat(getComputedStyle(sc).paddingBottom) + h}px`;
+  // Zapas na końcu listy = wysokość okna (pusty element, zob. .gif-spacer).
+  const gifSpacerRef = useRef<HTMLDivElement>(null);
+  function gifPadList(h: number) {
+    if (gifSpacerRef.current) gifSpacerRef.current.style.height = h ? `${h}px` : '';
   }
   // Otwarte okno + zmiana miejsca (klawiatura wjechała / zjechała): bez animacji.
   function gifRefit() {
@@ -352,7 +352,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (!gifSheetRef.current || !form || !sc || gifAnimRef.current) return;
     const h = gifHeight();
     form.style.transform = `translateY(${-h}px)`;
-    gifPadList(sc, h);
+    gifPadList(h);
     if (chatNearBottomRef.current) sc.scrollTop = sc.scrollHeight;
   }
   // Wjazd/zjazd: pole pisania skraca się o pasek systemowy (start z translateY(-inset),
@@ -367,7 +367,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const inset = gifTrimCompose();
     const h = opening ? gifHeight() : sheet.offsetHeight;
     const travel = Math.max(0, h - inset);
-    if (opening) gifPadList(sc, h);
+    if (opening) gifPadList(h);
     const dur = opening ? 300 : 220;
     const ease = opening ? (t: number) => 1 - (1 - t) ** 3 : (t: number) => t * t * t;
     const s0 = sc.scrollTop;
@@ -385,7 +385,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       else {
         gifAnimRef.current = false;
         if (!opening) {
-          sc.style.paddingBottom = '';
+          gifPadList(0);
           gifUntrimCompose();
           setGifState('closed');
         }
@@ -1928,6 +1928,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             })}
           </div>
             )}
+            {/* Zapas na okno GIF-ów (wysokość ustawia gifPadList) — w treści, nie jako padding
+                listy: padding przewijanego kontenera to jego minimalna wysokość i przy
+                klawiaturze wypychał pole pisania w dół, pod okno. */}
+            <div ref={gifSpacerRef} className="gif-spacer" aria-hidden="true" />
           </div>
 
           <form ref={composeFormRef} className="comment-form chat-compose" onSubmit={addComment}>

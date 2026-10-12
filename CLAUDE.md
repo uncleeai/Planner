@@ -234,7 +234,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   w dymku obrazki w linii tekstu, same emotki (≤ 3) = duże bez dymka; push/zajawki/„Kopiuj" = sama nazwa
   (`toPlain`). Starsze wiadomości z emotką w `image_path` (cdn.7tv.app) nadal się wyświetlają.
   Okno GIF-ów (`.gif-sheet`, absolute na dole czatu) wjeżdża samymi transformami: pole pisania
-  podjeżdża translateY, lista przewija się o tyle samo w tym samym rAF (zapas = padding-bottom listy),
+  podjeżdża translateY, lista przewija się o tyle samo w tym samym rAF (zapas = `.gif-spacer` na końcu
+  listy — NIE padding kontenera: padding przewijanego kontenera to jego min. wysokość i przy klawiaturze
+  wypychał pole pisania pod okno),
   bez animowania wysokości (skakało). Przy otwartym oknie pole pisania traci dolny zapas na pasek
   systemowy (`gifTrimCompose`, mierzone — env() przy klawiaturze bywa inne); zapas jest na dole siatki,
   GIF-y sięgają do krawędzi ekranu. Tap w pole pisania chowa okno. Wysokość okna ograniczona do
