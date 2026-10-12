@@ -293,7 +293,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (chatOpen) return;
     setGifState('closed');
     if (chatScrollRef.current) chatScrollRef.current.style.paddingBottom = '';
-    if (composeFormRef.current) composeFormRef.current.style.transform = '';
+    gifUntrimCompose();
   }, [chatOpen]);
   // Wjazd/zjazd okna GIF-ów samymi transformami + scrollTop w jednym rAF: okno leży nad
   // czatem (absolute), pole pisania podjeżdża translateY, a lista przewija się o tyle
@@ -302,36 +302,58 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const gifSheetRef = useRef<HTMLDivElement>(null);
   const composeFormRef = useRef<HTMLFormElement>(null);
   const gifAnimRef = useRef(false);
-  // Wysokość okna = jego CSS (44dvh), ale nie więcej niż miejsce pod nagłówkiem i polem
-  // pisania — przy klawiaturze (wyszukiwanie) czat ma tylko kawałek ekranu i okno ze
-  // stałą wysokością wjeżdżało pod nagłówek, razem z paskiem wyszukiwania.
-  // Zwraca, o ile pole pisania ma podjechać.
-  function gifShift(): number {
+  // Przy otwartym oknie pole pisania traci dolny zapas na pasek systemowy iPhone'a
+  // (ten jest na dole okna GIF-ów) — inaczej pod przyciskami wisiał pusty pas.
+  // Zwraca, o ile pole pisania się skróciło (mierzone, bo env() przy klawiaturze bywa inne).
+  function gifTrimCompose(): number {
+    const form = composeFormRef.current;
+    if (!form) return 0;
+    if (form.dataset.trim) return Number(form.dataset.trim);
+    const before = form.offsetHeight;
+    form.style.paddingBottom = '10px';
+    const inset = Math.max(0, before - form.offsetHeight);
+    form.dataset.trim = String(inset);
+    return inset;
+  }
+  function gifUntrimCompose() {
+    const form = composeFormRef.current;
+    if (!form) return;
+    form.style.paddingBottom = '';
+    form.style.transform = '';
+    delete form.dataset.trim;
+  }
+  // Wysokość okna = jego CSS (44dvh + pasek systemowy), ale nie więcej niż miejsce pod
+  // nagłówkiem i polem pisania — przy klawiaturze (wyszukiwanie) czat ma tylko kawałek
+  // ekranu. Zwraca, o ile pole pisania ma podjechać (= wysokość okna).
+  function gifHeight(): number {
     const sheet = gifSheetRef.current;
     const form = composeFormRef.current;
     const screen = chatRef.current;
     if (!sheet || !form || !screen) return 0;
     sheet.style.height = '';
-    const pad = parseFloat(getComputedStyle(sheet).paddingTop);
     const top = (screen.querySelector('.chat-top') as HTMLElement | null)?.offsetHeight ?? 0;
-    const room = screen.clientHeight - top - form.offsetHeight + pad;
-    const h = Math.min(sheet.offsetHeight, room);
+    const room = screen.clientHeight - top - form.offsetHeight;
+    const h = Math.max(0, Math.min(sheet.offsetHeight, room));
     if (h < sheet.offsetHeight) sheet.style.height = `${h}px`;
-    return h - pad;
+    return h;
   }
-  // Otwarte okno + zmiana miejsca (klawiatura wjechała / zjechała): bez animacji
-  // ustawia nową wysokość, pozycję pola pisania i zapas listy.
+  // Zapas listy = wysokość okna, doliczany do jej własnego paddingu (CSS).
+  function gifPadList(sc: HTMLElement, h: number) {
+    sc.style.paddingBottom = '';
+    sc.style.paddingBottom = `${parseFloat(getComputedStyle(sc).paddingBottom) + h}px`;
+  }
+  // Otwarte okno + zmiana miejsca (klawiatura wjechała / zjechała): bez animacji.
   function gifRefit() {
-    const sheet = gifSheetRef.current;
     const form = composeFormRef.current;
     const sc = chatScrollRef.current;
-    if (!sheet || !form || !sc || gifAnimRef.current) return;
-    const shift = gifShift();
-    form.style.transform = `translateY(${-shift}px)`;
-    sc.style.paddingBottom = '';
-    sc.style.paddingBottom = `${parseFloat(getComputedStyle(sc).paddingBottom) + shift}px`;
+    if (!gifSheetRef.current || !form || !sc || gifAnimRef.current) return;
+    const h = gifHeight();
+    form.style.transform = `translateY(${-h}px)`;
+    gifPadList(sc, h);
     if (chatNearBottomRef.current) sc.scrollTop = sc.scrollHeight;
   }
+  // Wjazd/zjazd: pole pisania skraca się o pasek systemowy (start z translateY(-inset),
+  // więc przyciski nie skaczą), potem pole i lista jadą o (h - inset) w jednym rAF.
   useLayoutEffect(() => {
     if (gifState === 'closed') return;
     const sheet = gifSheetRef.current;
@@ -339,16 +361,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const sc = chatScrollRef.current;
     if (!sheet || !form || !sc) return;
     const opening = gifState === 'open';
-    // Pole pisania przykrywa górny pas okna o wysokości paska systemowego (padding-top
-    // okna) — dzięki temu nie ma dziury między polem a GIF-ami.
-    const shift = opening ? gifShift() : -new DOMMatrix(getComputedStyle(form).transform).m42 || 0;
+    const inset = gifTrimCompose();
+    const h = opening ? gifHeight() : sheet.offsetHeight;
+    const travel = Math.max(0, h - inset);
+    if (opening) gifPadList(sc, h);
     const dur = opening ? 300 : 220;
     const ease = opening ? (t: number) => 1 - (1 - t) ** 3 : (t: number) => t * t * t;
-    // Zapas doliczany do własnego paddingu listy (CSS), nie zamiast niego.
-    if (opening) {
-      sc.style.paddingBottom = '';
-      sc.style.paddingBottom = `${parseFloat(getComputedStyle(sc).paddingBottom) + shift}px`;
-    }
     const s0 = sc.scrollTop;
     const t0 = performance.now();
     let raf = 0;
@@ -357,15 +375,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       const p = Math.min(1, (now - t0) / dur);
       const e = ease(p);
       const k = opening ? e : 1 - e;
-      form.style.transform = `translateY(${-shift * k}px)`;
+      form.style.transform = `translateY(${-(inset + travel * k)}px)`;
       sheet.style.transform = `translateY(${(1 - k) * 100}%)`;
-      sc.scrollTop = opening ? s0 + shift * e : s0 - shift * e;
+      sc.scrollTop = opening ? s0 + travel * e : s0 - travel * e;
       if (p < 1) raf = requestAnimationFrame(frame);
       else {
         gifAnimRef.current = false;
         if (!opening) {
           sc.style.paddingBottom = '';
-          form.style.transform = '';
+          gifUntrimCompose();
           setGifState('closed');
         }
       }

@@ -1278,8 +1278,8 @@ img.avatar { display: inline-block; }
 .gif-sheet {
   --gif-h: min(44dvh, 380px);
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
-  /* Górny pas (wys. paska systemowego) chowa się pod polem pisania — patrz animacja w page.tsx. */
-  height: calc(var(--gif-h) + env(safe-area-inset-bottom)); padding-top: env(safe-area-inset-bottom);
+  /* Pasek systemowy iPhone'a na dole okna (padding siatki), nie pod polem pisania — page.tsx. */
+  height: calc(var(--gif-h) + env(safe-area-inset-bottom));
   background: var(--card); border-top: 1px solid var(--border);
   transform: translateY(100%); will-change: transform;
 }
