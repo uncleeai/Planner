@@ -15,9 +15,18 @@ export const R2_PUBLIC_BASE = 'https://pub-bfab842060924ea18c2d40f24cca7939.r2.d
 
 export const isGalleryConfigured = !!R2_PUBLIC_BASE;
 
+// GIF z czatu (GIPHY) siedzi w image_path jako pełny adres — tylko z media*.giphy.com,
+// żeby nikt nie wstawił do wątku obrazka z dowolnego serwera (np. piksela śledzącego).
+export const isGifUrl = (path: string) => /^https:\/\/(media\d*|i)\.giphy\.com\//.test(path);
+
 export function photoUrl(path: string): string {
+  if (path.startsWith('blob:') || isGifUrl(path)) return path;
   return `${R2_PUBLIC_BASE}/${path}`;
 }
+
+// Zajawka / push dla wiadomości bez tekstu.
+export const mediaLabel = (path: string | null | undefined) =>
+  !path ? '' : isGifUrl(path) ? 'GIF' : '📷 Zdjęcie';
 
 // UWAGA: NIE wysyłamy przy PUT żadnych dodatkowych nagłówków (próbowaliśmy
 // Cache-Control, żeby R2 zapisało go przy obiekcie). Cache-Control nie jest

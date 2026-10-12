@@ -77,6 +77,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── event/[id]/loading.tsx # Skeleton przejścia do wypadu
     │   ├── api/keepalive/route.ts # Endpoint pingowany cronem — utrzymuje bazę aktywną
     │   ├── api/gallery-sign/route.ts # Same-origin proxy podpisu uploadu galerii → Edge Function (omija blokery/preflight iOS)
+    │   ├── api/gif-search/route.ts # Wyszukiwarka GIF-ów do czatu: proxy do GIPHY (klucz GIPHY_API_KEY tylko na serwerze, tylko zalogowani)
     │   └── api/link-preview/route.ts # Podgląd linku z czatu: pobiera stronę, czyta Open Graph (tylko zalogowani, bez adresów prywatnych)
     ├── components/
     │   ├── SetupBanner.tsx       # Baner gdy brak konfiguracji Supabase
@@ -84,6 +85,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── EmojiCarousel.tsx     # Wybór emoji wypadu: zapętlona karuzela ze snapem (ramka na środku) + kafelek własnego emoji
     │   ├── EventHero.tsx         # Hero strony wypadu: zdjęcie full-bleed + tytuł/meta pod nim (fallback tekstowy bez zdjęcia)
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
+    │   ├── GifPicker.tsx         # Wyszukiwarka GIF-ów nad polem pisania (siatka, trendy przy pustym polu, „Powered by GIPHY")
     │   ├── LinkCard.tsx          # Karta podglądu linku pod dymkiem czatu (obrazek + tytuł + domena)
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
@@ -217,7 +219,10 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   być puste). Upload jak galeria (`uploadChatPhoto` w `gallery.ts` → `/api/gallery-sign`
   ze `scope: 'chat'` → R2 pod `<event_id>/chat/…`), bez oryginału. Optymistycznie z `blob:`.
   Tap = pełny ekran (tam przytrzymanie = natywne menu iOS z zapisem do Zdjęć, bo callout
-  jest wyłączony globalnie; przycisk „Zapisz" = Web Share z plikiem). Push/zajawki: „📷 Zdjęcie". Pliki usuniętych zdjęć zostają w R2
+  jest wyłączony globalnie; przycisk „Zapisz" = Web Share z plikiem). Push/zajawki: „📷 Zdjęcie".
+  **GIF-y:** przycisk „GIF" obok aparatu → `GifPicker` → `/api/gif-search` (GIPHY). Wysłany GIF
+  to wiadomość jak zdjęcie, ale `image_path`/`image_thumb_path` = pełne adresy media*.giphy.com
+  (nic nie idzie do R2); `photoUrl` przepuszcza tylko adresy GIPHY (`isGifUrl`), zajawki/push „GIF". Pliki usuniętych zdjęć zostają w R2
   (brak GC dla czatu — do dorobienia, gdy będzie potrzeba).
 - **chat_push_state** — pushe z czatu bez spamu: per `(user_id, event_id)` `pushed_at`
   (ostatni push), `seen_at` (czytał) i `open_until` (czat na ekranie — apka odświeża

@@ -14,6 +14,8 @@ import CreatorSheet from '@/components/CreatorSheet';
 import EventGallery from '@/components/EventGallery';
 import EventHero from '@/components/EventHero';
 import LinkCard from '@/components/LinkCard';
+import GifPicker from '@/components/GifPicker';
+import type { Gif } from '@/app/api/gif-search/route';
 import { firstUrl, shortLink, splitLinks } from '@/lib/linkPreview';
 import { LoadingSkeleton } from '@/components/BootScreen';
 import { DEFAULT_CROP, type HeroCrop } from '@/lib/heroImage';
@@ -32,7 +34,7 @@ import { getChatSeen, markChatSeen, reportChatOpen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { HapticSwitch } from '@/components/HapticSwitch';
 import { appAlert, appConfirm } from '@/components/Dialogs';
-import { photoUrl, uploadChatPhoto } from '@/lib/gallery';
+import { mediaLabel, photoUrl, uploadChatPhoto } from '@/lib/gallery';
 
 
 const CHOICES: { value: Availability; label: string; cls: string }[] = [
@@ -283,6 +285,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // więc systemowe „wstecz" zamyka czat zamiast wychodzić z wypadu, a push
   // o komentarzu otwiera od razu rozmowę.
   const [chatOpen, setChatOpen] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
+  useEffect(() => {
+    if (!chatOpen) setGifOpen(false);
+  }, [chatOpen]);
   const chatPushedRef = useRef(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -903,13 +909,36 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     }
   }
 
+  // GIF z wyszukiwarki = wiadomość ze zdjęciem, tylko że z adresem GIPHY zamiast
+  // pliku w R2 (nic nie wrzucamy; photoUrl przepuszcza media*.giphy.com).
+  async function sendGif(g: Gif) {
+    setGifOpen(false);
+    const tmpId = `optimistic-${Date.now()}`;
+    const img = { image_path: g.full, image_thumb_path: g.thumb, image_w: g.w, image_h: g.h };
+    setComments((prev) => [
+      ...prev,
+      { id: tmpId, event_id: eventId, user_id: userId, author_name: displayName, body: '', created_at: new Date().toISOString(), ...img },
+    ]);
+    const { data: saved, error } = await supabase
+      .from('comments')
+      .insert({ event_id: eventId, user_id: userId, author_name: displayName, body: '', ...img })
+      .select('id')
+      .single();
+    if (error) {
+      setComments((prev) => prev.filter((c) => c.id !== tmpId));
+      appAlert('GIF nie poszedł', error.message);
+      return;
+    }
+    if (saved) notifyComment(saved.id);
+  }
+
   // „Zapisz" w podglądzie zdjęcia: arkusz udostępniania z plikiem (iOS: „Zachowaj
   // obraz"), a gdy się nie da (brak Web Share z plikami / CORS) — zdjęcie w nowej
   // karcie, skąd da się je zapisać przytrzymaniem.
   async function savePhoto(url: string) {
     try {
       const blob = await (await fetch(url)).blob();
-      const file = new File([blob], `wypad-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const file = new File([blob], `wypad-${Date.now()}.${blob.type === 'image/gif' ? 'gif' : 'jpg'}`, { type: blob.type || 'image/jpeg' });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] });
         return;
@@ -1500,7 +1529,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <span key={c.id} className="chat-peek-line">
                   <Avatar name={name} avatar={prof?.avatar ?? null} size={26} />
                   <span>
-                    <b>{c.user_id === userId ? 'Ty' : name}:</b> {c.body || (c.image_path ? '📷 Zdjęcie' : '')}
+                    <b>{c.user_id === userId ? 'Ty' : name}:</b> {c.body || mediaLabel(c.image_path)}
                   </span>
                 </span>
               );
@@ -1614,12 +1643,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                           aria-label="Pokaż zdjęcie"
                           onClick={() => {
                             const p = c.image_path ?? c.image_thumb_path!;
-                            setPhotoView(p.startsWith('blob:') ? p : photoUrl(p));
+                            setPhotoView(photoUrl(p));
                           }}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={c.image_thumb_path.startsWith('blob:') ? c.image_thumb_path : photoUrl(c.image_thumb_path)}
+                            src={photoUrl(c.image_thumb_path)}
                             alt=""
                             loading="lazy"
                           />
@@ -1764,6 +1793,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             >
               <IconCamera size={20} />
             </button>
+            <button type="button" className="chat-attach chat-gif" aria-label="Dodaj GIF" onClick={() => setGifOpen(true)}>
+              GIF
+            </button>
             <input
               ref={photoInputRef}
               type="file"
@@ -1802,6 +1834,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             </button>
           </form>
 
+          {gifOpen && <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} />}
           {photoView && (
             <div className="photo-view" role="dialog" aria-label="Zdjęcie" onClick={() => setPhotoView(null)}>
               {/* Przytrzymanie zdjęcia = natywne menu iOS („Zachowaj w Zdjęciach",

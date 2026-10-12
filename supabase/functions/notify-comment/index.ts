@@ -124,8 +124,9 @@ Deno.serve(async (req) => {
         .limit(200)
     : { data: [] };
 
+  // Bez tekstu: GIF (adres z GIPHY) albo zdjęcie (klucz w R2).
   const text = (c: { body: string | null; image_path?: string | null }) =>
-    preview(c.body || (c.image_path ? '📷 Zdjęcie' : ''));
+    preview(c.body || (!c.image_path ? '' : /^https:\/\/[^/]*giphy\.com\//.test(c.image_path) ? 'GIF' : '📷 Zdjęcie'));
   const messageFor = (user: string | null) => {
     const unread = user
       ? ((recent ?? []) as { user_id: string | null; created_at: string }[]).filter(
