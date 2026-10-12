@@ -236,7 +236,9 @@ Zdefiniowany w `supabase/schema.sql` (skrypt idempotentny — można uruchomić 
   Okno GIF-ów (`.gif-sheet`, absolute na dole czatu) wjeżdża samymi transformami: pole pisania
   podjeżdża translateY, lista przewija się o tyle samo w tym samym rAF (zapas = padding-bottom listy),
   bez animowania wysokości (skakało). Pole pisania przykrywa górny pas okna o wysokości paska
-  systemowego, GIF-y sięgają do krawędzi ekranu. Tap w pole pisania chowa okno. Pliki usuniętych zdjęć zostają w R2
+  systemowego, GIF-y sięgają do krawędzi ekranu. Tap w pole pisania chowa okno. Wysokość okna
+  ograniczona do miejsca pod nagłówkiem i polem pisania (`gifShift`/`gifRefit`, wołane też z dopasowania
+  do visualViewport) — przy klawiaturze (wyszukiwanie) pasek szukania zostaje widoczny. Pliki usuniętych zdjęć zostają w R2
   (brak GC dla czatu — do dorobienia, gdy będzie potrzeba).
 - **chat_push_state** — pushe z czatu bez spamu: per `(user_id, event_id)` `pushed_at`
   (ostatni push), `seen_at` (czytał) i `open_until` (czat na ekranie — apka odświeża

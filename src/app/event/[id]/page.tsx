@@ -301,6 +301,37 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   // klatkę i z przypinaniem do dołu dawała „skaczące" przewijanie.
   const gifSheetRef = useRef<HTMLDivElement>(null);
   const composeFormRef = useRef<HTMLFormElement>(null);
+  const gifAnimRef = useRef(false);
+  // Wysokość okna = jego CSS (44dvh), ale nie więcej niż miejsce pod nagłówkiem i polem
+  // pisania — przy klawiaturze (wyszukiwanie) czat ma tylko kawałek ekranu i okno ze
+  // stałą wysokością wjeżdżało pod nagłówek, razem z paskiem wyszukiwania.
+  // Zwraca, o ile pole pisania ma podjechać.
+  function gifShift(): number {
+    const sheet = gifSheetRef.current;
+    const form = composeFormRef.current;
+    const screen = chatRef.current;
+    if (!sheet || !form || !screen) return 0;
+    sheet.style.height = '';
+    const pad = parseFloat(getComputedStyle(sheet).paddingTop);
+    const top = (screen.querySelector('.chat-top') as HTMLElement | null)?.offsetHeight ?? 0;
+    const room = screen.clientHeight - top - form.offsetHeight + pad;
+    const h = Math.min(sheet.offsetHeight, room);
+    if (h < sheet.offsetHeight) sheet.style.height = `${h}px`;
+    return h - pad;
+  }
+  // Otwarte okno + zmiana miejsca (klawiatura wjechała / zjechała): bez animacji
+  // ustawia nową wysokość, pozycję pola pisania i zapas listy.
+  function gifRefit() {
+    const sheet = gifSheetRef.current;
+    const form = composeFormRef.current;
+    const sc = chatScrollRef.current;
+    if (!sheet || !form || !sc || gifAnimRef.current) return;
+    const shift = gifShift();
+    form.style.transform = `translateY(${-shift}px)`;
+    sc.style.paddingBottom = '';
+    sc.style.paddingBottom = `${parseFloat(getComputedStyle(sc).paddingBottom) + shift}px`;
+    if (chatNearBottomRef.current) sc.scrollTop = sc.scrollHeight;
+  }
   useLayoutEffect(() => {
     if (gifState === 'closed') return;
     const sheet = gifSheetRef.current;
@@ -310,7 +341,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const opening = gifState === 'open';
     // Pole pisania przykrywa górny pas okna o wysokości paska systemowego (padding-top
     // okna) — dzięki temu nie ma dziury między polem a GIF-ami.
-    const shift = sheet.offsetHeight - parseFloat(getComputedStyle(sheet).paddingTop);
+    const shift = opening ? gifShift() : -new DOMMatrix(getComputedStyle(form).transform).m42 || 0;
     const dur = opening ? 300 : 220;
     const ease = opening ? (t: number) => 1 - (1 - t) ** 3 : (t: number) => t * t * t;
     // Zapas doliczany do własnego paddingu listy (CSS), nie zamiast niego.
@@ -321,6 +352,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const s0 = sc.scrollTop;
     const t0 = performance.now();
     let raf = 0;
+    gifAnimRef.current = true;
     const frame = (now: number) => {
       const p = Math.min(1, (now - t0) / dur);
       const e = ease(p);
@@ -329,14 +361,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       sheet.style.transform = `translateY(${(1 - k) * 100}%)`;
       sc.scrollTop = opening ? s0 + shift * e : s0 - shift * e;
       if (p < 1) raf = requestAnimationFrame(frame);
-      else if (!opening) {
-        sc.style.paddingBottom = '';
-        form.style.transform = '';
-        setGifState('closed');
+      else {
+        gifAnimRef.current = false;
+        if (!opening) {
+          sc.style.paddingBottom = '';
+          form.style.transform = '';
+          setGifState('closed');
+        }
       }
     };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      gifAnimRef.current = false;
+    };
   }, [gifState]);
   // Emotki wstawione do pola pisania jako :nazwa: → id 7TV (zob. lib/emotes).
   const emoteMapRef = useRef(new Map<string, string>());
@@ -621,6 +659,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       el.style.height = `${vv.height}px`;
       el.style.top = `${vv.offsetTop}px`;
       if (sc && chatNearBottomRef.current) sc.scrollTop = sc.scrollHeight;
+      gifRefit();
     };
     fit();
     vv?.addEventListener('resize', fit);
