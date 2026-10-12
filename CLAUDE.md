@@ -85,7 +85,7 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── EmojiCarousel.tsx     # Wybór emoji wypadu: zapętlona karuzela ze snapem (ramka na środku) + kafelek własnego emoji
     │   ├── EventHero.tsx         # Hero strony wypadu: zdjęcie full-bleed + tytuł/meta pod nim (fallback tekstowy bez zdjęcia)
     │   ├── Avatar.tsx            # Avatar (zdjęcie/emoji/inicjały) + AvatarStack
-    │   ├── GifPicker.tsx         # Wyszukiwarka GIF-ów nad polem pisania (siatka, trendy przy pustym polu, „Powered by GIPHY") + zakładka „Emotki" (7TV)
+    │   ├── GifPicker.tsx         # Wyszukiwarka GIF-ów nad polem pisania (siatka, trendy przy pustym polu, „Powered by GIPHY") + zakładka „Emotki" (7TV: pusto = kategoria TOP); przewijanie doczytuje strony (`page`)
     │   ├── LinkCard.tsx          # Karta podglądu linku pod dymkiem czatu (obrazek + tytuł + domena)
     │   ├── ProfileMenu.tsx       # Avatar w rogu + menu: zmień zdjęcie / emoji / wyloguj
     │   ├── SettingsMenu.tsx      # Ustawienia: akcent, powiadomienia push, admin (zaproszenia, kadrowanie)
