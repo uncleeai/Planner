@@ -489,17 +489,17 @@ export default function Home() {
   // terminu to tylko najbliższa propozycja — „START" sugerowałby, że już ustalone.
   const heroCountdown = useMemo(() => {
     if (!heroSlot) return null;
-    const pre = heroId && aggByEvent.get(heroId)?.slot ? '' : 'PROPOZYCJA ';
+    const pre = heroId && aggByEvent.get(heroId)?.slot ? '' : 'Propozycja ';
     const mid = (t: number) => {
       const d = new Date(t);
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     };
     const days = Math.round((mid(new Date(heroSlot.starts_at).getTime()) - mid(Date.now())) / (24 * 3600 * 1000));
-    if (days < 0) return `${pre}TRWA`;
-    if (days === 0) return `${pre}DZIŚ`;
-    if (days === 1) return `${pre}JUTRO`;
-    return pre ? `${pre}ZA ${days} DNI` : `START ZA ${days} DNI`;
+    if (days < 0) return pre ? `${pre}trwa` : 'Trwa';
+    if (days === 0) return pre ? `${pre}dziś` : 'Dziś';
+    if (days === 1) return pre ? `${pre}jutro` : 'Jutro';
+    return pre ? `${pre}za ${days} dni` : `Start za ${days} dni`;
   }, [heroSlot, heroId, aggByEvent]);
 
 
@@ -719,7 +719,7 @@ function Row({ ev, variant, slot, agg, unread, photoCount }: {
           {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
         </span>
       )}
-      {variant === 'upcoming' && <span className="badge">USTALONY</span>}
+      {variant === 'upcoming' && <span className="badge">Ustalony</span>}
       {variant === 'past' && !!photoCount && (
         <span className="badge badge-muted photo-badge">📸 {photoCount}</span>
       )}
@@ -936,7 +936,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
             <span className="segs" aria-hidden="true">
               {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
             </span>
-            <b><NumberFlow value={responded} />/{agg.squad.length} <span>DAŁO ZNAĆ</span></b>
+            <b><NumberFlow value={responded} />/{agg.squad.length} <span>dało znać</span></b>
           </div>
         </>
       ) : (

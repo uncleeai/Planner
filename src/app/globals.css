@@ -3216,3 +3216,23 @@ button.solid-danger { background: var(--no); color: #fff; }
 @keyframes wn-in { from { opacity: 0; transform: translateY(24px); } }
 @keyframes wn-pop { from { opacity: 0; transform: translateY(10px) scale(0.92); } }
 
+
+/* ===== Mniej mono ===== */
+/* Mono zostaje dla DANYCH (daty, godziny, liczniki), etykiet sekcji/pól, wordmarku,
+   słów z gry (READY/MOŻE/PAS/AFK) i linii terminala (LOCK IN, MOTD). Zdania, imiona
+   i statusy idą zwykłym fontem, bez wersalików — gdy wszystko było etykietą, nic się
+   nie wyróżniało. Blok na końcu pliku celowo nadpisuje reguły wyżej. */
+.chip, .chip.quiet, .chip.hot, .badge, .past-chip, .voter-chip, .afk-text span,
+.archive-toggle, .el-title, .el-days, .readybar b span, .cal-chip-main span {
+  font-family: -apple-system, system-ui, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0; text-transform: none;
+}
+.chip, .badge, .past-chip { font-size: 0.72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.voter-chip { font-size: 0.78rem; font-weight: 600; }
+.afk-text span { font-size: 0.74rem; font-weight: 500; }
+.archive-toggle { font-size: 0.8rem; font-weight: 500; }
+.el-title { font-size: 1.05rem; font-weight: 700; }
+.el-days { font-size: 0.8rem; font-weight: 500; }
+.el-days b { font-family: var(--mono); }
+.readybar b span { font-size: 0.76rem; font-weight: 500; }
+.cal-chip-main span { font-size: 0.72rem; font-weight: 500; }

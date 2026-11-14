@@ -1342,7 +1342,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const afkLabel = useMemo(() => {
     if (!event?.created_at) return 'AFK';
     const d = Math.floor((Date.now() - new Date(event.created_at).getTime()) / (24 * 3600 * 1000));
-    return d <= 0 ? 'AFK OD DZIŚ' : d === 1 ? 'AFK OD WCZORAJ' : `AFK OD ${d} DNI`;
+    return d <= 0 ? 'AFK od dziś' : d === 1 ? 'AFK od wczoraj' : `AFK od ${d} dni`;
   }, [event?.created_at]);
 
   if (loading) return <main className="glass-page"><LoadingSkeleton /></main>;
@@ -1442,10 +1442,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <b>{m.id === userId ? 'Twój ruch' : `${m.display_name} się opierdala…`}</b>
                 <span>
                   {m.id === userId
-                    ? 'ZAGŁOSUJ NIŻEJ ↓'
+                    ? 'Zagłosuj niżej ↓'
                     : m.left === null
                       ? afkLabel
-                      : `BRAK GŁOSU NA ${m.left} ${plural(m.left, 'TERMIN', 'TERMINY', 'TERMINÓW')}`}
+                      : `Brak głosu na ${m.left} ${plural(m.left, 'termin', 'terminy', 'terminów')}`}
                 </span>
               </span>
               {isOrganizer && m.id !== userId && (
@@ -1469,7 +1469,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <div className="section-label">{isPast ? 'Kto był' : 'Ready check'}</div>
           {memberCount > 0 && !isPast && slots.length > 0 && (
             <span className={`chip ${votedCount >= memberCount ? 'ok' : 'hot'}`}>
-              <NumberFlow value={votedCount} />/{memberCount} DAŁO ZNAĆ
+              <NumberFlow value={votedCount} />/{memberCount} dało znać
             </span>
           )}
         </div>
@@ -1502,7 +1502,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           >
             <div className="slot-head">
               <SlotWhen slot={slot} />
-              {isSettledSlot && <span className="badge">✓ USTALONY</span>}
+              {isSettledSlot && <span className="badge">✓ Ustalony</span>}
               {showBestBadge && <span className="badge">Prowadzi</span>}
               {showTieBadge && <span className="badge badge-open">Remis</span>}
               {gone && <span className="badge badge-muted gone-badge">Odpadł</span>}
