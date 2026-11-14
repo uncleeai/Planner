@@ -242,11 +242,10 @@ export default function EventGallery({
   const canDelete = !!current && (current.user_id === userId || isOrganizer);
 
   return (
-    <section>
+    <section className="ev-page">
       {!hideLabel && (
         <div className="section-label">Zdjęcia{photos.length > 0 ? ` · ${photos.length}` : ''}</div>
       )}
-      {photos.length === 0 && <p className="small muted gallery-empty">Brak zdjęć z tego wypadu.</p>}
       <div className="gallery-grid">
         {photos.map((p, i) => (
           <button
@@ -262,11 +261,11 @@ export default function EventGallery({
         ))}
         <button
           type="button"
-          className={progress ? 'gallery-add uploading' : 'gallery-add'}
+          className={progress ? 'gallery-add uploading' : photos.length === 0 ? 'gallery-add empty' : 'gallery-add'}
           onClick={() => (progress ? abortRef.current?.abort() : inputRef.current?.click())}
           aria-label={progress ? 'Zatrzymaj wgrywanie' : 'Dodaj zdjęcia'}
         >
-          {progress ? `${progress.done}/${progress.total}…` : '+'}
+          {progress ? `${progress.done}/${progress.total}…` : photos.length === 0 ? '+ Dodaj zdjęcia' : '+'}
         </button>
       </div>
       <input

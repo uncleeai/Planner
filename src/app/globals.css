@@ -1099,15 +1099,15 @@ img.avatar { display: inline-block; }
    więc zdjęcie „nachodzi" na napis zamiast kończyć się pasem pustej czerni. */
 .ev-hero-head { position: relative; margin-bottom: 18px; }
 .ev-hero-head .large-title { margin-bottom: 4px; }
+/* Ten sam kształt co .chip.quiet (czat) — jedna plakietka na stronie, nie pigułka obok prostokątów. */
 .past-chip {
   font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 3px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 3px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
   color: var(--muted);
 }
-.gallery-empty { margin: 0 0 10px; }
 
 /* Czat: na stronie wypadu tylko zajawka (.chat-peek), rozmowa na pełnym ekranie
    (.chat-screen, portal do body) — strona nie rośnie z każdą wiadomością. */
@@ -2023,13 +2023,11 @@ main.has-dock { padding-bottom: 24px; }
 .peek-body p { margin: 0; font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* AFK + „Pinguj kurwę" (strona wypadu): kto się opierdala, z przyciskiem pinga */
-.afk {
-  display: flex; align-items: center; gap: 11px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-}
-.afk + .afk { margin-top: 8px; }
+/* Jedna karta z wierszami (hairline między nimi) zamiast osobnej ramki na osobę —
+   trzy ramki pod rząd nad terminami robiły z ekranu stos pudełek. */
+.vote-status { gap: 0; border: 1px solid var(--border-strong); border-radius: var(--radius); }
+.afk { display: flex; align-items: center; gap: 11px; padding: 10px 12px; }
+.afk + .afk { border-top: 1px solid var(--border); }
 .afk .avatar { filter: grayscale(1); opacity: 0.8; }
 .afk-text { flex: 1; min-width: 0; }
 .afk-text b { display: block; font-size: 0.82rem; font-weight: 600; }
@@ -2051,7 +2049,10 @@ main.has-dock { padding-bottom: 24px; }
 
 /* Sekcje strony wypadu — płasko, bez zewnętrznych kart (karta w karcie = szum) */
 .ev-section { margin: 24px 0; }
-.ev-section > .section-label { margin-left: 4px; }
+/* Etykiety sekcji w tej samej lewej krawędzi co tytuł i karty (dashboard zostawia
+   wcięcie 4px, bo tam wyrównują się z wierszami .trow). */
+.ev-section > .section-label, .ev-section > .rail,
+.ev-page .section-label { margin-left: 0; margin-right: 0; }
 
 /* Liść daty: jednodniowy termin jak kartka z rozkładu (zakres zostaje mono-linią) */
 .slot-when-wrap { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
@@ -3058,6 +3059,12 @@ button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
   border-radius: var(--radius-sm);
   background: none;
   font-size: 1.6rem; font-weight: 300; color: var(--muted);
+}
+/* Pusta galeria: zamiast napisu „brak zdjęć" + pustego kwadratu — jeden wiersz
+   „dodaj", ten sam wzór co „+ Dodaj propozycję terminu" (.add-slot-toggle). */
+.gallery-add.empty {
+  grid-column: 1 / -1; aspect-ratio: auto; padding: 12px;
+  font-size: 0.95rem; font-weight: 500; background: rgba(255, 255, 255, 0.02);
 }
 .gallery-add:disabled { font-size: 0.72rem; font-family: var(--mono); }
 /* Stan wgrywania: kafelek „+" pokazuje postęp i jest tapowalny (tap = stop). */
