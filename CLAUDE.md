@@ -31,7 +31,8 @@ Guidance for AI assistants (and humans) working in this repository.
 - **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
 - Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka). Wyjątek:
   wyspecjalizowane biblioteki do pojedynczych komponentów, stylowane zmiennymi skórki —
-  obecnie **Sonner** (toasty, host w `src/components/Toasts.tsx`).
+  obecnie **Sonner** (toasty, host w `src/components/Toasts.tsx`) i **NumberFlow**
+  (`@number-flow/react` — liczniki zmieniające się na żywo: „DAŁO ZNAĆ", „× READY", czat).
 - Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
 - **Analityka:** `@vercel/analytics` i `@vercel/speed-insights` w `layout.tsx`
   (trzeba je też włączyć przełącznikami w panelu Vercela).

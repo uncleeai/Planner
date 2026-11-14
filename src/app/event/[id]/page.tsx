@@ -35,6 +35,7 @@ import { getChatSeen, markChatSeen, reportChatOpen } from '@/lib/chatSeen';
 import { haptic } from '@/lib/haptics';
 import { HapticSwitch } from '@/components/HapticSwitch';
 import { appAlert, appConfirm } from '@/components/Dialogs';
+import NumberFlow from '@number-flow/react';
 import { isEmoteUrl, mediaLabel, photoUrl, uploadChatPhoto } from '@/lib/gallery';
 
 
@@ -1468,7 +1469,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <div className="section-label">{isPast ? 'Kto był' : 'Ready check'}</div>
           {memberCount > 0 && !isPast && slots.length > 0 && (
             <span className={`chip ${votedCount >= memberCount ? 'ok' : 'hot'}`}>
-              {votedCount}/{memberCount} DAŁO ZNAĆ
+              <NumberFlow value={votedCount} />/{memberCount} DAŁO ZNAĆ
             </span>
           )}
         </div>
@@ -1574,7 +1575,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
                 {(canLock || canUnlock) && (
                   <div className="lockin-line">
-                    <span className="lockin-state">{yes}× READY</span>
+                    <span className="lockin-state"><NumberFlow value={yes} />× READY</span>
                     <span className="lockin-lead" aria-hidden="true" />
                     {canLock ? (
                       <button type="button" className="lockin-cmd" onClick={() => confirmSlot(slot)}>
@@ -1652,9 +1653,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <div className="section-label">Czat</div>
           {liveComments.length > 0 && (
             <span className={`chip${unreadCount > 0 ? ' hot' : ' quiet'}`}>
+              {/* Liczba tyka (NumberFlow) zamiast przeskakiwać, gdy wpada wiadomość. */}
+              <NumberFlow value={unreadCount > 0 ? unreadCount : liveComments.length} />{' '}
               {unreadCount > 0
-                ? `${unreadCount} ${plural(unreadCount, 'nowa', 'nowe', 'nowych')}`
-                : `${liveComments.length} ${plural(liveComments.length, 'wiadomość', 'wiadomości', 'wiadomości')}`}
+                ? plural(unreadCount, 'nowa', 'nowe', 'nowych')
+                : plural(liveComments.length, 'wiadomość', 'wiadomości', 'wiadomości')}
             </span>
           )}
         </div>

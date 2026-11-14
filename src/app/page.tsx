@@ -29,6 +29,7 @@ import { isGalleryConfigured, mediaLabel } from '@/lib/gallery';
 import { toPlain } from '@/lib/emotes';
 import { loadHeroCrops } from '@/lib/heroCrops';
 import { IconCalendar, IconPin, IconChevron, IconClock, WeatherIcon } from '@/components/icons';
+import NumberFlow from '@number-flow/react';
 
 // Lokalna data (YYYY-MM-DD) z timestampu — do zapytania o prognozę na dzień wypadu.
 function toDateISO(iso: string): string {
@@ -934,7 +935,7 @@ function HeroCard({ ev, agg, memberCount, slot, variant, needsYou, otherSlots = 
             <span className="segs" aria-hidden="true">
               {segStates(agg.squad).map((st, i) => <i key={i} className={st ? `on-${st}` : ''} />)}
             </span>
-            <b>{responded}/{agg.squad.length} <span>DAŁO ZNAĆ</span></b>
+            <b><NumberFlow value={responded} />/{agg.squad.length} <span>DAŁO ZNAĆ</span></b>
           </div>
         </>
       ) : (
