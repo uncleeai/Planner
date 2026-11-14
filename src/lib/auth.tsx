@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { toast } from 'sonner';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import SetupBanner from '@/components/SetupBanner';
@@ -10,6 +10,7 @@ import BootScreen from '@/components/BootScreen';
 import { AVATARS, uploadAvatarImage } from '@/lib/avatars';
 import { resyncPushSubscription } from '@/lib/push';
 import { isAdminEmail } from '@/lib/admin';
+import { useTransitionNavigate } from '@/lib/transition';
 import WhatsNew, { WHATS_NEW_ID } from '@/components/WhatsNew';
 import type { EventRow } from '@/lib/types';
 
@@ -108,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // Toast na żywo, gdy ktoś inny doda nowy wypad — działa, gdy apka jest otwarta
 // (uzupełnia powiadomienia push, które docierają też przy zamkniętej apce).
 function NewEventToast({ userId }: { userId: string }) {
-  const [toast, setToast] = useState<{ id: string; title: string; by: string } | null>(null);
+  const navigate = useTransitionNavigate();
 
   // JEDYNa subskrypcja Realtime na tabelę `events` w całej apce (zawsze zamontowana).
   // Każdą zmianę rozgłasza zdarzeniem `planner:events-changed` (słucha go dashboard),
@@ -125,22 +126,21 @@ function NewEventToast({ userId }: { userId: string }) {
           if (payload.eventType !== 'INSERT') return;
           const ev = payload.new as EventRow;
           if (ev.created_by_user_id === userId) return; // własnych nie pokazujemy
-          setToast({ id: ev.id, title: ev.title, by: ev.created_by ?? 'Ktoś' });
-          window.setTimeout(() => setToast((t) => (t && t.id === ev.id ? null : t)), 6000);
+          toast(`${ev.created_by ?? 'Ktoś'} odpala nowy wypad`, {
+            id: `new-event-${ev.id}`,
+            description: ev.title,
+            duration: 6000,
+            action: { label: 'Otwórz', onClick: () => navigate(`/event/${ev.id}`) },
+          });
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, navigate]);
 
-  if (!toast) return null;
-  return (
-    <Link href={`/event/${toast.id}`} className="toast" onClick={() => setToast(null)}>
-      🎉 <strong>{toast.by}</strong> dodał nowy wypad: {toast.title}
-    </Link>
-  );
+  return null;
 }
 
 export async function signOut() {

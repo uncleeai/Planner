@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/auth';
 import { TransitionProvider } from '@/lib/transition';
 import GlassBackground from '@/components/GlassBackground';
 import { DialogHost } from '@/components/Dialogs';
+import { ToastHost } from '@/components/Toasts';
 import { ACCENT_BOOT_SCRIPT } from '@/lib/accent';
 import './globals.css';
 
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </TransitionProvider>
         </div>
         <DialogHost />
+        <ToastHost />
         <Analytics />
         <SpeedInsights />
       </body>

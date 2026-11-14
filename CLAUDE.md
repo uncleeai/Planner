@@ -29,7 +29,9 @@ Guidance for AI assistants (and humans) working in this repository.
   z potwierdzonym mailem. Listę adminów w `invite-user/index.ts` trzymaj w synchronie
   z `is_admin()` i `src/lib/admin.ts`.
 - **PWA** przez `public/manifest.webmanifest` (możliwość dodania do ekranu głównego).
-- Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka).
+- Styl: zwykły CSS w `src/app/globals.css` (bez Tailwind/UI-frameworka). Wyjątek:
+  wyspecjalizowane biblioteki do pojedynczych komponentów, stylowane zmiennymi skórki —
+  obecnie **Sonner** (toasty, host w `src/components/Toasts.tsx`).
 - Hosting docelowy: Vercel (frontend) + Supabase (dane) — oba w darmowych planach.
 - **Analityka:** `@vercel/analytics` i `@vercel/speed-insights` w `layout.tsx`
   (trzeba je też włączyć przełącznikami w panelu Vercela).
@@ -95,7 +97,8 @@ Guidance for AI assistants (and humans) working in this repository.
     │   ├── DescriptionInput.tsx  # Pole opisu + pasek formatowania (B / lista / link)
     │   ├── LocationAutocomplete.tsx # Podpowiedzi miejscowości (Open-Meteo geocoding) + współrzędne
     │   ├── WeatherModal.tsx      # Prognoza godzinowa na dzień wypadu (tap w kafelek pogody w hero)
-    │   ├── Dialogs.tsx           # appAlert/appConfirm + DialogHost (zamiast natywnych alertów)
+    │   ├── Dialogs.tsx           # appConfirm + DialogHost (okno potwierdzenia); appAlert = toast błędu
+    │   ├── Toasts.tsx            # ToastHost (Sonner) w skórce Lobby — montowany raz w layoucie
     │   ├── HapticSwitch.tsx      # Niewidoczny <input switch> na przycisku → tyk na iOS 26.5+ przy tapnięciu (głos, ping, LOCK IN, kadrowanie)
     │   ├── WhatsNew.tsx          # „Co nowego" (karty) raz na konto — znacznik `whats_new` w user_metadata, nie localStorage
     │   ├── GlassBackground.tsx   # Tło „frosted glass" pod całą apką

@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
-// Wewnętrzne potwierdzenia/alerty w skórce Lobby zamiast natywnych window.confirm/alert
-// (systemowa ramka gryzła się z UI). Imperatywne API jak natywne — handlery tylko
-// dokładają await. Host montowany raz w layoucie; gdyby go nie było, spadamy na natywne.
+// Wewnętrzne potwierdzenia w skórce Lobby zamiast natywnego window.confirm (systemowa
+// ramka gryzła się z UI). Imperatywne API jak natywne — handlery tylko dokładają await.
+// Host montowany raz w layoucie; gdyby go nie było, spadamy na natywne.
+// Błędy (`appAlert`) NIE blokują ekranu — idą jako toast (Sonner, zob. Toasts.tsx).
 
 type Dialog = {
-  kind: 'confirm' | 'alert';
   title: string;
   message?: string;
   confirmLabel?: string;
@@ -23,18 +24,12 @@ export function appConfirm(
 ): Promise<boolean> {
   return new Promise((resolve) => {
     if (!push) return resolve(window.confirm([title, opts?.message].filter(Boolean).join(' ')));
-    push({ kind: 'confirm', title, resolve, ...opts });
+    push({ title, resolve, ...opts });
   });
 }
 
-export function appAlert(title: string, message?: string): Promise<void> {
-  return new Promise((resolve) => {
-    if (!push) {
-      window.alert([title, message].filter(Boolean).join(' '));
-      return resolve();
-    }
-    push({ kind: 'alert', title, message, resolve: () => resolve() });
-  });
+export function appAlert(title: string, message?: string): void {
+  toast.error(title, { description: message });
 }
 
 export function DialogHost() {
@@ -67,15 +62,13 @@ export function DialogHost() {
     <div className="profile-overlay" onClick={() => close(false)}>
       <div
         className="profile-modal dialog"
-        role={dialog.kind === 'alert' ? 'alertdialog' : 'dialog'}
+        role="dialog"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-label">{dialog.title}</div>
         {dialog.message && <p className="dialog-msg">{dialog.message}</p>}
         <div className="dialog-actions">
-          {dialog.kind === 'confirm' && (
-            <button type="button" className="ghost" onClick={() => close(false)}>Anuluj</button>
-          )}
+          <button type="button" className="ghost" onClick={() => close(false)}>Anuluj</button>
           <button
             type="button"
             className={dialog.danger ? 'solid-danger' : 'cta-gradient'}
