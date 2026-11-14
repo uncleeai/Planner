@@ -23,7 +23,7 @@ import ChildSheet from '@/components/ChildSheet';
 import SlotRangeInput from '@/components/SlotRangeInput';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import DescriptionInput from '@/components/DescriptionInput';
-import { IconCalendar, IconPin, IconChevron, IconX } from '@/components/icons';
+import { IconCalendar, IconPin, IconPencil, IconChevron, IconX } from '@/components/icons';
 
 // Pełnoekranowy kreator „Nowe lobby" (styl Apple Invites): karta JEST formularzem.
 // Wysuwa się od dołu na sprężynie sheeta; szczegóły (termin/miejsce/opis) edytują
@@ -465,6 +465,16 @@ export default function CreatorSheet({
               </span>
               <IconChevron size={16} />
             </button>
+            {!description.trim() && (
+            <button type="button" className="creator-row" onClick={() => setOpenSheet('opis')}>
+              <IconPencil size={17} />
+              <span className="cr-text">
+                <span className="cr-label">Opis</span>
+                <b className="ph">Dodaj opis</b>
+              </span>
+              <IconChevron size={16} />
+            </button>
+            )}
           </div>
 
           {!edit && (
@@ -477,11 +487,11 @@ export default function CreatorSheet({
           </div>
           )}
 
-          {/* Opis: pusty → pill „Dodaj opis"; wpisany → podgląd (markdown) na miejscu,
+          {/* Opis: pusty → wiersz w karcie wyżej; wpisany → podgląd (markdown) na miejscu,
               żeby nie trzeba było otwierać sheeta tylko po to, by go zobaczyć. Podgląd
               to div (Markdown renderuje <a> — niedozwolone w <button>); edycja osobnym
               przyciskiem, linki w podglądzie działają. */}
-          {description.trim() ? (
+          {description.trim() && (
             <div className="creator-desc filled">
               <div className="creator-desc-head">
                 <span className="creator-desc-label">Opis</span>
@@ -491,10 +501,6 @@ export default function CreatorSheet({
               </div>
               <div className="creator-desc-body"><Markdown text={description} /></div>
             </div>
-          ) : (
-            <button type="button" className="creator-desc" onClick={() => setOpenSheet('opis')}>
-              + Dodaj opis
-            </button>
           )}
 
           {error && <p className="small" style={{ color: 'var(--no)', margin: 0 }}>{error}</p>}

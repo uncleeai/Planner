@@ -702,8 +702,6 @@ function Row({ ev, variant, slot, agg, unread, photoCount }: {
   } else {
     parts.push('Zbieramy terminy');
   }
-  if (ev.location) parts.push(ev.location);
-
   return (
     <Link href={href} prefetch={true} className="trow" {...handlers}>
       <span className="trow-main">
@@ -711,7 +709,10 @@ function Row({ ev, variant, slot, agg, unread, photoCount }: {
           {ev.emoji ? `${ev.emoji} ` : ''}{ev.title}
           {unread && <i className="unread-dot" aria-label="Nowe wiadomości na czacie" />}
         </b>
-        <span>{parts.join(' · ')}</span>
+        <span>
+          {parts.join(' · ')}
+          {ev.location && <> · <span className="place">{ev.location}</span></>}
+        </span>
       </span>
       {variant === 'open' && agg.squad.length > 0 && (
         <span className="mini-segs" aria-label={`${responded} z ${agg.squad.length} dało znać`}>

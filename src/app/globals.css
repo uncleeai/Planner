@@ -358,7 +358,8 @@ button.ghost.danger { color: var(--no); border-color: rgba(255, 93, 93, 0.35); b
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
-  margin: 20px 4px 10px;
+  /* Bez wcięcia w poziomie — etykiety trzymają lewą krawędź logo, tytułów i kart. */
+  margin: 20px 0 10px;
 }
 .section-label.faded { color: #7b858e; }
 .section-label.hot { color: var(--accent); }
@@ -682,7 +683,7 @@ img.avatar { display: inline-block; }
 .settings-trigger {
   width: 38px; height: 38px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   background: var(--card-2);
   border: 1px solid var(--border);
   color: var(--muted);
@@ -1944,7 +1945,7 @@ main::before {
 
 /* MOTD — cytat dnia jak message of the day serwera (klik losuje kolejny) */
 .motd {
-  margin: 26px 4px 0;
+  margin: 26px 0 0;
   display: flex; gap: 10px; align-items: baseline;
   cursor: pointer; user-select: none;
 }
@@ -2049,10 +2050,7 @@ main.has-dock { padding-bottom: 24px; }
 
 /* Sekcje strony wypadu — płasko, bez zewnętrznych kart (karta w karcie = szum) */
 .ev-section { margin: 24px 0; }
-/* Etykiety sekcji w tej samej lewej krawędzi co tytuł i karty (dashboard zostawia
-   wcięcie 4px, bo tam wyrównują się z wierszami .trow). */
-.ev-section > .section-label, .ev-section > .rail,
-.ev-page .section-label { margin-left: 0; margin-right: 0; }
+
 
 /* Liść daty: jednodniowy termin jak kartka z rozkładu (zakres zostaje mono-linią) */
 .slot-when-wrap { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
@@ -2074,7 +2072,7 @@ main.has-dock { padding-bottom: 24px; }
 /* ===== Zgodność 1:1 z mockupem „Lobby" v2 ===== */
 
 /* Rail: etykieta sekcji + chip statusu w jednej linii */
-.rail { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 20px 4px 10px; }
+.rail { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 20px 0 10px; }
 /* Pierwsza sekcja tuż pod nagłówkiem — bez podwójnej przerwy logo → treść */
 .glass-page > section:first-of-type > .rail,
 .glass-page > section:first-of-type > .section-label { margin-top: 6px; }
@@ -2091,7 +2089,7 @@ main.has-dock { padding-bottom: 24px; }
 .board { border-top: 1px solid var(--border); }
 .trow {
   display: flex; align-items: center; gap: 12px;
-  padding: 13px 4px;
+  padding: 13px 0;
   border-bottom: 1px solid var(--border);
   text-decoration: none; color: var(--text);
   transition: background 0.15s ease, transform 0.06s ease;
@@ -2111,6 +2109,7 @@ main.has-dock { padding-bottom: 24px; }
   letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.trow-main > span .place { font-family: -apple-system, system-ui, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; font-size: 0.74rem; letter-spacing: 0; }
 .trow .mini-segs { flex: none; width: 44px; }
 
 /* Nagłówek hero: tytuł + meta (miejsce · mono-data), bez boxa emoji i plakietki */
@@ -2176,7 +2175,6 @@ button:has(> .haptic-switch) { position: relative; }
   clip-path: inset(0 round var(--hs-r, var(--radius-sm)));
 }
 .haptic-switch:disabled { display: none; }
-.creator-bg-btn { --hs-r: 999px; }
 /* LOCK IN w karcie terminu (organizator): terminalowa linia pod głosami
    „2× READY ······ > LOCK IN_" — sama komenda w akcencie, z kursorem jak w logo,
    bez ramki i tła. Po klepnięciu „✓ LOCKED" na zielono (tap = odklep). */
@@ -2605,8 +2603,9 @@ button.solid-danger { background: var(--no); color: #fff; }
    Pomarańcz wraca dopiero, gdy formularz jest kompletny — sam kolor mówi „gotowe". */
 .cta-gradient:disabled {
   opacity: 1;
-  background: var(--card-2);
-  border: 1px solid var(--border);
+  /* Bez obrysu: z ramką czytał się jak kolejna karta formularza, nie przycisk. */
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid transparent;
   color: var(--muted);
   box-shadow: none;
 }
@@ -2780,7 +2779,7 @@ button.solid-danger { background: var(--no); color: #fff; }
   z-index: 3;
 }
 
-/* Narzędzia tła — pille w prawym górnym rogu (lustro X-a po lewej):
+/* Narzędzia tła — przyciski w prawym górnym rogu (lustro X-a po lewej):
    „+ Tło" / „Kadruj" + „×" / „Gotowe" (tryb kadrowania). */
 .creator-bg-tools {
   position: absolute;
@@ -2790,8 +2789,8 @@ button.solid-danger { background: var(--no); color: #fff; }
   display: flex; gap: 8px;
 }
 .creator-bg-btn {
-  padding: 8px 13px;
-  border-radius: 999px;
+  height: 32px; padding: 0 12px;
+  border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.35);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
@@ -2930,19 +2929,18 @@ button.solid-danger { background: var(--no); color: #fff; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 0 2px;
 }
-/* Opis: pusty = pill akcji na całą szerokość; wpisany = karta z podglądem markdownu. */
+/* Opis: pusty = trzeci wiersz karty Termin/Miejsce; wpisany = karta z podglądem markdownu. */
 .creator-desc {
   width: 100%; text-align: left;
   padding: 12px 14px; border-radius: var(--radius);
   background: var(--card-2); border: 1px solid var(--border-strong);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  font-size: 0.9rem; font-weight: 600; color: var(--accent);
+  font-size: 0.9rem;
 }
 .creator-desc.filled {
   display: flex; flex-direction: column; gap: 4px;
   color: var(--text); font-weight: 400;
 }
-button.creator-desc:active { background: rgba(255, 255, 255, 0.04); }
 .creator-desc-head { display: flex; align-items: center; justify-content: space-between; }
 .creator-desc-label {
   font-family: var(--mono); font-size: 0.58rem; font-weight: 700;

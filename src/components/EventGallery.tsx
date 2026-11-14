@@ -242,7 +242,7 @@ export default function EventGallery({
   const canDelete = !!current && (current.user_id === userId || isOrganizer);
 
   return (
-    <section className="ev-page">
+    <section>
       {!hideLabel && (
         <div className="section-label">Zdjęcia{photos.length > 0 ? ` · ${photos.length}` : ''}</div>
       )}
